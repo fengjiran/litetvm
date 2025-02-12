@@ -289,4 +289,24 @@ struct TVMByteArray {
     size_t size;
 };
 
+/*!
+ * \brief return str message of the last error
+ *  all function in this file will return 0 when success
+ *  and nonzero when an error occurred,
+ *  TVMGetLastError can be called to retrieve the error
+ *
+ *  this function is threadsafe and can be called by different thread
+ *  \return error info
+ */
+const char* TVMGetLastError();
+
+/*!
+ * \brief Copy array data to CPU byte array.
+ * \param handle The array handle.
+ * \param data the data pointer
+ * \param nbytes The number of bytes to copy.
+ * \return 0 when success, nonzero when failure happens
+ */
+int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes);
+
 #endif//C_RUNTIME_API_H

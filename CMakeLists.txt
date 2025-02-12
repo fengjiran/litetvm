@@ -13,6 +13,8 @@ endif(USE_KALLOC_ALIGNMENT)
 
 find_package(glog REQUIRED)
 
+set(DMLC_PATH "3rdparty/dmlc-core/include")
+
 file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp
         ${PROJECT_SOURCE_DIR}/src/*.cc
 )
@@ -21,6 +23,7 @@ add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include
+        ${DMLC_PATH}
 )
 
 target_link_libraries(${PROJECT_NAME}

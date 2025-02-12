@@ -6,6 +6,7 @@
 #define NDARRAY_H
 
 #include <utility>
+#include <dmlc/io.h>
 
 #include "runtime/c_runtime_api.h"
 #include "runtime/data_type.h"
@@ -199,6 +200,18 @@ public:
    */
     static bool AbilityOfZeroCopyForDLTensor(DLTensor* tensor, const Device& dev);
 
+    /*!
+   * \brief Load NDArray from stream
+   * \param stream The input data stream
+   * \return Whether load is successful
+   */
+    inline bool Load(dmlc::Stream* stream);
+    /*!
+     * \brief Save NDArray to stream
+     * \param stream The output data stream
+     */
+    inline void Save(dmlc::Stream* stream) const;
+
 protected:
     /*!
    * \brief Get mutable internal container pointer.
@@ -241,6 +254,13 @@ protected:
     friend class TVMRetValue;
     friend class TVMArgsSetter;
 };
+
+/*!
+ * \brief Save a DLTensor to stream
+ * \param strm The output stream
+ * \param tensor The tensor to be saved.
+ */
+inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor);
 
 /*!
  * \brief The container base structure
@@ -426,6 +446,55 @@ inline Object* TVMArrayHandleToObjectHandle(TVMArrayHandle handle) {
     return static_cast<NDArray::Container*>(reinterpret_cast<NDArray::ContainerBase*>(handle));
 }
 
+/*! \brief Magic number for NDArray file */
+constexpr uint64_t kTVMNDArrayMagic = 0xDD5E40F096B4A13F;
+
+inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
+  uint64_t header = kTVMNDArrayMagic, reserved = 0;
+  strm->Write(header);
+  strm->Write(reserved);
+  // Always save data as CPU context
+  //
+  // Parameters that get serialized should be in CPU by default.
+  // So even the array's context is GPU, it will be stored as CPU array.
+  // This is used to prevent case when another user loads the parameters
+  // back on machine that do not have GPU or related context.
+  //
+  // We can always do array.CopyTo(target_dev) to get a corresponding
+  // array in the target context.
+  Device cpu_dev;
+  cpu_dev.device_type = DLDeviceType::kDLCPU;
+  cpu_dev.device_id = 0;
+  strm->Write(cpu_dev);
+  strm->Write(tensor->ndim);
+  strm->Write(tensor->dtype);
+  int ndim = tensor->ndim;
+  strm->WriteArray(tensor->shape, ndim);
+  int type_bytes = (tensor->dtype.bits + 7) / 8;
+  int64_t num_elems = 1;
+  for (int i = 0; i < ndim; ++i) {
+    num_elems *= tensor->shape[i];
+  }
+  int64_t data_byte_size = type_bytes * num_elems;
+  strm->Write(data_byte_size);
+
+  if (DMLC_IO_NO_ENDIAN_SWAP && tensor->device.device_type == DLDeviceType::kDLCPU &&
+      tensor->strides == nullptr && tensor->byte_offset == 0) {
+    // quick path
+    strm->Write(tensor->data, data_byte_size);
+      } else {
+        std::vector<uint8_t> bytes(data_byte_size);
+        CHECK_EQ(
+            TVMArrayCopyToBytes(const_cast<DLTensor*>(tensor), dmlc::BeginPtr(bytes), data_byte_size),
+            0)
+            << TVMGetLastError();
+        if (!DMLC_IO_NO_ENDIAN_SWAP) {
+          dmlc::ByteSwap(dmlc::BeginPtr(bytes), type_bytes, num_elems);
+        }
+        strm->Write(dmlc::BeginPtr(bytes), data_byte_size);
+      }
+  return true;
+}
 
 }// namespace litetvm::runtime
 

@@ -79,7 +79,6 @@ void ArrayCopyToBytes(const DLTensor* handle, void* data, size_t nbytes) {
     // DeviceAPI::Get(handle->device)->StreamSync(handle->device, nullptr);
 }
 
-
 struct NDArray::Internal {
     // Default deleter for the container
     static void DefaultDeleter(Object* p) {
@@ -371,4 +370,11 @@ TVM_REGISTER_OBJECT_TYPE(NDArray::Container);
 using namespace litetvm::runtime;
 void TVMNDArrayDLPackDeleter(DLManagedTensor* tensor) {
     NDArray::Internal::NDArrayDLPackDeleter(tensor);
+}
+
+int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes) {
+    // API_BEGIN();
+    ArrayCopyToBytes(handle, data, nbytes);
+    return 0;
+    // API_END();
 }
