@@ -14,6 +14,7 @@ endif(USE_KALLOC_ALIGNMENT)
 find_package(glog REQUIRED)
 
 set(DMLC_PATH "3rdparty/dmlc-core/include")
+set(BACKTRACE_PATH "3rdparty/libbacktrace")
 
 file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp
         ${PROJECT_SOURCE_DIR}/src/*.cc
@@ -24,6 +25,7 @@ add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 include_directories(
         ${PROJECT_SOURCE_DIR}/include
         ${DMLC_PATH}
+        ${BACKTRACE_PATH}
 )
 
 target_link_libraries(${PROJECT_NAME}
