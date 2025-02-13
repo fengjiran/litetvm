@@ -8,6 +8,7 @@
 #include "runtime/registry.h"
 #include "runtime/shape_tuple.h"
 #include "runtime/type_context.h"
+#include "runtime/meta_data.h"
 
 using namespace litetvm::runtime;
 
@@ -30,6 +31,7 @@ TEST(ObjectTest, object) {
     ShapeTuple t3(t1);
     CHECK_EQ(t1.use_count(), t3.use_count());
     CHECK_EQ(t1.use_count(), 2);
+    CHECK(metadata::MetadataBaseNode::_type_child_slots_can_overflow);
 
     TypeContext::Global().Dump(0);
 }

@@ -12,10 +12,6 @@ namespace runtime {
 namespace metadata {
 
 TVM_REGISTER_OBJECT_TYPE(MetadataBaseNode);
-TVM_REGISTER_OBJECT_TYPE(MetadataArrayNode);
-TVM_REGISTER_OBJECT_TYPE(MetadataNode);
-TVM_REGISTER_OBJECT_TYPE(TensorInfoNode);
-TVM_REGISTER_OBJECT_TYPE(ConstantInfoMetadataNode);
 
 ArrayAccessor<TVMTensorInfo, TensorInfo> MetadataNode::inputs() const {
     return ArrayAccessor<TVMTensorInfo, TensorInfo>(data_->inputs, data_->num_inputs);
@@ -34,6 +30,7 @@ ArrayAccessor<TVMConstantInfo, ConstantInfoMetadata> MetadataNode::constant_pool
     return ArrayAccessor<TVMConstantInfo, ConstantInfoMetadata>(data_->constant_pools,
                                                                 data_->num_constant_pools);
 }
+// TVM_REGISTER_OBJECT_TYPE(MetadataBaseNode);
 
 MetadataArray::MetadataArray(Array<ObjectRef> array, MetadataKind kind, const char* struct_name)
     : MetadataBase{make_object<MetadataArrayNode>(array, kind, struct_name)} {}
@@ -42,21 +39,26 @@ const char* MetadataArrayNode::get_c_struct_name() const {
     CHECK(false) << "MetadataArrayNode get_c_struct_name is unimplemented";
     return nullptr;
 }
+// TVM_REGISTER_OBJECT_TYPE(MetadataArrayNode);
 
 Metadata::Metadata(const ::TVMMetadata* data)
     : MetadataBase{make_object<MetadataNode>(data)} {}
 
+TVM_REGISTER_OBJECT_TYPE(MetadataNode);
 
 const char* MetadataNode::get_c_struct_name() const { return "TVMMetadata"; }
 
-TensorInfo::TensorInfo(const struct ::TVMTensorInfo* data)
+TensorInfo::TensorInfo(const ::TVMTensorInfo* data)
     : MetadataBase{make_object<TensorInfoNode>(data)} {}
 
+// TVM_REGISTER_OBJECT_TYPE(TensorInfoNode);
 
 const char* TensorInfoNode::get_c_struct_name() const { return "TVMTensorInfo"; }
 
-ConstantInfoMetadata::ConstantInfoMetadata(const struct ::TVMConstantInfo* data)
+ConstantInfoMetadata::ConstantInfoMetadata(const ::TVMConstantInfo* data)
     : MetadataBase{make_object<ConstantInfoMetadataNode>(data)} {}
+
+// TVM_REGISTER_OBJECT_TYPE(ConstantInfoMetadataNode);
 
 const char* ConstantInfoMetadataNode::get_c_struct_name() const { return "TVMConstantInfo"; }
 
