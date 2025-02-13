@@ -23,6 +23,8 @@ uint32_t TypeContext::GetOrAllocRuntimeTypeIndex(const std::string& skey,
     auto& pinfo = type_table_[parent_tindex];
     CHECK_EQ(pinfo.index, parent_tindex);
 
+    bool parent_child_slots_can_overflow = pinfo.child_slots_can_overflow;
+
     // total number of slots include the type itself.
     uint32_t num_slots = num_child_slots + 1;
     uint32_t allocated_tindex;
@@ -61,7 +63,7 @@ uint32_t TypeContext::GetOrAllocRuntimeTypeIndex(const std::string& skey,
     type_table_[allocated_tindex].num_slots = num_slots;
     type_table_[allocated_tindex].allocated_slots = 1;
     // if parent cannot overflow, then this class cannot.
-    type_table_[allocated_tindex].child_slots_can_overflow = pinfo.child_slots_can_overflow && child_slots_can_overflow;
+    type_table_[allocated_tindex].child_slots_can_overflow = parent_child_slots_can_overflow && child_slots_can_overflow;
     type_table_[allocated_tindex].name = skey;
     type_table_[allocated_tindex].name_hash = std::hash<std::string>()(skey);
 
