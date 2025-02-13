@@ -5,7 +5,7 @@
 #include "runtime/registry.h"
 #include "runtime/thread_local.h"
 
-#include <glog/logging.h>
+// #include <glog/logging.h>
 #include <mutex>
 #include <unordered_map>
 

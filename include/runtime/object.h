@@ -8,7 +8,8 @@
 #include "runtime/utils.h"
 
 #include <cstdint>
-#include <glog/logging.h>
+#include <dmlc/logging.h>
+// #include <glog/logging.h>
 #include <optional>
 #include <string>
 #include <functional>
@@ -712,8 +713,7 @@ template<typename RefType,
          typename = std::enable_if_t<std::is_base_of_v<typename RefType::ContainerType, ObjType>>>
 RefType GetRef(const ObjType* ptr) {
     if (!RefType::_type_is_nullable) {
-        // CHECK(ptr != nullptr);
-        CHECK_NOTNULL(ptr);
+        CHECK(ptr != nullptr);
     }
     return RefType(ObjectPtr<Object>(const_cast<Object*>(static_cast<const Object*>(ptr))));
 }

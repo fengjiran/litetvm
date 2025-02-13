@@ -11,7 +11,7 @@
 #include "runtime/string.h"
 #include "runtime/variant.h"
 
-#include <glog/logging.h>
+#include <dmlc/logging.h>
 
 namespace litetvm::runtime {
 

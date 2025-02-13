@@ -10,7 +10,7 @@
 #include "runtime/back_trace.h"
 
 #include <algorithm>
-#include <glog/logging.h>
+// #include <glog/logging.h>
 #include <initializer_list>
 #include <iomanip>
 #include <stdexcept>

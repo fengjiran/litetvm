@@ -11,6 +11,7 @@
 #include "runtime/object.h"
 #include "runtime/string.h"
 #include "runtime/ndarray.h"
+#include "runtime/module.h"
 
 #include <dmlc/io.h>
 #include <dmlc/json.h>
@@ -19,6 +20,10 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // meta data types
 /*!
@@ -89,6 +94,10 @@ struct TVMConstantInfo {
     /*! \brief data bytes of serialized NDArray */
     const void* data_bytes;
 };
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 namespace litetvm {
 namespace runtime {
@@ -299,14 +308,14 @@ public:
     NODISCARD const char* get_c_struct_name() const override;
     NODISCARD int64_t version() const { return data_->version; }
     NODISCARD int64_t num_inputs() const { return data_->num_inputs; }
-    ArrayAccessor<TVMTensorInfo, TensorInfo> inputs();
+    ArrayAccessor<TVMTensorInfo, TensorInfo> inputs() const;
     NODISCARD int64_t num_outputs() const { return data_->num_outputs; }
-    ArrayAccessor<TVMTensorInfo, TensorInfo> outputs();
+    ArrayAccessor<TVMTensorInfo, TensorInfo> outputs() const;
     NODISCARD int64_t num_workspace_pools() const { return data_->num_workspace_pools; }
-    ArrayAccessor<TVMTensorInfo, TensorInfo> workspace_pools();
+    ArrayAccessor<TVMTensorInfo, TensorInfo> workspace_pools() const;
     NODISCARD String mod_name() const { return {data_->mod_name}; }
     NODISCARD const ::TVMMetadata* data() const { return data_; }
-    ArrayAccessor<TVMConstantInfo, ConstantInfoMetadata> constant_pools();
+    ArrayAccessor<TVMConstantInfo, ConstantInfoMetadata> constant_pools() const;
     NODISCARD int64_t num_constant_pools() const { return data_->num_constant_pools; }
     TVM_DECLARE_FINAL_OBJECT_INFO(MetadataNode, MetadataBaseNode);
 
@@ -377,8 +386,49 @@ public:
 };
 
 }// namespace metadata
+
+inline String get_name_mangled(const String& module_name, const String& name) {
+    std::stringstream ss;
+    CHECK(module_name.defined());
+    CHECK(name.defined());
+    ss << module_name << "_" << name;
+    return ss.str();
+}
+
+/*!
+ * \brief Create a metadata module object.
+ *
+ * \param metadata Exported metadata structure.
+ *
+ * \return The created metadata module.
+ */
+Module MetadataModuleCreate(metadata::Metadata metadata);
+
+namespace launch_param {
+
+/*! \brief A tag to specify whether or not dynamic shared memory is used */
+constexpr const char* kUseDynamicSharedMemoryTag = "tir.use_dyn_shared_memory";
+
+}  // namespace launch_param
+
+/*! \brief function information needed by device */
+struct FunctionInfo {
+    std::string name;
+    std::vector<DLDataType> arg_types;
+    std::vector<std::string> launch_param_tags;
+
+    void Save(dmlc::JSONWriter* writer) const;
+    void Load(dmlc::JSONReader* reader);
+    void Save(dmlc::Stream* writer) const;
+    bool Load(dmlc::Stream* reader);
+};
+
+
 }// namespace runtime
 }// namespace litetvm
 
+namespace dmlc {
+DMLC_DECLARE_TRAITS(has_saveload, ::litetvm::runtime::FunctionInfo, true);
+}  // namespace dmlc
 
 #endif//META_DATA_H

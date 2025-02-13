@@ -9,6 +9,7 @@
 #include "runtime/object.h"
 #include "runtime/string.h"
 
+#include <dmlc/io.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -154,7 +155,8 @@ public:
    *   but not necessarily host modules.
    *   We can use this to do AOT loading of bundled device functions.
    */
-    // virtual void SaveToBinary(dmlc::Stream* stream);
+    virtual void SaveToBinary(dmlc::Stream* stream);
+
     /*!
    * \brief Get the source code of module, when available.
    * \param format Format of the source code, can be empty by default.
@@ -245,6 +247,37 @@ private:
     std::unordered_map<std::string, std::shared_ptr<PackedFunc>> import_cache_;
     std::mutex mutex_;
 };
+
+/*!
+ * \brief Check if runtime module is enabled for target.
+ * \param target The target module name.
+ * \return Whether runtime is enabled.
+ */
+bool RuntimeEnabled(const String& target);
+
+/*! \brief namespace for constant symbols */
+namespace symbol {
+/*! \brief A PackedFunc that retrieves exported metadata. */
+constexpr const char* tvm_get_c_metadata = "get_c_metadata";
+/*! \brief Global variable to store module context. */
+constexpr const char* tvm_module_ctx = "__tvm_module_ctx";
+/*! \brief Global variable to store device module blob */
+constexpr const char* tvm_dev_mblob = "__tvm_dev_mblob";
+/*! \brief global function to set device */
+constexpr const char* tvm_set_device = "__tvm_set_device";
+/*! \brief Auxiliary counter to global barrier. */
+constexpr const char* tvm_global_barrier_state = "__tvm_global_barrier_state";
+/*! \brief Prepare the global barrier before kernels that uses global barrier. */
+constexpr const char* tvm_prepare_global_barrier = "__tvm_prepare_global_barrier";
+/*! \brief Placeholder for the module's entry function. */
+constexpr const char* tvm_module_main = "__tvm_main__";
+/*! \brief Prefix for parameter symbols emitted into the main program. */
+constexpr const char* tvm_param_prefix = "__tvm_param__";
+/*! \brief A PackedFunc that looks up linked parameters by storage_id. */
+constexpr const char* tvm_lookup_linked_param = "_lookup_linked_param";
+/*! \brief Model entrypoint generated as an interface to the AOT function outside of TIR */
+constexpr const char* tvm_entrypoint_suffix = "run";
+}  // namespace symbol
 
 inline void Module::Import(Module other) {
     return (*this)->Import(other);

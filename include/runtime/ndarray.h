@@ -496,6 +496,45 @@ inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
   return true;
 }
 
+inline void NDArray::Save(dmlc::Stream* strm) const { SaveDLTensor(strm, operator->()); }
+
+inline bool NDArray::Load(dmlc::Stream* strm) {
+    uint64_t header, reserved;
+    CHECK(strm->Read(&header)) << "Invalid DLTensor file format";
+    CHECK(strm->Read(&reserved)) << "Invalid DLTensor file format";
+    CHECK(header == kTVMNDArrayMagic) << "Invalid DLTensor file format";
+    Device dev;
+    int ndim;
+    DLDataType dtype;
+    CHECK(strm->Read(&dev)) << "Invalid DLTensor file format";
+    CHECK(strm->Read(&ndim)) << "Invalid DLTensor file format";
+    CHECK(strm->Read(&dtype)) << "Invalid DLTensor file format";
+    CHECK_EQ((int)dev.device_type, static_cast<int>(DLDeviceType::kDLCPU)) << "Invalid DLTensor device: can only save as CPU tensor";
+    std::vector<int64_t> shape(ndim);
+    if (ndim != 0) {
+        CHECK(strm->ReadArray(&shape[0], ndim)) << "Invalid DLTensor file format";
+    }
+    NDArray ret = NDArray::Empty(ShapeTuple(shape), dtype, dev);
+    int64_t num_elems = 1;
+    int elem_bytes = (ret->dtype.bits + 7) / 8;
+    for (int i = 0; i < ret->ndim; ++i) {
+        num_elems *= ret->shape[i];
+    }
+    int64_t data_byte_size;
+    CHECK(strm->Read(&data_byte_size)) << "Invalid DLTensor file format";
+    CHECK(data_byte_size == num_elems * elem_bytes) << "Invalid DLTensor file format";
+    auto read_ret = strm->Read(ret->data, data_byte_size);
+    // Only check non-empty data
+    if (ndim > 0 && shape[0] != 0) {
+        CHECK(read_ret) << "Invalid DLTensor file format";
+    }
+    if (!DMLC_IO_NO_ENDIAN_SWAP) {
+        dmlc::ByteSwap(ret->data, elem_bytes, num_elems);
+    }
+    *this = ret;
+    return true;
+}
+
 }// namespace litetvm::runtime
 
 #endif//NDARRAY_H

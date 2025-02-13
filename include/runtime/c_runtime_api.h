@@ -289,6 +289,10 @@ struct TVMByteArray {
     size_t size;
 };
 
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
+
 /*!
  * \brief return str message of the last error
  *  all function in this file will return 0 when success
@@ -308,5 +312,34 @@ const char* TVMGetLastError();
  * \return 0 when success, nonzero when failure happens
  */
 int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes);
+
+/*!
+ * \brief Call a Packed TVM Function.
+ *
+ * \param func node handle of the function.
+ * \param arg_values The arguments
+ * \param type_codes The type codes of the arguments
+ * \param num_args Number of arguments.
+ *
+ * \param ret_val The return value.
+ * \param ret_type_code the type code of return value.
+ *
+ * \return 0 when success, nonzero when failure happens
+ * \note TVM calls always exchanges with type bits=64, lanes=1
+ *
+ * \note API calls always exchanges with type bits=64, lanes=1
+ *   If API call returns container handles (e.g. FunctionHandle)
+ *   these handles should be managed by the front-end.
+ *   The front-end need to call free function (e.g. TVMFuncFree)
+ *   to free these handles.
+ */
+int TVMFuncCall(TVMFunctionHandle func, TVMValue* arg_values, int* type_codes, int num_args,
+                        TVMValue* ret_val, int* ret_type_code);
+
+// int TVMBackendGetFuncFromEnv(void* mod_node, const char* func_name, TVMFunctionHandle* out);
+
+// #ifdef __cplusplus
+// }  // TVM_EXTERN_C
+// #endif
 
 #endif//C_RUNTIME_API_H

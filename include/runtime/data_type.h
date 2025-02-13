@@ -6,7 +6,7 @@
 #define DATA_TYPE_H
 
 #include "runtime/base.h"
-#include "glog/logging.h"
+// #include "glog/logging.h"
 #include "runtime/c_runtime_api.h"
 
 namespace litetvm::runtime {

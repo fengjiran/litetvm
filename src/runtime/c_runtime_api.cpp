@@ -3,6 +3,7 @@
 //
 
 #include "runtime/c_runtime_api.h"
+#include "runtime/c_backend_api.h"
 #include "runtime/device_api.h"
 #include "runtime/packed_func.h"
 #include "runtime/registry.h"
@@ -340,4 +341,43 @@ const char* TVMGetLastError() {
     } else {
         return nullptr;
     }
+}
+
+int TVMBackendGetFuncFromEnv(void* mod_node, const char* func_name, TVMFunctionHandle* func) {
+    // API_BEGIN();
+    *func = (TVMFunctionHandle)(static_cast<ModuleNode*>(mod_node)->GetFuncFromEnv(func_name))->get();
+    // API_END();
+    return 0;
+}
+
+int TVMFuncCall(TVMFunctionHandle func, TVMValue* args, int* arg_type_codes, int num_args,
+                TVMValue* ret_val, int* ret_type_code) {
+    // API_BEGIN();
+    TVMRetValue rv;
+    (static_cast<const PackedFuncObj*>(func))
+        ->CallPacked(TVMArgs(args, arg_type_codes, num_args), &rv);
+    // handle return string.
+    if (rv.type_code() == static_cast<int>(TVMArgTypeCode::kTVMStr) ||
+        rv.type_code() == static_cast<int>(TVMArgTypeCode::kTVMDataType) ||
+        rv.type_code() == static_cast<int>(TVMArgTypeCode::kTVMBytes)) {
+        TVMRuntimeEntry* e = TVMAPIRuntimeStore::Get();
+        if (rv.type_code() != static_cast<int>(TVMArgTypeCode::kTVMDataType)) {
+            e->ret_str = *rv.ptr<std::string>();
+        } else {
+            e->ret_str = rv.operator std::string();
+        }
+        if (rv.type_code() == static_cast<int>(TVMArgTypeCode::kTVMBytes)) {
+            e->ret_bytes.data = e->ret_str.c_str();
+            e->ret_bytes.size = e->ret_str.length();
+            *ret_type_code = static_cast<int>(TVMArgTypeCode::kTVMBytes);
+            ret_val->v_handle = &(e->ret_bytes);
+        } else {
+            *ret_type_code = static_cast<int>(TVMArgTypeCode::kTVMStr);
+            ret_val->v_str = e->ret_str.c_str();
+        }
+    } else {
+        rv.MoveToCHost(ret_val, ret_type_code);
+    }
+    // API_END();
+    return 0;
 }
