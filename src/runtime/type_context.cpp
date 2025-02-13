@@ -4,6 +4,7 @@
 
 #include "runtime/type_context.h"
 #include <iostream>
+#include <ranges>
 
 namespace litetvm::runtime {
 
@@ -93,18 +94,26 @@ bool TypeContext::DerivedFrom(uint32_t child_tindex, uint32_t parent_tindex) {
 void TypeContext::Dump(int min_children_count) {
     // reverse accumulation so we can get total counts in a bottom-up manner.
     std::vector<int> num_children(type_table_.size(), 0);
-    for (auto it = type_table_.rbegin(); it != type_table_.rend(); ++it) {
-        if (it->index != 0) {
-            num_children[it->parent_index] += num_children[it->index] + 1;
+    // for (auto it = type_table_.rbegin(); it != type_table_.rend(); ++it) {
+    //     if (it->index != 0) {
+    //         num_children[it->parent_index] += num_children[it->index] + 1;
+    //     }
+    // }
+
+    for (auto& it: std::ranges::reverse_view(type_table_)) {
+        if (it.index != 0) {
+            num_children[it.parent_index] += num_children[it.index] + 1;
         }
     }
 
     for (const auto& info: type_table_) {
         if (info.index != 0 && num_children[info.index] >= min_children_count) {
-            std::cerr << '[' << info.index << "] " << info.name
-                      << "\tparent=" << type_table_[info.parent_index].name
-                      << "\tnum_child_slots=" << info.num_slots - 1
-                      << "\tnum_children=" << num_children[info.index] << std::endl;
+            std::cerr << std::format("[{0}] {1}\tparent={2}\tnum_child_slots={3}\tnum_children={4}\n",
+                                     info.index, info.name, type_table_[info.parent_index].name, info.num_slots - 1, num_children[info.index]);
+            // std::cerr << '[' << info.index << "] " << info.name
+            //           << "\tparent=" << type_table_[info.parent_index].name
+            //           << "\tnum_child_slots=" << info.num_slots - 1
+            //           << "\tnum_children=" << num_children[info.index] << std::endl;
         }
     }
 }

@@ -5,6 +5,7 @@
 #include "runtime/back_trace.h"
 
 #include <backtrace.h>
+#include <cstring>
 #include <cxxabi.h>
 
 #include <iomanip>

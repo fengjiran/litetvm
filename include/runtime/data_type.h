@@ -9,6 +9,8 @@
 // #include "glog/logging.h"
 #include "runtime/c_runtime_api.h"
 
+#include <cstring>
+
 namespace litetvm::runtime {
 
 /*!

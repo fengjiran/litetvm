@@ -112,7 +112,7 @@ namespace metadata {
 class MetadataBaseNode : public Object {
 public:
     NODISCARD virtual const char* get_c_struct_name() const = 0;
-    // virtual ~MetadataBaseNode() = default;
+    virtual ~MetadataBaseNode() = default;
 
     static constexpr const char* _type_key = "metadata.MetadataBaseNode";
     TVM_DECLARE_BASE_OBJECT_INFO(MetadataBaseNode, Object);

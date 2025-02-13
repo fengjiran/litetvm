@@ -6,6 +6,7 @@
 #define STRING_H
 
 #include <utility>
+#include <cstring>
 
 #include "runtime/base.h"
 #include "runtime/memory.h"

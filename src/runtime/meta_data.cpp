@@ -39,7 +39,7 @@ const char* MetadataArrayNode::get_c_struct_name() const {
     CHECK(false) << "MetadataArrayNode get_c_struct_name is unimplemented";
     return nullptr;
 }
-// TVM_REGISTER_OBJECT_TYPE(MetadataArrayNode);
+TVM_REGISTER_OBJECT_TYPE(MetadataArrayNode);
 
 Metadata::Metadata(const ::TVMMetadata* data)
     : MetadataBase{make_object<MetadataNode>(data)} {}
@@ -51,14 +51,14 @@ const char* MetadataNode::get_c_struct_name() const { return "TVMMetadata"; }
 TensorInfo::TensorInfo(const ::TVMTensorInfo* data)
     : MetadataBase{make_object<TensorInfoNode>(data)} {}
 
-// TVM_REGISTER_OBJECT_TYPE(TensorInfoNode);
+TVM_REGISTER_OBJECT_TYPE(TensorInfoNode);
 
 const char* TensorInfoNode::get_c_struct_name() const { return "TVMTensorInfo"; }
 
 ConstantInfoMetadata::ConstantInfoMetadata(const ::TVMConstantInfo* data)
     : MetadataBase{make_object<ConstantInfoMetadataNode>(data)} {}
 
-// TVM_REGISTER_OBJECT_TYPE(ConstantInfoMetadataNode);
+TVM_REGISTER_OBJECT_TYPE(ConstantInfoMetadataNode);
 
 const char* ConstantInfoMetadataNode::get_c_struct_name() const { return "TVMConstantInfo"; }
 
