@@ -57,7 +57,7 @@ void LoadBinaryFromFile(const std::string& file_name, std::string* data);
 void SaveBinaryToFile(const std::string& file_name, const std::string& data);
 
 /*!
- * \brief Save meta data to file.
+ * \brief Save metadata to file.
  * \param file_name The name of the file.
  * \param fmap The function info map.
  */

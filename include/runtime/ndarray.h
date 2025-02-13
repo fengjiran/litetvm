@@ -5,8 +5,8 @@
 #ifndef NDARRAY_H
 #define NDARRAY_H
 
-#include <utility>
 #include <dmlc/io.h>
+#include <utility>
 
 #include "runtime/c_runtime_api.h"
 #include "runtime/data_type.h"
@@ -450,50 +450,50 @@ inline Object* TVMArrayHandleToObjectHandle(TVMArrayHandle handle) {
 constexpr uint64_t kTVMNDArrayMagic = 0xDD5E40F096B4A13F;
 
 inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
-  uint64_t header = kTVMNDArrayMagic, reserved = 0;
-  strm->Write(header);
-  strm->Write(reserved);
-  // Always save data as CPU context
-  //
-  // Parameters that get serialized should be in CPU by default.
-  // So even the array's context is GPU, it will be stored as CPU array.
-  // This is used to prevent case when another user loads the parameters
-  // back on machine that do not have GPU or related context.
-  //
-  // We can always do array.CopyTo(target_dev) to get a corresponding
-  // array in the target context.
-  Device cpu_dev;
-  cpu_dev.device_type = DLDeviceType::kDLCPU;
-  cpu_dev.device_id = 0;
-  strm->Write(cpu_dev);
-  strm->Write(tensor->ndim);
-  strm->Write(tensor->dtype);
-  int ndim = tensor->ndim;
-  strm->WriteArray(tensor->shape, ndim);
-  int type_bytes = (tensor->dtype.bits + 7) / 8;
-  int64_t num_elems = 1;
-  for (int i = 0; i < ndim; ++i) {
-    num_elems *= tensor->shape[i];
-  }
-  int64_t data_byte_size = type_bytes * num_elems;
-  strm->Write(data_byte_size);
+    uint64_t header = kTVMNDArrayMagic, reserved = 0;
+    strm->Write(header);
+    strm->Write(reserved);
+    // Always save data as CPU context
+    //
+    // Parameters that get serialized should be in CPU by default.
+    // So even the array's context is GPU, it will be stored as CPU array.
+    // This is used to prevent case when another user loads the parameters
+    // back on machine that do not have GPU or related context.
+    //
+    // We can always do array.CopyTo(target_dev) to get a corresponding
+    // array in the target context.
+    Device cpu_dev;
+    cpu_dev.device_type = DLDeviceType::kDLCPU;
+    cpu_dev.device_id = 0;
+    strm->Write(cpu_dev);
+    strm->Write(tensor->ndim);
+    strm->Write(tensor->dtype);
+    int ndim = tensor->ndim;
+    strm->WriteArray(tensor->shape, ndim);
+    int type_bytes = (tensor->dtype.bits + 7) / 8;
+    int64_t num_elems = 1;
+    for (int i = 0; i < ndim; ++i) {
+        num_elems *= tensor->shape[i];
+    }
+    int64_t data_byte_size = type_bytes * num_elems;
+    strm->Write(data_byte_size);
 
-  if (DMLC_IO_NO_ENDIAN_SWAP && tensor->device.device_type == DLDeviceType::kDLCPU &&
-      tensor->strides == nullptr && tensor->byte_offset == 0) {
-    // quick path
-    strm->Write(tensor->data, data_byte_size);
-      } else {
+    if (DMLC_IO_NO_ENDIAN_SWAP && tensor->device.device_type == DLDeviceType::kDLCPU &&
+        tensor->strides == nullptr && tensor->byte_offset == 0) {
+        // quick path
+        strm->Write(tensor->data, data_byte_size);
+    } else {
         std::vector<uint8_t> bytes(data_byte_size);
         CHECK_EQ(
-            TVMArrayCopyToBytes(const_cast<DLTensor*>(tensor), dmlc::BeginPtr(bytes), data_byte_size),
-            0)
-            << TVMGetLastError();
+                TVMArrayCopyToBytes(const_cast<DLTensor*>(tensor), dmlc::BeginPtr(bytes), data_byte_size),
+                0)
+                << TVMGetLastError();
         if (!DMLC_IO_NO_ENDIAN_SWAP) {
-          dmlc::ByteSwap(dmlc::BeginPtr(bytes), type_bytes, num_elems);
+            dmlc::ByteSwap(dmlc::BeginPtr(bytes), type_bytes, num_elems);
         }
         strm->Write(dmlc::BeginPtr(bytes), data_byte_size);
-      }
-  return true;
+    }
+    return true;
 }
 
 inline void NDArray::Save(dmlc::Stream* strm) const { SaveDLTensor(strm, operator->()); }
@@ -509,12 +509,13 @@ inline bool NDArray::Load(dmlc::Stream* strm) {
     CHECK(strm->Read(&dev)) << "Invalid DLTensor file format";
     CHECK(strm->Read(&ndim)) << "Invalid DLTensor file format";
     CHECK(strm->Read(&dtype)) << "Invalid DLTensor file format";
-    CHECK_EQ((int)dev.device_type, static_cast<int>(DLDeviceType::kDLCPU)) << "Invalid DLTensor device: can only save as CPU tensor";
+    CHECK_EQ(static_cast<int>(dev.device_type), static_cast<int>(DLDeviceType::kDLCPU))
+            << "Invalid DLTensor device: can only save as CPU tensor";
     std::vector<int64_t> shape(ndim);
     if (ndim != 0) {
         CHECK(strm->ReadArray(&shape[0], ndim)) << "Invalid DLTensor file format";
     }
-    NDArray ret = NDArray::Empty(ShapeTuple(shape), dtype, dev);
+    NDArray ret = Empty(ShapeTuple(shape), dtype, dev);
     int64_t num_elems = 1;
     int elem_bytes = (ret->dtype.bits + 7) / 8;
     for (int i = 0; i < ret->ndim; ++i) {

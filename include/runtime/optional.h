@@ -112,7 +112,7 @@ public:
     }
 
     auto operator==(const Optional& other) const {
-        // support case where sub-class returns a symbolic ref type.
+        // support case where subclass returns a symbolic ref type.
         using RetType = decltype(value() == other.value());
         if (same_as(other))
             return RetType(true);
