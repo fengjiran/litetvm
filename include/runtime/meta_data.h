@@ -21,9 +21,9 @@
 #include <utility>
 #include <vector>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
 
 // meta data types
 /*!
@@ -95,9 +95,9 @@ struct TVMConstantInfo {
     const void* data_bytes;
 };
 
-#ifdef __cplusplus
-}  // extern "C"
-#endif
+// #ifdef __cplusplus
+// }  // extern "C"
+// #endif
 
 namespace litetvm {
 namespace runtime {

@@ -110,7 +110,7 @@ void TypeContext::Dump(int min_children_count) {
 
     for (const auto& info: type_table_) {
         if (info.index != 0 && num_children[info.index] >= min_children_count) {
-            std::cerr << std::format("[{0}] {1}\tparent={2}\tnum_child_slots={3}\tnum_children={4}\n",
+            std::cerr << std::format("[{:02}] {:<30}\tparent={:25}\tnum_child_slots={:<5}\tnum_children={}\n",
                                      info.index, info.name, type_table_[info.parent_index].name, info.num_slots - 1, num_children[info.index]);
             // std::cerr << '[' << info.index << "] " << info.name
             //           << "\tparent=" << type_table_[info.parent_index].name
