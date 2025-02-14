@@ -49,10 +49,6 @@ void ArrayCopyFromBytes(DLTensor* handle, const void* data, size_t nbytes) {
     device_api->CopyDataFromTo(&from, handle, nullptr);
     // Synchronize in case data become unavailable later.
     device_api->StreamSync(handle->device, nullptr);
-
-    // DeviceAPI::Get(handle->device)->CopyDataFromTo(&from, handle, nullptr);
-    // // Synchronize in case data become unavailable later.
-    // DeviceAPI::Get(handle->device)->StreamSync(handle->device, nullptr);
 }
 
 void ArrayCopyToBytes(const DLTensor* handle, void* data, size_t nbytes) {
@@ -73,10 +69,6 @@ void ArrayCopyToBytes(const DLTensor* handle, void* data, size_t nbytes) {
     device_api->CopyDataFromTo(const_cast<DLTensor*>(handle), &to, nullptr);
     // Synchronize in case data become unavailable later.
     device_api->StreamSync(handle->device, nullptr);
-
-    // DeviceAPI::Get(handle->device)->CopyDataFromTo(const_cast<DLTensor*>(handle), &to, nullptr);
-    // // Synchronize in case data become unavailable later.
-    // DeviceAPI::Get(handle->device)->StreamSync(handle->device, nullptr);
 }
 
 struct NDArray::Internal {
@@ -162,7 +154,7 @@ struct NDArray::Internal {
     }
 
     // Delete dlpack object.
-    static void NDArrayDLPackDeleter(DLManagedTensor* tensor) {
+    static void NDArrayDLPackDeleter(const DLManagedTensor* tensor) {
         std::cout << "delete DLManagedTensor" << std::endl;
         static_cast<Container*>(tensor->manager_ctx)->DecRef();
         delete tensor;
@@ -191,7 +183,6 @@ void NDArray::CopyFromTo(const DLTensor* from, DLTensor* to, TVMStreamHandle str
     Device dev = from->device.device_type != DLDeviceType::kDLCPU ? from->device : to->device;
     auto* device_api = DeviceAPIManager::Get(dev);
     device_api->CopyDataFromTo(const_cast<DLTensor*>(from), to, stream);
-    // DeviceAPI::Get(dev)->CopyDataFromTo(const_cast<DLTensor*>(from), to, stream);
 }
 
 NDArray NDArray::CopyTo(const Device& dev, const Optional<String>& mem_scope) const {
@@ -203,7 +194,8 @@ NDArray NDArray::CopyTo(const Device& dev, const Optional<String>& mem_scope) co
                         mem_scope);
     this->CopyTo(ret);
     Device copy_gpu_dev = dptr->device.device_type != DLDeviceType::kDLCPU ? dptr->device : dev;
-    DeviceAPI::Get(copy_gpu_dev)->StreamSync(copy_gpu_dev, nullptr);
+    auto* device_api = DeviceAPIManager::Get(dev);
+    device_api->StreamSync(copy_gpu_dev, nullptr);
     return ret;
 }
 
@@ -294,24 +286,17 @@ NDArray NDArray::FromExternalDLTensor(const DLTensor& dl_tensor) {
 
     data->SetDeleter(Internal::SelfDeleter);
     data->dl_tensor = dl_tensor;
-    std::vector<ShapeTuple::index_type> shape;
-    shape.resize(data->dl_tensor.ndim);
-    shape.assign(data->dl_tensor.shape, data->dl_tensor.shape + data->dl_tensor.ndim);
-    data->shape_ = ShapeTuple(shape);
+    data->shape_ = ShapeTuple(dl_tensor.shape, dl_tensor.shape + dl_tensor.ndim);
     data->dl_tensor.shape = const_cast<ShapeTuple::index_type*>(data->shape_.data());
 
     return NDArray(GetObjectPtr<Object>(data));
 }
 
-NDArray NDArray::NewFromDLTensor(DLTensor* tensor, const Device& dev) {
+NDArray NDArray::NewFromDLTensor(const DLTensor* tensor, const Device& dev) {
     CHECK(::litetvm::runtime::IsContiguous(*tensor))
             << "DLTensor is not contiguous. Copying from non-contiguous data is currently not supported";
-    std::vector<int64_t> shape;
-    for (int64_t i = 0; i < tensor->ndim; i++) {
-        shape.push_back(tensor->shape[i]);
-    }
-
-    NDArray ary = Empty(ShapeTuple(shape), tensor->dtype, dev);
+    ShapeTuple shape(tensor->shape, tensor->shape + tensor->ndim);
+    NDArray ary = Empty(shape, tensor->dtype, dev);
     ary.CopyFrom(tensor);
     return ary;
 }
@@ -323,14 +308,13 @@ NDArray NDArray::FromDLPack(DLManagedTensor* tensor) {
     // fill up content.
     data->manager_ctx = tensor;
     CHECK(::litetvm::runtime::IsContiguous(tensor->dl_tensor)) << "DLManagedTensor must be contiguous.";
-    CHECK(IsAligned(tensor->dl_tensor))
-            << "Data in DLManagedTensor is not aligned as required by NDArray";
+    CHECK(IsAligned(tensor->dl_tensor)) << "Data in DLManagedTensor is not aligned as required by NDArray";
     data->dl_tensor = tensor->dl_tensor;
     // update shape_
-    std::vector<ShapeTuple::index_type> shape;
-    shape.resize(data->dl_tensor.ndim);
-    shape.assign(data->dl_tensor.shape, data->dl_tensor.shape + data->dl_tensor.ndim);
-    data->shape_ = ShapeTuple(shape);
+    // std::vector<ShapeTuple::index_type> shape;
+    // shape.resize(data->dl_tensor.ndim);
+    // shape.assign(data->dl_tensor.shape, data->dl_tensor.shape + data->dl_tensor.ndim);
+    data->shape_ = ShapeTuple(data->dl_tensor.shape, data->dl_tensor.shape + data->dl_tensor.ndim);
     data->dl_tensor.shape = const_cast<ShapeTuple::index_type*>(data->shape_.data());
     return NDArray(GetObjectPtr<Object>(data));
 }
@@ -349,15 +333,12 @@ DLManagedTensor* NDArray::ToDLPack() const {
 }
 
 bool NDArray::IsAligned(const DLTensor& tensor) {
-    return reinterpret_cast<size_t>(
-                   static_cast<char*>(tensor.data) + tensor.byte_offset) %
-                   kAllocAlignment ==
-           0;
+    return reinterpret_cast<size_t>(static_cast<char*>(tensor.data) + tensor.byte_offset) % kAllocAlignment == 0;
 }
 
 bool NDArray::AbilityOfZeroCopyForDLTensor(DLTensor* tensor, const Device& dev) {
-    bool device_check = (dev.device_type == tensor->device.device_type);
-    bool device_id_check = (dev.device_id == tensor->device.device_id);
+    bool device_check = dev.device_type == tensor->device.device_type;
+    bool device_id_check = dev.device_id == tensor->device.device_id;
     bool alignment_check = IsAligned(*tensor);
     return device_check && device_id_check && alignment_check;
 }

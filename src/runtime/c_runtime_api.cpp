@@ -68,7 +68,7 @@ void* DeviceAPI::AllocWorkspace(Device dev, size_t size, DLDataType type_hint) {
 }
 
 static size_t GetDataAlignment(const DLDataType dtype) {
-    size_t align = (dtype.bits / 8) * dtype.lanes;
+    size_t align = dtype.bits / 8 * dtype.lanes;
     if (align < kAllocAlignment) return kAllocAlignment;
     return align;
 }

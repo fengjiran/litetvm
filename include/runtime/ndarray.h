@@ -173,7 +173,7 @@ public:
    * \param dev device location of the created NDArray.
    * \return The created NDArray view.
    */
-    static NDArray NewFromDLTensor(DLTensor* dl_tensor, const Device& dev);
+    static NDArray NewFromDLTensor(const DLTensor* dl_tensor, const Device& dev);
 
     /*!
      * \brief Create a NDArray backed by a dlpack tensor.
@@ -478,15 +478,15 @@ inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
     int64_t data_byte_size = type_bytes * num_elems;
     strm->Write(data_byte_size);
 
-    if (DMLC_IO_NO_ENDIAN_SWAP && tensor->device.device_type == DLDeviceType::kDLCPU &&
-        tensor->strides == nullptr && tensor->byte_offset == 0) {
+    if (DMLC_IO_NO_ENDIAN_SWAP &&
+        tensor->device.device_type == DLDeviceType::kDLCPU &&
+        tensor->strides == nullptr &&
+        tensor->byte_offset == 0) {
         // quick path
         strm->Write(tensor->data, data_byte_size);
     } else {
         std::vector<uint8_t> bytes(data_byte_size);
-        CHECK_EQ(
-                TVMArrayCopyToBytes(const_cast<DLTensor*>(tensor), dmlc::BeginPtr(bytes), data_byte_size),
-                0)
+        CHECK_EQ(TVMArrayCopyToBytes(const_cast<DLTensor*>(tensor), dmlc::BeginPtr(bytes), data_byte_size), 0)
                 << TVMGetLastError();
         if (!DMLC_IO_NO_ENDIAN_SWAP) {
             dmlc::ByteSwap(dmlc::BeginPtr(bytes), type_bytes, num_elems);
@@ -496,7 +496,9 @@ inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
     return true;
 }
 
-inline void NDArray::Save(dmlc::Stream* strm) const { SaveDLTensor(strm, operator->()); }
+inline void NDArray::Save(dmlc::Stream* strm) const {
+    SaveDLTensor(strm, operator->());
+}
 
 inline bool NDArray::Load(dmlc::Stream* strm) {
     uint64_t header, reserved;

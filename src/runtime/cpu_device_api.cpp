@@ -116,8 +116,10 @@ public:
 
     bool SupportsDevicePointerArithmeticsOnHost() override { return true; }
 
-private:
+    CPUDeviceAPI(const CPUDeviceAPI&) = delete;
+    CPUDeviceAPI& operator=(const CPUDeviceAPI&) = delete;
 
+private:
     void CopyDataFromTo(const void* from, size_t from_offset, void* to, size_t to_offset, size_t size,
                         Device dev_from, Device dev_to, DLDataType type_hint,
                         TVMStreamHandle stream) override {
@@ -125,8 +127,6 @@ private:
     }
 
     CPUDeviceAPI() = default;
-    CPUDeviceAPI(const CPUDeviceAPI&) = delete;
-    CPUDeviceAPI& operator=(const CPUDeviceAPI&) = delete;
 };
 
 struct CPUWorkspacePool : WorkspacePool {
