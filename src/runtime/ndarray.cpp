@@ -209,23 +209,23 @@ NDArray NDArray::CopyTo(const Device& dev, const Optional<String>& mem_scope) co
 
 NDArray NDArray::CreateView(const ShapeTuple& shape, DLDataType dtype, uint64_t relative_byte_offset) const {
     CHECK(data_ != nullptr);
-
-    const DLTensor& orig = get_mutable()->dl_tensor;
-    auto msg = [&orig] {
+    auto* self = get_mutable();
+    const DLTensor& origin_tensor = self->dl_tensor;
+    auto msg = [&origin_tensor] {
         std::stringstream ss;
         ss << "Can only create view for compact tensor, but found strides ";
         ss << "[";
-        int n = orig.ndim;
-        for (int i = 0; i < orig.ndim; ++i) {
-            ss << orig.strides[i] << (--n ? ", " : "");
+        int n = origin_tensor.ndim;
+        for (int i = 0; i < origin_tensor.ndim; ++i) {
+            ss << origin_tensor.strides[i] << (--n ? ", " : "");
         }
         ss << "]";
 
         ss << ", for shape ";
         ss << "[";
-        n = orig.ndim;
-        for (int i = 0; i < orig.ndim; ++i) {
-            ss << orig.shape[i] << (--n ? ", " : "");
+        n = origin_tensor.ndim;
+        for (int i = 0; i < origin_tensor.ndim; ++i) {
+            ss << origin_tensor.shape[i] << (--n ? ", " : "");
         }
         ss << "]";
         return ss.str();
@@ -233,11 +233,9 @@ NDArray NDArray::CreateView(const ShapeTuple& shape, DLDataType dtype, uint64_t 
 
     CHECK(IsContiguous()) << msg();
 
-    const auto& curr_dl_tensor = get_mutable()->dl_tensor;
+    NDArray ret = Internal::Create(shape, dtype, origin_tensor.device);
 
-    NDArray ret = Internal::Create(shape, dtype, curr_dl_tensor.device);
-
-    size_t curr_size = GetDataSize(this->get_mutable()->dl_tensor);
+    size_t origin_size = GetDataSize(origin_tensor);
     size_t view_size = GetDataSize(ret.get_mutable()->dl_tensor);
     // CHECK_LE(relative_byte_offset + view_size, curr_size)
     //         << std::format("ValueError: View with shape {0} and datatype {1} would have a size of {2} bytes. "
@@ -248,21 +246,21 @@ NDArray NDArray::CreateView(const ShapeTuple& shape, DLDataType dtype, uint64_t 
     //                        curr_size, ShapeTuple(curr_dl_tensor.shape, curr_dl_tensor.shape + curr_dl_tensor.ndim),
     //                        curr_dl_tensor.dtype);
 
-    CHECK_LE(relative_byte_offset + view_size, curr_size)
+    CHECK_LE(relative_byte_offset + view_size, origin_size)
             << "ValueError: "
             << "View with shape " << shape << " and datatype " << dtype << " would have a size of "
-            << view_size << " bytes.  "
+            << view_size << " bytes. "
             << "This would occupy bytes " << relative_byte_offset << " <= i_byte < "
-            << relative_byte_offset + view_size << " within the backing array.  "
-            << "However, the NDArray being viewed only contains " << curr_size << " bytes (shape = "
-            << ShapeTuple(curr_dl_tensor.shape, curr_dl_tensor.shape + curr_dl_tensor.ndim)
-            << ", dtype= " << curr_dl_tensor.dtype << ").";
+            << relative_byte_offset + view_size << " within the backing array. "
+            << "However, the NDArray being viewed only contains " << origin_size << " bytes (shape = "
+            << ShapeTuple(origin_tensor.shape, origin_tensor.shape + origin_tensor.ndim)
+            << ", dtype= " << origin_tensor.dtype << ").";
 
     // increase ref count
-    get_mutable()->IncRef();
-    ret.get_mutable()->manager_ctx = get_mutable();
-    ret.get_mutable()->dl_tensor.data = get_mutable()->dl_tensor.data;
-    ret.get_mutable()->dl_tensor.byte_offset = get_mutable()->dl_tensor.byte_offset + relative_byte_offset;
+    self->IncRef();
+    ret.get_mutable()->manager_ctx = self;
+    ret.get_mutable()->dl_tensor.data = origin_tensor.data;
+    ret.get_mutable()->dl_tensor.byte_offset = origin_tensor.byte_offset + relative_byte_offset;
     return ret;
 }
 
@@ -279,14 +277,14 @@ void NDArray::CopyFromBytes(const void* data, size_t nbytes) const {
 }
 
 NDArray NDArray::Empty(const ShapeTuple& shape, DLDataType dtype, Device dev, const Optional<String>& mem_scope) {
-    NDArray ret = Internal::Create(shape, dtype, dev);
-    auto* device_api = DeviceAPIManager::Get(ret->device);
-    ret.get_mutable()->dl_tensor.data = device_api->AllocDataSpace(ret->device,
-                                                                   static_cast<int>(shape.size()),
-                                                                   shape.data(),
-                                                                   ret->dtype,
-                                                                   mem_scope);
-    return ret;
+    NDArray nd_array = Internal::Create(shape, dtype, dev);
+    auto* device_api = DeviceAPIManager::Get(nd_array->device);
+    nd_array.get_mutable()->dl_tensor.data = device_api->AllocDataSpace(nd_array->device,
+                                                                        static_cast<int>(shape.size()),
+                                                                        shape.data(),
+                                                                        nd_array->dtype,
+                                                                        mem_scope);
+    return nd_array;
 }
 
 NDArray NDArray::FromExternalDLTensor(const DLTensor& dl_tensor) {

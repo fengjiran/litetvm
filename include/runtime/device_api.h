@@ -332,6 +332,9 @@ private:
         std::fill(api_.begin(), api_.end(), nullptr);
     }
 
+    DeviceAPIManager(const DeviceAPIManager&) = delete;
+    DeviceAPIManager& operator=(const DeviceAPIManager&) = delete;
+
     // Global static variable.
     static DeviceAPIManager* Global() {
         static DeviceAPIManager inst;

@@ -31,6 +31,14 @@ namespace litetvm::runtime {
 
 class CPUDeviceAPI final : public DeviceAPI {
 public:
+    static CPUDeviceAPI* Global() {
+        // NOTE: explicitly use new to avoid exit-time destruction of global state,
+        // Global state will be recycled by OS as the process exits.
+        // static auto* inst = new CPUDeviceAPI();
+        static CPUDeviceAPI inst;
+        return &inst;
+    }
+
     void SetDevice(Device dev) override {}
 
     void GetAttr(Device dev, DeviceAttrKind kind, TVMRetValue* rv) override {
@@ -100,7 +108,7 @@ public:
         std::cout << "free memory.\n";
     }
 
-    void StreamSync(Device dev, TVMStreamHandle stream) override{}
+    void StreamSync(Device dev, TVMStreamHandle stream) override {}
 
     void* AllocWorkspace(Device dev, size_t size, DLDataType type_hint) override;
 
@@ -108,20 +116,17 @@ public:
 
     bool SupportsDevicePointerArithmeticsOnHost() override { return true; }
 
-    static CPUDeviceAPI* Global() {
-        // NOTE: explicitly use new to avoid exit-time destruction of global state,
-        // Global state will be recycled by OS as the process exits.
-        // static auto* inst = new CPUDeviceAPI();
-        static CPUDeviceAPI inst;
-        return &inst;
-    }
+private:
 
-protected:
     void CopyDataFromTo(const void* from, size_t from_offset, void* to, size_t to_offset, size_t size,
                         Device dev_from, Device dev_to, DLDataType type_hint,
                         TVMStreamHandle stream) override {
         memcpy(static_cast<char*>(to) + to_offset, static_cast<const char*>(from) + from_offset, size);
     }
+
+    CPUDeviceAPI() = default;
+    CPUDeviceAPI(const CPUDeviceAPI&) = delete;
+    CPUDeviceAPI& operator=(const CPUDeviceAPI&) = delete;
 };
 
 struct CPUWorkspacePool : WorkspacePool {
