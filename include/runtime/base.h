@@ -5,9 +5,9 @@
 #ifndef BASE_H
 #define BASE_H
 
+#include "runtime/back_trace.h"
 #include "runtime/memory.h"
 #include "runtime/object.h"
-#include "runtime/back_trace.h"
 
 #include <algorithm>
 // #include <glog/logging.h>
@@ -331,5 +331,41 @@ inline const char* BeginPtr(const std::string& str) {
 // using runtime::ObjectPtrHash;
 // using runtime::ObjectRef;
 }// namespace litetvm
+
+/*! \brief  macro to guard beginning and end section of all functions */
+#define API_BEGIN() try {
+/*! \brief every function starts with API_BEGIN();
+     and finishes with API_END() or API_END_HANDLE_ERROR */
+#define API_END()                                               \
+    }                                                           \
+    catch (::litetvm::runtime::EnvErrorAlreadySet & _except_) { \
+        return -2;                                              \
+    }                                                           \
+    catch (std::exception & _except_) {                         \
+        return TVMAPIHandleException(_except_);                 \
+    }                                                           \
+    return 0;// NOLINT(*)
+/*!
+ * \brief every function starts with API_BEGIN();
+ *   and finishes with API_END() or API_END_HANDLE_ERROR
+ *   The finally clause contains procedure to cleanup states when an error happens.
+ */
+#define API_END_HANDLE_ERROR(Finalize)                          \
+    }                                                           \
+    catch (::litetvm::runtime::EnvErrorAlreadySet & _except_) { \
+        return -2;                                              \
+    }                                                           \
+    catch (std::exception & _except_) {                         \
+        Finalize;                                               \
+        return TVMAPIHandleException(_except_);                 \
+    }                                                           \
+    return 0;// NOLINT(*)
+
+/*!
+ * \brief handle exception throwed out
+ * \param e the exception
+ * \return the return value of API after exception is handled
+ */
+int TVMAPIHandleException(const std::exception& e);
 
 #endif//BASE_H

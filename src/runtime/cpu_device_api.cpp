@@ -2,9 +2,9 @@
 // Created by richard on 2/5/25.
 //
 
+#include <dmlc/thread_local.h>
 #include "runtime/device_api.h"
 #include "runtime/registry.h"
-#include "runtime/thread_local.h"
 #include "runtime/workspace_pool.h"
 
 #include <iostream>
@@ -134,11 +134,11 @@ struct CPUWorkspacePool : WorkspacePool {
 };
 
 void* CPUDeviceAPI::AllocWorkspace(Device dev, size_t size, DLDataType type_hint) {
-    return ThreadLocalStore<CPUWorkspacePool>::Get()->AllocWorkspace(dev, size);
+    return dmlc::ThreadLocalStore<CPUWorkspacePool>::Get()->AllocWorkspace(dev, size);
 }
 
 void CPUDeviceAPI::FreeWorkspace(Device dev, void* data) {
-    ThreadLocalStore<CPUWorkspacePool>::Get()->FreeWorkspace(dev, data);
+    dmlc::ThreadLocalStore<CPUWorkspacePool>::Get()->FreeWorkspace(dev, data);
 }
 
 TVM_REGISTER_GLOBAL("device_api.cpu").set_body([](TVMArgs args, TVMRetValue* rv) {

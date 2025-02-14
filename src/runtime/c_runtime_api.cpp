@@ -326,33 +326,47 @@ struct TVMRuntimeEntry {
     std::string last_error_formatted;
 };
 
-typedef dmlc::ThreadLocalStore<TVMRuntimeEntry> TVMAPIRuntimeStore;
+using TVMAPIRuntimeStore = dmlc::ThreadLocalStore<TVMRuntimeEntry>;
+
+int TVMAPIHandleException(const std::exception& e) {
+    auto& last_error = TVMAPIRuntimeStore::Get()->last_error;
+
+    if (const auto* wrapped = dynamic_cast<const WrappedPythonError*>(&e)) {
+        last_error = *wrapped;
+    } else if (const auto* internal = dynamic_cast<const InternalError*>(&e)) {
+        last_error = *internal;
+    } else {
+        last_error = NormalizeError(e.what());
+    }
+    return -1;
+}
 
 const char* TVMGetLastError() {
     auto* store = TVMAPIRuntimeStore::Get();
     const auto& last_error = store->last_error;
     if (const auto* message = std::get_if<std::string>(&last_error)) {
         return message->c_str();
-    } else if (const auto* internal = std::get_if<InternalError>(&last_error)) {
+    }
+
+    if (const auto* internal = std::get_if<InternalError>(&last_error)) {
         // Use last_error_formatted to store the formatted error message, to avoid
         // dangling pointer.
         store->last_error_formatted = NormalizeError(internal->full_message());
         return store->last_error_formatted.c_str();
-    } else {
-        return nullptr;
     }
+
+    return nullptr;
 }
 
 int TVMBackendGetFuncFromEnv(void* mod_node, const char* func_name, TVMFunctionHandle* func) {
-    // API_BEGIN();
+    API_BEGIN();
     *func = (TVMFunctionHandle)(static_cast<ModuleNode*>(mod_node)->GetFuncFromEnv(func_name))->get();
-    // API_END();
-    return 0;
+    API_END();
 }
 
 int TVMFuncCall(TVMFunctionHandle func, TVMValue* args, int* arg_type_codes, int num_args,
                 TVMValue* ret_val, int* ret_type_code) {
-    // API_BEGIN();
+    API_BEGIN();
     TVMRetValue rv;
     (static_cast<const PackedFuncObj*>(func))
         ->CallPacked(TVMArgs(args, arg_type_codes, num_args), &rv);
@@ -378,6 +392,5 @@ int TVMFuncCall(TVMFunctionHandle func, TVMValue* args, int* arg_type_codes, int
     } else {
         rv.MoveToCHost(ret_val, ret_type_code);
     }
-    // API_END();
-    return 0;
+    API_END();
 }

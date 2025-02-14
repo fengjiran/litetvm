@@ -2,10 +2,9 @@
 // Created by 赵丹 on 25-2-8.
 //
 
+#include <dmlc/thread_local.h>
 #include "runtime/registry.h"
-#include "runtime/thread_local.h"
 
-// #include <glog/logging.h>
 #include <mutex>
 #include <unordered_map>
 
@@ -235,20 +234,19 @@ struct TVMFuncThreadLocalEntry {
 };
 
 /*! \brief Thread local store that can be used to hold return values. */
-using TVMFuncThreadLocalStore = litetvm::runtime::ThreadLocalStore<TVMFuncThreadLocalEntry>;
+using TVMFuncThreadLocalStore = dmlc::ThreadLocalStore<TVMFuncThreadLocalEntry>;
 
 int TVMFuncRegisterGlobal(const char* name, TVMFunctionHandle f, int override) {
-    // API_BEGIN();
+    API_BEGIN();
     using litetvm::runtime::GetRef;
     using litetvm::runtime::PackedFunc;
     using litetvm::runtime::PackedFuncObj;
     litetvm::runtime::RegistryManager::Global().Register(name, override != 0).set_body(GetRef<PackedFunc>(static_cast<PackedFuncObj*>(f)));
-    return 0;
-    // API_END();
+    API_END();
 }
 
 int TVMFuncGetGlobal(const char* name, TVMFunctionHandle* out) {
-    // API_BEGIN();
+    API_BEGIN();
     const litetvm::runtime::PackedFunc* fp = litetvm::runtime::RegistryManager::Global().Get(name);
     if (fp != nullptr) {
         litetvm::runtime::TVMRetValue ret;
@@ -260,12 +258,11 @@ int TVMFuncGetGlobal(const char* name, TVMFunctionHandle* out) {
     } else {
         *out = nullptr;
     }
-    return 0;
-    // API_END();
+    API_END();
 }
 
 int TVMFuncListGlobalNames(int* out_size, const char*** out_array) {
-    // API_BEGIN();
+    API_BEGIN();
     TVMFuncThreadLocalEntry* ret = TVMFuncThreadLocalStore::Get();
     ret->ret_vec_str = litetvm::runtime::RegistryManager::Global().ListNames();
     ret->ret_vec_charp.clear();
@@ -274,20 +271,17 @@ int TVMFuncListGlobalNames(int* out_size, const char*** out_array) {
     }
     *out_array = litetvm::runtime::BeginPtr(ret->ret_vec_charp);
     *out_size = static_cast<int>(ret->ret_vec_str.size());
-    return 0;
-    // API_END();
+    API_END();
 }
 
 int TVMFuncRemoveGlobal(const char* name) {
-    // API_BEGIN();
+    API_BEGIN();
     litetvm::runtime::RegistryManager::Global().Remove(name);
-    return 0;
-    // API_END();
+    API_END();
 }
 
 int TVMBackendRegisterEnvCAPI(const char* name, void* ptr) {
-    // API_BEGIN();
+    API_BEGIN();
     litetvm::runtime::EnvCAPIRegistry::Global()->Register(name, ptr);
-    return 0;
-    // API_END();
+    API_END();
 }
