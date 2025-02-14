@@ -308,14 +308,14 @@ public:
     NODISCARD const char* get_c_struct_name() const override;
     NODISCARD int64_t version() const { return data_->version; }
     NODISCARD int64_t num_inputs() const { return data_->num_inputs; }
-    ArrayAccessor<TVMTensorInfo, TensorInfo> inputs() const;
+    NODISCARD ArrayAccessor<TVMTensorInfo, TensorInfo> inputs() const;
     NODISCARD int64_t num_outputs() const { return data_->num_outputs; }
-    ArrayAccessor<TVMTensorInfo, TensorInfo> outputs() const;
+    NODISCARD ArrayAccessor<TVMTensorInfo, TensorInfo> outputs() const;
     NODISCARD int64_t num_workspace_pools() const { return data_->num_workspace_pools; }
-    ArrayAccessor<TVMTensorInfo, TensorInfo> workspace_pools() const;
+    NODISCARD ArrayAccessor<TVMTensorInfo, TensorInfo> workspace_pools() const;
     NODISCARD String mod_name() const { return {data_->mod_name}; }
     NODISCARD const ::TVMMetadata* data() const { return data_; }
-    ArrayAccessor<TVMConstantInfo, ConstantInfoMetadata> constant_pools() const;
+    NODISCARD ArrayAccessor<TVMConstantInfo, ConstantInfoMetadata> constant_pools() const;
     NODISCARD int64_t num_constant_pools() const { return data_->num_constant_pools; }
     TVM_DECLARE_FINAL_OBJECT_INFO(MetadataNode, MetadataBaseNode);
 

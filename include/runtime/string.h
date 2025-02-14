@@ -7,6 +7,7 @@
 
 #include <utility>
 #include <cstring>
+#include <dmlc/endian.h>
 
 #include "runtime/base.h"
 #include "runtime/memory.h"
@@ -250,7 +251,7 @@ public:
         const char* end = it + size;
         uint64_t result = 0;
         for (; it + 8 <= end; it += 8) {
-            if (IO_NO_ENDIAN_SWAP) {
+            if (DMLC_IO_NO_ENDIAN_SWAP) {
                 u.a[0] = it[0];
                 u.a[1] = it[1];
                 u.a[2] = it[2];
@@ -293,7 +294,7 @@ public:
                 it += 1;
                 a += 1;
             }
-            if (!IO_NO_ENDIAN_SWAP) {
+            if (!DMLC_IO_NO_ENDIAN_SWAP) {
                 std::swap(u.a[0], u.a[7]);
                 std::swap(u.a[1], u.a[6]);
                 std::swap(u.a[2], u.a[5]);

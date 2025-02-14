@@ -269,7 +269,7 @@ int TVMFuncListGlobalNames(int* out_size, const char*** out_array) {
     for (size_t i = 0; i < ret->ret_vec_str.size(); ++i) {
         ret->ret_vec_charp.push_back(ret->ret_vec_str[i].c_str());
     }
-    *out_array = litetvm::runtime::BeginPtr(ret->ret_vec_charp);
+    *out_array = dmlc::BeginPtr(ret->ret_vec_charp);
     *out_size = static_cast<int>(ret->ret_vec_str.size());
     API_END();
 }

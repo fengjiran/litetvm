@@ -270,53 +270,6 @@ private:
     TIter iter_;
 };
 
-/*!
- * \brief safely get the beginning address of a vector
- * \param vec input vector
- * \return beginning address of a vector
- */
-template<typename T>
-T* BeginPtr(std::vector<T>& vec) {// NOLINT(*)
-    if (vec.size() == 0) {
-        return nullptr;
-    }
-
-    return &vec[0];
-}
-
-/*!
- * \brief get the beginning address of a const vector
- * \param vec input vector
- * \return beginning address of a vector
- */
-template<typename T>
-const T* BeginPtr(const std::vector<T>& vec) {
-    if (vec.size() == 0) {
-        return nullptr;
-    }
-    return &vec[0];
-}
-
-/*!
- * \brief get the beginning address of a string
- * \param str input string
- * \return beginning address of a string
- */
-inline char* BeginPtr(std::string& str) {// NOLINT(*)
-    if (str.empty()) return nullptr;
-    return &str[0];
-}
-
-/*!
- * \brief get the beginning address of a const string
- * \param str input string
- * \return beginning address of a string
- */
-inline const char* BeginPtr(const std::string& str) {
-    if (str.empty()) return nullptr;
-    return &str[0];
-}
-
 }// namespace runtime
 
 // expose the functions to the root namespace.

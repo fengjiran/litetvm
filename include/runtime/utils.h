@@ -7,12 +7,6 @@
 
 #include <random>
 
-#if defined(__APPLE__)
-#include <machine/endian.h>
-#else
-#include <endian.h>
-#endif
-
 #ifdef __has_cpp_attribute
 #if __has_cpp_attribute(nodiscard)
 #define NODISCARD [[nodiscard]]
@@ -42,20 +36,6 @@
 #else
 #define TVM_ALWAYS_INLINE inline __attribute__((always_inline))
 #endif
-
-/*!
- * \brief Use little endian for binary serialization
- *  if this is set to 0, use big endian.
- */
-#ifndef IO_USE_LITTLE_ENDIAN
-#define IO_USE_LITTLE_ENDIAN 1
-#endif
-
-// #define LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
-
-/*! \brief whether serialize using little endian */
-#define IO_NO_ENDIAN_SWAP (LITTLE_ENDIAN == IO_USE_LITTLE_ENDIAN)
-
 
 template<typename T = float,
          typename = std::enable_if_t<std::is_floating_point_v<T>>>
