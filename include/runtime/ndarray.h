@@ -538,6 +538,41 @@ inline bool NDArray::Load(dmlc::Stream* strm) {
     return true;
 }
 
+/*!
+ * \brief Get the preferred host device from the input device.
+ * - For CUDA and ROCm, CUDAHost and ROCMHost will be returned for pinned memory,
+ * since pinned memory reduces copy overhead.
+ * - For other devices, CPU is returned as a fallback.
+ */
+inline Device GetPreferredHostDevice(Device device) {
+    if (device.device_type == DLDeviceType::kDLCUDA) {
+        return Device{DLDeviceType::kDLCUDAHost, 0};
+    }
+
+    if (device.device_type == DLDeviceType::kDLROCM) {
+        return Device{DLDeviceType::kDLROCMHost, 0};
+    }
+
+    // Fallback to CPU.
+    return Device{DLDeviceType::kDLCPU, 0};
+}
+
 }// namespace litetvm::runtime
+
+namespace std {
+template <>
+struct hash<litetvm::runtime::Device> {
+    std::size_t operator()(const litetvm::runtime::Device& dev) const noexcept {
+        return dev.device_id << 8 | static_cast<int32_t>(dev.device_type);
+    }
+};
+
+template <>
+struct equal_to<litetvm::runtime::Device> {
+    bool operator()(const litetvm::runtime::Device& lhs, const litetvm::runtime::Device& rhs) const {
+        return lhs.device_type == rhs.device_type && lhs.device_id == rhs.device_id;
+    }
+};
+}  // namespace std
 
 #endif//NDARRAY_H

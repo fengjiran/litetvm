@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-static void TVMNDArrayDLPackDeleter(DLManagedTensor* tensor);
+static void TVMNDArrayDLPackDeleter(const DLManagedTensor* tensor);
 
 namespace litetvm::runtime {
 
@@ -93,7 +93,7 @@ struct NDArray::Internal {
         auto* ptr = static_cast<Container*>(p);
         auto* tensor = static_cast<DLManagedTensor*>(ptr->manager_ctx);
         if (tensor->deleter) {
-            (tensor->deleter)(tensor);
+            tensor->deleter(tensor);
         }
         delete ptr;
     }
@@ -347,13 +347,12 @@ TVM_REGISTER_OBJECT_TYPE(NDArray::Container);
 }// namespace litetvm::runtime
 
 using namespace litetvm::runtime;
-void TVMNDArrayDLPackDeleter(DLManagedTensor* tensor) {
+void TVMNDArrayDLPackDeleter(const DLManagedTensor* tensor) {
     NDArray::Internal::NDArrayDLPackDeleter(tensor);
 }
 
 int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes) {
-    // API_BEGIN();
+    API_BEGIN();
     ArrayCopyToBytes(handle, data, nbytes);
-    return 0;
-    // API_END();
+    API_END();
 }
