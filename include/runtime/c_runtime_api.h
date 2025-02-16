@@ -2,12 +2,24 @@
 // Created by 赵丹 on 25-1-13.
 //
 
-#ifndef C_RUNTIME_API_H
-#define C_RUNTIME_API_H
+#ifndef LITETVM_RUNTIME_C_RUNTIME_API_H
+#define LITETVM_RUNTIME_C_RUNTIME_API_H
 
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+
+#ifndef LITETVM_API
+#ifdef _WIN32
+#ifdef LITETVM_EXPORTS
+#define LITETVM_API __declspec(dllexport)
+#else
+#define LITETVM_API __declspec(dllimport)
+#endif
+#else
+#define LITETVM_API __attribute__((visibility("default")))
+#endif
+#endif
 
 using tvm_index_t = int64_t;
 
@@ -334,7 +346,7 @@ int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes);
  *   to free these handles.
  */
 int TVMFuncCall(TVMFunctionHandle func, TVMValue* arg_values, int* type_codes, int num_args,
-                        TVMValue* ret_val, int* ret_type_code);
+                TVMValue* ret_val, int* ret_type_code);
 
 // int TVMBackendGetFuncFromEnv(void* mod_node, const char* func_name, TVMFunctionHandle* out);
 
@@ -342,4 +354,4 @@ int TVMFuncCall(TVMFunctionHandle func, TVMValue* arg_values, int* type_codes, i
 // }  // TVM_EXTERN_C
 // #endif
 
-#endif//C_RUNTIME_API_H
+#endif//LITETVM_RUNTIME_C_RUNTIME_API_H
