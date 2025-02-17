@@ -5,6 +5,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <iostream>
 #include <random>
 
 #ifdef __has_cpp_attribute
@@ -62,6 +63,16 @@ std::vector<T> GenRandomMatrix(size_t m, size_t n, T low = 0, T high = 10) {
         matrix[i] = dist(gen);
     }
     return matrix;
+}
+
+inline void print() {
+    std::cout << std::endl;
+}
+
+template<typename T, typename... Args>
+void print(const T& t, const Args&... args) {
+    std::cout << t << (sizeof...(Args) == 0 ? "" : ", ");
+    print(args...);
 }
 
 #endif//UTILS_H

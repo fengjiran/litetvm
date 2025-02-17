@@ -4,11 +4,11 @@
 
 #include <gtest/gtest.h>
 
+#include "runtime/meta_data.h"
 #include "runtime/packed_func.h"
 #include "runtime/registry.h"
 #include "runtime/shape_tuple.h"
 #include "runtime/type_context.h"
-#include "runtime/meta_data.h"
 
 using namespace litetvm::runtime;
 
@@ -21,7 +21,8 @@ TEST(ObjectTest, object) {
     CHECK_EQ(t1.back(), t1[t1.size() - 1]);
     CHECK_EQ(t1.use_count(), 1);
 
-    std::cout << t1 << std::endl;
+    // std::cout << t1 << std::endl;
+    print(t1);
 
     ShapeTuple t2;
     CHECK(t2.empty());

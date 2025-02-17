@@ -314,7 +314,7 @@ struct TVMByteArray {
  *  this function is threadsafe and can be called by different thread
  *  \return error info
  */
-const char* TVMGetLastError();
+LITETVM_API const char* TVMGetLastError();
 
 /*!
  * \brief Copy array data to CPU byte array.
@@ -323,7 +323,7 @@ const char* TVMGetLastError();
  * \param nbytes The number of bytes to copy.
  * \return 0 when success, nonzero when failure happens
  */
-int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes);
+LITETVM_API int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes);
 
 /*!
  * \brief Call a Packed TVM Function.
@@ -345,10 +345,26 @@ int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes);
  *   The front-end need to call free function (e.g. TVMFuncFree)
  *   to free these handles.
  */
-int TVMFuncCall(TVMFunctionHandle func, TVMValue* arg_values, int* type_codes, int num_args,
+LITETVM_API int TVMFuncCall(TVMFunctionHandle func, TVMValue* arg_values, int* type_codes, int num_args,
                 TVMValue* ret_val, int* ret_type_code);
 
-// int TVMBackendGetFuncFromEnv(void* mod_node, const char* func_name, TVMFunctionHandle* out);
+// Array related apis for quick proptyping
+/*!
+ * \brief Allocate a nd-array's memory,
+ *  including space of shape, of given spec.
+ *
+ * \param shape The shape of the array, the data content will be copied to out
+ * \param ndim The number of dimension of the array.
+ * \param dtype_code The type code of the dtype
+ * \param dtype_bits The number of bits of dtype
+ * \param dtype_lanes The number of lanes in the dtype.
+ * \param device_type The device type.
+ * \param device_id The device id.
+ * \param out The output handle.
+ * \return 0 when success, nonzero when failure happens
+ */
+LITETVM_API int TVMArrayAlloc(const tvm_index_t* shape, int ndim, int dtype_code, int dtype_bits,
+                          int dtype_lanes, int device_type, int device_id, TVMArrayHandle* out);
 
 // #ifdef __cplusplus
 // }  // TVM_EXTERN_C

@@ -6,8 +6,11 @@
 #include "runtime/device_api.h"
 
 #include <iostream>
-
+extern "C" {
 static void TVMNDArrayDLPackDeleter(const DLManagedTensor* tensor);
+// helper function to get NDArray's type index, only used by ctypes.
+LITETVM_API int TVMArrayGetTypeIndex(TVMArrayHandle handle, unsigned* out_tindex);
+}
 
 namespace litetvm::runtime {
 
@@ -347,8 +350,32 @@ TVM_REGISTER_OBJECT_TYPE(NDArray::Container);
 }// namespace litetvm::runtime
 
 using namespace litetvm::runtime;
+
 void TVMNDArrayDLPackDeleter(const DLManagedTensor* tensor) {
     NDArray::Internal::NDArrayDLPackDeleter(tensor);
+}
+
+int TVMArrayGetTypeIndex(TVMArrayHandle handle, unsigned* out_tindex) {
+    API_BEGIN();
+    *out_tindex = TVMArrayHandleToObjectHandle(handle)->type_index();
+    API_END();
+}
+
+int TVMArrayAlloc(const tvm_index_t* shape, int ndim, int dtype_code, int dtype_bits,
+                  int dtype_lanes, int device_type, int device_id, TVMArrayHandle* out) {
+    API_BEGIN();
+    DLDataType dtype{};
+    dtype.code = static_cast<uint8_t>(dtype_code);
+    dtype.bits = static_cast<uint8_t>(dtype_bits);
+    dtype.lanes = static_cast<uint8_t>(dtype_lanes);
+
+    Device dev;
+    dev.device_type = static_cast<DLDeviceType>(device_type);
+    dev.device_id = device_id;
+    auto ndarray = NDArray::Empty(ShapeTuple(shape, shape + ndim), dtype, dev);
+    *out = NDArray::Internal::MoveToFFIHandle(ndarray);
+
+    API_END();
 }
 
 int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes) {

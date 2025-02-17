@@ -450,7 +450,8 @@ inline Object* TVMArrayHandleToObjectHandle(TVMArrayHandle handle) {
 constexpr uint64_t kTVMNDArrayMagic = 0xDD5E40F096B4A13F;
 
 inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
-    uint64_t header = kTVMNDArrayMagic, reserved = 0;
+    uint64_t header = kTVMNDArrayMagic;
+    uint64_t reserved = 0;
     strm->Write(header);
     strm->Write(reserved);
     // Always save data as CPU context
@@ -560,19 +561,19 @@ inline Device GetPreferredHostDevice(Device device) {
 }// namespace litetvm::runtime
 
 namespace std {
-template <>
+template<>
 struct hash<litetvm::runtime::Device> {
     std::size_t operator()(const litetvm::runtime::Device& dev) const noexcept {
         return dev.device_id << 8 | static_cast<int32_t>(dev.device_type);
     }
 };
 
-template <>
+template<>
 struct equal_to<litetvm::runtime::Device> {
     bool operator()(const litetvm::runtime::Device& lhs, const litetvm::runtime::Device& rhs) const {
         return lhs.device_type == rhs.device_type && lhs.device_id == rhs.device_id;
     }
 };
-}  // namespace std
+}// namespace std
 
 #endif//NDARRAY_H
