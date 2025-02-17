@@ -351,6 +351,10 @@ TVM_REGISTER_OBJECT_TYPE(NDArray::Container);
 
 using namespace litetvm::runtime;
 
+TVM_REGISTER_GLOBAL("runtime.TVMArrayAllocWithScope").set_body_typed(NDArray::Empty);
+
+TVM_REGISTER_GLOBAL("runtime.TVMArrayCreateView").set_body_method(&NDArray::CreateView);
+
 void TVMNDArrayDLPackDeleter(const DLManagedTensor* tensor) {
     NDArray::Internal::NDArrayDLPackDeleter(tensor);
 }
