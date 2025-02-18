@@ -26,7 +26,7 @@ struct ObjectHash {
     /*!
    * \brief Calculate the hash code of an ObjectRef
    * \param a The given ObjectRef
-   * \return Hash code of a, string hash for strings and pointer address otherwise.
+   * \return Hash code of a string hash for strings and pointer address otherwise.
    */
     size_t operator()(const ObjectRef& a) const;
 };

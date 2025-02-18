@@ -177,7 +177,7 @@ public:
             return data()[pos];
         }
 
-        throw std::out_of_range("tvm::String index out of bounds");
+        throw std::out_of_range("String index out of bounds");
     }
 
     /*!
@@ -559,7 +559,7 @@ namespace std {
 
 template<>
 struct hash<::litetvm::runtime::String> {
-    std::size_t operator()(const ::litetvm::runtime::String& str) const {
+    std::size_t operator()(const ::litetvm::runtime::String& str) const noexcept {
         return ::litetvm::runtime::String::StableHashBytes(str.data(), str.size());
     }
 };

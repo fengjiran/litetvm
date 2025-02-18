@@ -2362,12 +2362,11 @@ struct PackedFuncValueConverter<Variant<VariantTypes...>> {
 
     template<typename VarFirst, typename... VarRest, typename PODSubclass>
     static Optional<VType> TryValueConverter(const PODSubclass& val) {
-        return VType(PackedFuncValueConverter<VarFirst>::From(val));
-        // try {
-        //     return VType(PackedFuncValueConverter<VarFirst>::From(val));
-        // }
-        // catch (const Error&) {
-        // }
+        try {
+            return VType(PackedFuncValueConverter<VarFirst>::From(val));
+        }
+        catch (const Error&) {
+        }
 
         if constexpr (sizeof...(VarRest)) {
             return TryValueConverter<VarRest...>(val);
