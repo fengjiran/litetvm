@@ -382,8 +382,40 @@ int TVMArrayAlloc(const tvm_index_t* shape, int ndim, int dtype_code, int dtype_
     API_END();
 }
 
+int TVMArrayFree(TVMArrayHandle handle) {
+    API_BEGIN();
+    NDArray::Internal::FFIDecRef(handle);
+    API_END();
+}
+
+int TVMArrayCopyFromTo(TVMArrayHandle from, TVMArrayHandle to, TVMStreamHandle stream) {
+    API_BEGIN();
+    NDArray::CopyFromTo(from, to, stream);
+    API_END();
+}
+
+int TVMArrayFromDLPack(DLManagedTensor* from, TVMArrayHandle* out) {
+    API_BEGIN();
+    *out = NDArray::Internal::MoveToFFIHandle(NDArray::FromDLPack(from));
+    API_END();
+}
+
+int TVMArrayToDLPack(TVMArrayHandle from, DLManagedTensor** out) {
+    API_BEGIN();
+    *out = NDArray::Internal::ToDLPack(from);
+    API_END();
+}
+
 int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes) {
     API_BEGIN();
     ArrayCopyToBytes(handle, data, nbytes);
+    API_END();
+}
+
+void TVMDLManagedTensorCallDeleter(DLManagedTensor* dltensor) { dltensor->deleter(dltensor); }
+
+int TVMArrayCopyFromBytes(TVMArrayHandle handle, void* data, size_t nbytes) {
+    API_BEGIN();
+    ArrayCopyFromBytes(handle, data, nbytes);
     API_END();
 }

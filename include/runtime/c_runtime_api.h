@@ -326,6 +326,15 @@ LITETVM_API const char* TVMGetLastError();
 LITETVM_API int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nbytes);
 
 /*!
+ * \brief Copy array data from CPU byte array.
+ * \param handle The array handle.
+ * \param data the data pointer
+ * \param nbytes The number of bytes to copy.
+ * \return 0 when success, nonzero when failure happens
+ */
+LITETVM_API int TVMArrayCopyFromBytes(TVMArrayHandle handle, void* data, size_t nbytes);
+
+/*!
  * \brief Call a Packed TVM Function.
  *
  * \param func node handle of the function.
@@ -346,9 +355,9 @@ LITETVM_API int TVMArrayCopyToBytes(TVMArrayHandle handle, void* data, size_t nb
  *   to free these handles.
  */
 LITETVM_API int TVMFuncCall(TVMFunctionHandle func, TVMValue* arg_values, int* type_codes, int num_args,
-                TVMValue* ret_val, int* ret_type_code);
+                            TVMValue* ret_val, int* ret_type_code);
 
-// Array related apis for quick proptyping
+// Array related apis for quick prototyping
 /*!
  * \brief Allocate a nd-array's memory,
  *  including space of shape, of given spec.
@@ -364,7 +373,49 @@ LITETVM_API int TVMFuncCall(TVMFunctionHandle func, TVMValue* arg_values, int* t
  * \return 0 when success, nonzero when failure happens
  */
 LITETVM_API int TVMArrayAlloc(const tvm_index_t* shape, int ndim, int dtype_code, int dtype_bits,
-                          int dtype_lanes, int device_type, int device_id, TVMArrayHandle* out);
+                              int dtype_lanes, int device_type, int device_id, TVMArrayHandle* out);
+
+/*!
+ * \brief Free the TVM Array.
+ * \param handle The array handle to be freed.
+ * \return 0 when success, nonzero when failure happens
+ */
+LITETVM_API int TVMArrayFree(TVMArrayHandle handle);
+
+/*!
+ * \brief Copy the array, both from and to must be valid during the copy.
+ * \param from The array to be copied from.
+ * \param to The target space.
+ * \param stream The stream where the copy happens, can be NULL.
+ * \return 0 when success, nonzero when failure happens
+ */
+LITETVM_API int TVMArrayCopyFromTo(TVMArrayHandle from, TVMArrayHandle to, TVMStreamHandle stream);
+
+
+/*!
+ * \brief Produce an array from the DLManagedTensor that shares data memory
+ * with the DLManagedTensor.
+ * \param from The source DLManagedTensor.
+ * \param out The output array handle.
+ * \return 0 when success, nonzero when failure happens
+ */
+LITETVM_API int TVMArrayFromDLPack(DLManagedTensor* from, TVMArrayHandle* out);
+
+/*!
+ * \brief Produce a DLMangedTensor from the array that shares data memory with
+ * the array.
+ * \param from The source array.
+ * \param out The DLManagedTensor handle.
+ * \return 0 when success, nonzero when failure happens
+ */
+LITETVM_API int TVMArrayToDLPack(TVMArrayHandle from, DLManagedTensor** out);
+
+/*!
+ * \brief Delete (free) a DLManagedTensor's data.
+ * \param dltensor Pointer to the DLManagedTensor.
+ */
+LITETVM_API void TVMDLManagedTensorCallDeleter(DLManagedTensor* dltensor);
+
 
 // #ifdef __cplusplus
 // }  // TVM_EXTERN_C
