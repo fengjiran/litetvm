@@ -9,11 +9,11 @@
 #include "runtime/boxed_primitive.h"
 #include "runtime/c_runtime_api.h"
 #include "runtime/data_type.h"
-#include "runtime/object_type_checker.h"
 #include "runtime/map.h"
 #include "runtime/module.h"
 #include "runtime/ndarray.h"
 #include "runtime/object.h"
+#include "runtime/object_type_checker.h"
 #include "runtime/optional.h"
 #include "runtime/string.h"
 #include "runtime/variant.h"
@@ -50,6 +50,9 @@ public:
     static constexpr const char* _type_key = "runtime.PackedFunc";
     TVM_DECLARE_FINAL_OBJECT_INFO(PackedFuncObj, Object);
 
+    /*! \brief Delete the default constructor explicitly. */
+    PackedFuncObj() = delete;
+
 protected:
     /*!
      * \brief Internal struct for extracting the callable method from callable type.
@@ -66,19 +69,17 @@ protected:
     };
 
     /*! \brief The internal callable function type. */
-    using FCallPacked = void(const PackedFuncObj*, TVMArgs, TVMRetValue*);
+    // using FCallPacked = void(const PackedFuncObj*, TVMArgs, TVMRetValue*);
+    using FCallPacked = std::function<void(const PackedFuncObj*, TVMArgs, TVMRetValue*)>;
 
     /*!
      * \brief Constructing a packed function object from a function pointer.
      * \param f_call_pack The function pointer used to call the packed function.
      */
-    explicit PackedFuncObj(FCallPacked* f_call_pack) : f_call_packed_(f_call_pack) {}
-
-    /*! \brief Delete the default constructor explicitly. */
-    PackedFuncObj() = delete;
+    explicit PackedFuncObj(FCallPacked f_call_pack) : f_call_packed_(std::move(f_call_pack)) {}
 
     /*! \brief Internal callable function pointer used to call the packed function. */
-    FCallPacked* f_call_packed_;
+    FCallPacked f_call_packed_;
 };
 
 /*! \brief Derived object class for constructing PackedFuncObj. */
@@ -686,7 +687,7 @@ public:
     }
 
     template<typename T,
-    typename = std::enable_if_t<std::is_class_v<T>>>
+             typename = std::enable_if_t<std::is_class_v<T>>>
     operator T() const;
 
     inline operator DLDataType() const;
@@ -1204,7 +1205,7 @@ void PackedFuncObj::Extractor<TPackedFuncSubObj>::Call(const PackedFuncObj* obj,
 }
 
 TVM_ALWAYS_INLINE void PackedFuncObj::CallPacked(TVMArgs args, TVMRetValue* rv) const {
-    (*f_call_packed_)(this, args, rv);
+    (f_call_packed_)(this, args, rv);
 }
 
 TVM_ALWAYS_INLINE void PackedFunc::CallPacked(TVMArgs args, TVMRetValue* rv) const {
@@ -2364,8 +2365,7 @@ struct PackedFuncValueConverter<Variant<VariantTypes...>> {
     static Optional<VType> TryValueConverter(const PODSubclass& val) {
         try {
             return VType(PackedFuncValueConverter<VarFirst>::From(val));
-        }
-        catch (const Error&) {
+        } catch (const Error&) {
         }
 
         if constexpr (sizeof...(VarRest)) {
