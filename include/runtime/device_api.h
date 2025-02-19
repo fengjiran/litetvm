@@ -369,7 +369,7 @@ private:
             CHECK(allow_missing) << "Device API " << name << " is not enabled.";
             return nullptr;
         }
-        void* ptr = (*f)();
+        void* ptr = static_cast<void*>((*f)());
         return static_cast<DeviceAPI*>(ptr);
     }
 };

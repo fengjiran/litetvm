@@ -11,10 +11,7 @@
 #include "runtime/string.h"
 #include "runtime/variant.h"
 
-#include <dmlc/logging.h>
-
 namespace litetvm::runtime {
-
 
 /*!
  * \brief Type traits for runtime type check during FFI conversion.
@@ -22,6 +19,7 @@ namespace litetvm::runtime {
  */
 template<typename T>
 struct ObjectTypeChecker {
+    using ContainerType = typename T::ContainerType;
     /*!
      * \brief Check if an object matches the template type and return the
      *        mismatched type if it exists.
@@ -30,16 +28,18 @@ struct ObjectTypeChecker {
      *         template type. If the Optional does not contain a value, then the types match.
      */
     static Optional<String> CheckAndGetMismatch(const Object* ptr) {
-        using ContainerType = typename T::ContainerType;
+        // using ContainerType = typename T::ContainerType;
         if (ptr == nullptr) {
             if (T::_type_is_nullable) {
                 return NullOpt;
             }
             return String("nullptr");
         }
+
         if (ptr->IsInstance<ContainerType>()) {
             return NullOpt;
         }
+
         return String(ptr->GetTypeKey());
     }
     /*!
@@ -48,13 +48,14 @@ struct ObjectTypeChecker {
      * \return Whether the template type matches the objects type.
      */
     static bool Check(const Object* ptr) {
-        using ContainerType = typename T::ContainerType;
-        if (ptr == nullptr) return T::_type_is_nullable;
+        // using ContainerType = typename T::ContainerType;
+        if (ptr == nullptr)
+            return T::_type_is_nullable;
         return ptr->IsInstance<ContainerType>();
     }
 
     static std::string TypeName() {
-        using ContainerType = typename T::ContainerType;
+        // using ContainerType = typename T::ContainerType;
         return ContainerType::_type_key;
     }
 };
@@ -87,9 +88,17 @@ struct ObjectTypeChecker<Array<T>> {
     }
 
     static bool Check(const Object* ptr) {
-        if (ptr == nullptr) return true;
-        if (!ptr->IsInstance<ArrayNode>()) return false;
-        if constexpr (std::is_same_v<T, ObjectRef>) return true;
+        if (ptr == nullptr) {
+            return true;
+        }
+
+        if (!ptr->IsInstance<ArrayNode>()) {
+            return false;
+        }
+
+        if constexpr (std::is_same_v<T, ObjectRef>) {
+            return true;
+        }
 
         const auto* n = static_cast<const ArrayNode*>(ptr);
         for (const ObjectRef& p: *n) {
@@ -108,8 +117,13 @@ struct ObjectTypeChecker<Array<T>> {
 template<typename K, typename V>
 struct ObjectTypeChecker<Map<K, V>> {
     static Optional<String> CheckAndGetMismatch(const Object* ptr) {
-        if (ptr == nullptr) return NullOpt;
-        if (!ptr->IsInstance<MapNode>()) return String(ptr->GetTypeKey());
+        if (ptr == nullptr) {
+            return NullOpt;
+        }
+
+        if (!ptr->IsInstance<MapNode>()) {
+            return String(ptr->GetTypeKey());
+        }
 
         if constexpr (std::is_same_v<K, ObjectRef> && std::is_same_v<V, ObjectRef>) {
             return NullOpt;
@@ -139,8 +153,13 @@ struct ObjectTypeChecker<Map<K, V>> {
     }
 
     static bool Check(const Object* ptr) {
-        if (ptr == nullptr) return true;
-        if (!ptr->IsInstance<MapNode>()) return false;
+        if (ptr == nullptr) {
+            return true;
+        }
+
+        if (!ptr->IsInstance<MapNode>()) {
+            return false;
+        }
 
         if constexpr (std::is_same_v<K, ObjectRef> && std::is_same_v<V, ObjectRef>) {
             return true;
@@ -160,8 +179,7 @@ struct ObjectTypeChecker<Map<K, V>> {
     }
 
     static std::string TypeName() {
-        return "Map[" + ObjectTypeChecker<K>::TypeName() + ", " + ObjectTypeChecker<V>::TypeName() +
-               ']';
+        return "Map[" + ObjectTypeChecker<K>::TypeName() + ", " + ObjectTypeChecker<V>::TypeName() + ']';
     }
 };
 
@@ -170,9 +188,18 @@ struct ObjectTypeChecker<Variant<OnlyVariant>> {
     static Optional<String> CheckAndGetMismatch(const Object* ptr) {
         return ObjectTypeChecker<OnlyVariant>::CheckAndGetMismatch(ptr);
     }
-    static bool Check(const Object* ptr) { return ObjectTypeChecker<OnlyVariant>::Check(ptr); }
-    static std::string TypeName() { return "Variant[" + VariantNames() + "]"; }
-    static std::string VariantNames() { return ObjectTypeChecker<OnlyVariant>::TypeName(); }
+
+    static bool Check(const Object* ptr) {
+        return ObjectTypeChecker<OnlyVariant>::Check(ptr);
+    }
+
+    static std::string TypeName() {
+        return "Variant[" + VariantNames() + "]";
+    }
+
+    static std::string VariantNames() {
+        return ObjectTypeChecker<OnlyVariant>::TypeName();
+    }
 };
 
 template<typename FirstVariant, typename... RemainingVariants>
@@ -191,7 +218,10 @@ struct ObjectTypeChecker<Variant<FirstVariant, RemainingVariants...>> {
                ObjectTypeChecker<Variant<RemainingVariants...>>::Check(ptr);
     }
 
-    static std::string TypeName() { return "Variant[" + VariantNames() + "]"; }
+    static std::string TypeName() {
+        return "Variant[" + VariantNames() + "]";
+    }
+
     static std::string VariantNames() {
         return ObjectTypeChecker<FirstVariant>::TypeName() + ", " +
                ObjectTypeChecker<Variant<RemainingVariants...>>::VariantNames();

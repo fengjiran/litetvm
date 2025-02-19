@@ -35,6 +35,7 @@ TEST(ObjectTest, object) {
     CHECK(metadata::MetadataBaseNode::_type_child_slots_can_overflow);
 
     TypeContext::Global().Dump(0);
+
 }
 
 TEST(ObjectTest, ListAllPackedFunc) {

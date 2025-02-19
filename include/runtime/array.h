@@ -98,7 +98,7 @@ public:
     }
 
     static constexpr uint32_t _type_index = static_cast<uint32_t>(TypeIndex::kRuntimeArray);
-    static constexpr const char* _type_key = "Array";
+    static constexpr const char* _type_key = "runtime.Array";
     TVM_DECLARE_FINAL_OBJECT_INFO(ArrayNode, Object);
 
 private:

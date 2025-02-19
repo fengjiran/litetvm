@@ -57,7 +57,7 @@ protected:
     /*!
      * \brief Internal struct for extracting the callable method from callable type.
      */
-    template<class TPackedFuncSubObj>
+    template<typename TPackedFuncSubObj>
     struct Extractor {
         /*!
          * \brief Extracting the callable method from callable type.
@@ -83,7 +83,7 @@ protected:
 };
 
 /*! \brief Derived object class for constructing PackedFuncObj. */
-template<class TCallable>
+template<typename TCallable>
 class PackedFuncSubObj : public PackedFuncObj {
     using TStorage = std::remove_cv_t<std::remove_reference_t<TCallable>>;
 
@@ -100,19 +100,18 @@ public:
     mutable TStorage callable_;
 };
 
-
 /*!
  * \brief Packed function is a type-erased function.
  *  The arguments are passed by packed format.
  *
- *  This is an useful unified interface to call generated functions,
+ *  This is a useful-unified interface to call generated functions,
  *  It is the unified function type of TVM.
  *  It corresponds to TVMFunctionHandle in C runtime API.
  */
 class PackedFunc : public ObjectRef {
 public:
     /*! \brief Constructor from null */
-    PackedFunc(std::nullptr_t null) : ObjectRef(nullptr) {}// NOLINT(*)
+    PackedFunc(std::nullptr_t) : ObjectRef(nullptr) {}// NOLINT(*)
 
     /*!
    * \brief Constructing a packed function from a callable type
@@ -127,6 +126,7 @@ public:
         using ObjType = PackedFuncSubObj<TCallable>;
         data_ = make_object<ObjType>(std::forward<TCallable>(data));
     }
+
     /*!
    * \brief Call packed function by directly passing in unpacked format.
    * \param args Arguments to be passed.
@@ -142,7 +142,7 @@ public:
    * \endcode
    */
     template<typename... Args>
-    inline TVMRetValue operator()(Args&&... args) const;
+    TVMRetValue operator()(Args&&... args) const;
     /*!
    * \brief Call the function in packed format.
    * \param args The arguments
@@ -150,9 +150,9 @@ public:
    */
     TVM_ALWAYS_INLINE void CallPacked(TVMArgs args, TVMRetValue* rv) const;
     /*! \return Whether the packed function is nullptr */
-    bool operator==(std::nullptr_t null) const { return data_ == nullptr; }
+    bool operator==(std::nullptr_t) const { return data_ == nullptr; }
     /*! \return Whether the packed function is not nullptr */
-    bool operator!=(std::nullptr_t null) const { return data_ != nullptr; }
+    bool operator!=(std::nullptr_t) const { return data_ != nullptr; }
 
     TVM_DEFINE_OBJECT_REF_METHODS(PackedFunc, ObjectRef, PackedFuncObj);
 };
@@ -415,7 +415,7 @@ inline std::ostream& operator<<(std::ostream& os, DLDevice dev);// NOLINT(*)
  */
 class TVMPODValue_ {
 public:
-    operator void*() const {
+    explicit operator void*() const {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNullptr)) {
             return nullptr;
         }
@@ -428,7 +428,7 @@ public:
         return value_.v_handle;
     }
 
-    operator DLTensor*() const {
+    explicit operator DLTensor*() const {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMDLTensorHandle) ||
             type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle)) {
             return static_cast<DLTensor*>(value_.v_handle);
@@ -438,12 +438,11 @@ public:
             return nullptr;
         }
 
-        LOG(FATAL) << "Expected "
-                   << "DLTensor* or NDArray but got " << ArgTypeCode2Str(type_code_);
+        LOG(FATAL) << "Expected DLTensor* or NDArray but got " << ArgTypeCode2Str(type_code_);
         return nullptr;
     }
 
-    operator NDArray() const {
+    explicit operator NDArray() const {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNullptr)) {
             return NDArray(ObjectPtr<Object>(nullptr));
         }
@@ -452,15 +451,16 @@ public:
         return NDArray(NDArray::FFIDataFromHandle(static_cast<TVMArrayHandle>(value_.v_handle)));
     }
 
-    operator Module() const {
+    explicit operator Module() const {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNullptr)) {
             return Module(ObjectPtr<Object>(nullptr));
         }
+
         TVM_CHECK_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kTVMModuleHandle));
         return Module(ObjectPtr<Object>(static_cast<Object*>(value_.v_handle)));
     }
 
-    operator PackedFunc() const {
+    explicit operator PackedFunc() const {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNullptr)) {
             return PackedFunc(ObjectPtr<Object>(nullptr));
         }
@@ -469,7 +469,7 @@ public:
         return PackedFunc(ObjectPtr<Object>(static_cast<Object*>(value_.v_handle)));
     }
 
-    operator Device() const {
+    explicit operator Device() const {
         TVM_CHECK_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kDLDevice));
         return value_.v_device;
     }
@@ -776,15 +776,7 @@ public:
 
     template<typename T>
     operator T() const {
-        return value_;// implicit conversion happens here
-        // try {
-        //
-        // } catch (dmlc::Error& e) {
-        //     LOG(FATAL) << "In function " << (optional_name_ == nullptr ? "<anonymous>" : *optional_name_)
-        //                << (f_sig_ == nullptr ? "" : (*f_sig_)()) << ": error while converting argument "
-        //                << arg_index_ << ": " << e.what();
-        //     throw;  // never reached, LOG(FATAL) throws, but this silences a warning.
-        // }
+        return static_cast<T>(value_);
     }
 
 private:
@@ -1201,7 +1193,7 @@ T TVMArgs::At(int i) const {
 template<class TPackedFuncSubObj>
 void PackedFuncObj::Extractor<TPackedFuncSubObj>::Call(const PackedFuncObj* obj, TVMArgs args,
                                                        TVMRetValue* rv) {
-    (static_cast<const TPackedFuncSubObj*>(obj))->callable_(args, rv);
+    static_cast<const TPackedFuncSubObj*>(obj)->callable_(args, rv);
 }
 
 TVM_ALWAYS_INLINE void PackedFuncObj::CallPacked(TVMArgs args, TVMRetValue* rv) const {
@@ -2006,8 +1998,7 @@ bool TVMPODValue_CRTP_<Derived>::IsObjectRef() const {
     // NOTE: the following code can be optimized by constant folding.
     if constexpr (std::is_base_of_v<NDArray::ContainerType, ContainerType>) {
         return type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle) &&
-               TVMArrayHandleToObjectHandle(static_cast<TVMArrayHandle>(value_.v_handle))
-                       ->IsInstance<ContainerType>();
+               TVMArrayHandleToObjectHandle(static_cast<TVMArrayHandle>(value_.v_handle))->IsInstance<ContainerType>();
     }
 
     if constexpr (std::is_base_of_v<Module::ContainerType, ContainerType>) {
