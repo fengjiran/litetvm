@@ -2042,7 +2042,7 @@ TObjectRef TVMPODValue_CRTP_<Derived>::AsObjectRef() const {
     // NOTE: The following code uses "if constexpr" wherever possible to
     // minimize the number of runtime checks.
     if constexpr (std::is_base_of_v<NDArray::ContainerType, ContainerType>) {
-        // Casting to a sub-class of NDArray
+        // Casting to a subclass of NDArray
         TVM_CHECK_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle));
         ObjectPtr<Object> data =
                 NDArray::FFIDataFromHandle(static_cast<TVMArrayHandle>(value_.v_handle));
@@ -2052,7 +2052,7 @@ TObjectRef TVMPODValue_CRTP_<Derived>::AsObjectRef() const {
     }
 
     if constexpr (std::is_base_of_v<Module::ContainerType, ContainerType>) {
-        // Casting to a sub-class of Module
+        // Casting to a subclass of Module
         TVM_CHECK_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kTVMModuleHandle));
         ObjectPtr<Object> data = GetObjectPtr<Object>(static_cast<Object*>(value_.v_handle));
         CHECK(data->IsInstance<ContainerType>())
@@ -2061,7 +2061,7 @@ TObjectRef TVMPODValue_CRTP_<Derived>::AsObjectRef() const {
     }
 
     if constexpr (std::is_base_of_v<PackedFunc::ContainerType, ContainerType>) {
-        // Casting to a sub-class of PackedFunc
+        // Casting to a subclass of PackedFunc
         TVM_CHECK_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kTVMPackedFuncHandle));
         ObjectPtr<Object> data = GetObjectPtr<Object>(static_cast<Object*>(value_.v_handle));
         CHECK(data->IsInstance<ContainerType>())
