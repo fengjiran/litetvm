@@ -613,7 +613,7 @@ public:
         return value;
     }
 
-    operator bool() const {
+    explicit operator bool() const {
         if (auto opt = TryAsBool()) {
             return opt.value();
         }
@@ -678,7 +678,7 @@ public:
     }
 
     template<typename FType>
-    operator TypedPackedFunc<FType>() const {
+    explicit operator TypedPackedFunc<FType>() const {
         return TypedPackedFunc<FType>(operator PackedFunc());
     }
 
@@ -688,7 +688,7 @@ public:
 
     template<typename T,
              typename = std::enable_if_t<std::is_class_v<T>>>
-    operator T() const;
+    explicit operator T() const;
 
     inline explicit operator DLDataType() const;
     inline explicit operator DataType() const;
@@ -723,16 +723,26 @@ public:
     using TVMPODValue_CRTP_::operator bool;
 
     // reuse conversion rule from ArgValue.
-    operator std::string() const { return AsArgValue().operator std::string(); }
+    operator std::string() const {
+        return AsArgValue().operator std::string();
+    }
 
     template<typename FType>
     operator TypedPackedFunc<FType>() const {
         return TypedPackedFunc<FType>(operator PackedFunc());
     }
 
-    operator DLDataType() const { return AsArgValue().operator DLDataType(); }
-    operator DataType() const { return AsArgValue().operator DataType(); }
-    operator TVMArgValue() const { return AsArgValue(); }
+    operator DLDataType() const {
+        return AsArgValue().operator DLDataType();
+    }
+
+    operator DataType() const {
+        return AsArgValue().operator DataType();
+    }
+
+    operator TVMArgValue() const {
+        return AsArgValue();
+    }
     /*!
      * \brief Helper converter function.
      *  Try to move out an argument if possible,

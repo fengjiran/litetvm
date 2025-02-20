@@ -67,7 +67,7 @@ Module Module::LoadFromFile(const String& file_name, const String& format) {
                         << " resolved to (" << load_f_name << ") in the global registry."
                         << "Ensure that you have loaded the correct runtime code, and"
                         << "that you are on the correct hardware architecture.";
-    Module m = (*f)(file_name, format);
+    Module m = static_cast<Module>((*f)(file_name, format));
     return m;
 }
 
@@ -143,7 +143,7 @@ bool RuntimeEnabled(const String& target_str) {
     } else if (target.length() >= 4 && target.substr(0, 4) == "llvm") {
         const PackedFunc* pf = runtime::RegistryManager::Global().Get("codegen.llvm_target_enabled");
         if (pf == nullptr) return false;
-        return (*pf)(target);
+        return static_cast<bool>((*pf)(target));
     } else {
         LOG(FATAL) << "Unknown optional runtime " << target;
     }
