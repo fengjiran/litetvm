@@ -613,7 +613,7 @@ public:
         return value;
     }
 
-    explicit operator bool() const {
+    operator bool() const {
         if (auto opt = TryAsBool()) {
             return opt.value();
         }
@@ -690,8 +690,8 @@ public:
              typename = std::enable_if_t<std::is_class_v<T>>>
     operator T() const;
 
-    inline operator DLDataType() const;
-    inline operator DataType() const;
+    inline explicit operator DLDataType() const;
+    inline explicit operator DataType() const;
 };
 
 
