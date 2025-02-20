@@ -721,8 +721,7 @@ RefType GetRef(const ObjType* ptr) {
 template<typename BaseType,
          typename ObjType>
 ObjectPtr<BaseType> GetObjectPtr(ObjType* ptr) {
-    static_assert(std::is_base_of_v<BaseType, ObjType>,
-                  "Can only cast to the ref of same container type");
+    static_assert(std::is_base_of_v<BaseType, ObjType>, "Can only cast to the ref of same container type");
     return ObjectPtr<BaseType>(static_cast<Object*>(ptr));
 }
 

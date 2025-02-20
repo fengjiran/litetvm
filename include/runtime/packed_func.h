@@ -571,7 +571,7 @@ public:
     template<typename TObjectRef>
     TObjectRef AsObjectRef() const;
 
-    operator double() const {
+    explicit operator double() const {
         // Allow automatic conversion from int to float
         // This avoids errors when user pass in int from
         // the frontend while the API expects a float.
@@ -590,7 +590,7 @@ public:
         LOG(FATAL) << TVM_LOG_INCORRECT_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kDLDevice));
     }
 
-    operator int64_t() const {
+    explicit operator int64_t() const {
         if (auto opt = TryAsInt()) {
             return opt.value();
         }
@@ -602,18 +602,18 @@ public:
         LOG(FATAL) << TVM_LOG_INCORRECT_TYPE_CODE(type_code_, static_cast<int>(DLDataTypeCode::kDLInt));
     }
 
-    operator uint64_t() const {
+    explicit operator uint64_t() const {
         return operator int64_t();
     }
 
-    operator int() const {
+    explicit operator int() const {
         int64_t value = operator int64_t();
         CHECK_LE(value, std::numeric_limits<int>::max());
         CHECK_GE(value, std::numeric_limits<int>::min());
         return value;
     }
 
-    operator bool() const {
+    explicit operator bool() const {
         if (auto opt = TryAsBool()) {
             return opt.value();
         }
@@ -2016,26 +2016,20 @@ bool TVMPODValue_CRTP_<Derived>::IsObjectRef() const {
         return ObjectTypeChecker<TObjectRef>::Check(*static_cast<Object**>(value_.v_handle));
     }
 
-    return (std::is_base_of_v<ContainerType, NDArray::ContainerType> &&
-            type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle)) ||
-           (std::is_base_of_v<ContainerType, Module::ContainerType> &&
-            type_code_ == static_cast<int>(TVMArgTypeCode::kTVMModuleHandle)) ||
-           (std::is_base_of_v<ContainerType, PackedFunc::ContainerType> &&
-            type_code_ == static_cast<int>(TVMArgTypeCode::kTVMPackedFuncHandle)) ||
-           (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMObjectHandle) &&
-            ObjectTypeChecker<TObjectRef>::Check(static_cast<Object*>(value_.v_handle)));
+    return (std::is_base_of_v<ContainerType, NDArray::ContainerType> && type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle)) ||
+           (std::is_base_of_v<ContainerType, Module::ContainerType> && type_code_ == static_cast<int>(TVMArgTypeCode::kTVMModuleHandle)) ||
+           (std::is_base_of_v<ContainerType, PackedFunc::ContainerType> && type_code_ == static_cast<int>(TVMArgTypeCode::kTVMPackedFuncHandle)) ||
+           (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMObjectHandle) && ObjectTypeChecker<TObjectRef>::Check(static_cast<Object*>(value_.v_handle)));
 }
 
 template<typename Derived>
 template<typename TObjectRef>
 TObjectRef TVMPODValue_CRTP_<Derived>::AsObjectRef() const {
-    static_assert(std::is_base_of_v<ObjectRef, TObjectRef>,
-                  "Conversion only works for ObjectRef");
+    static_assert(std::is_base_of_v<ObjectRef, TObjectRef>, "Conversion only works for ObjectRef");
     using ContainerType = typename TObjectRef::ContainerType;
 
     if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNullptr)) {
-        CHECK(TObjectRef::_type_is_nullable)
-                << "Expect a not null value of " << ContainerType::_type_key;
+        CHECK(TObjectRef::_type_is_nullable) << "Expect a not null value of " << ContainerType::_type_key;
         return TObjectRef(ObjectPtr<Object>(nullptr));
     }
 
@@ -2044,8 +2038,7 @@ TObjectRef TVMPODValue_CRTP_<Derived>::AsObjectRef() const {
     if constexpr (std::is_base_of_v<NDArray::ContainerType, ContainerType>) {
         // Casting to a subclass of NDArray
         TVM_CHECK_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle));
-        ObjectPtr<Object> data =
-                NDArray::FFIDataFromHandle(static_cast<TVMArrayHandle>(value_.v_handle));
+        ObjectPtr<Object> data = NDArray::FFIDataFromHandle(static_cast<TVMArrayHandle>(value_.v_handle));
         CHECK(data->IsInstance<ContainerType>())
                 << "Expected " << ContainerType::_type_key << " but got " << data->GetTypeKey();
         return TObjectRef(data);
@@ -2089,8 +2082,7 @@ TObjectRef TVMPODValue_CRTP_<Derived>::AsObjectRef() const {
     if constexpr (std::is_base_of_v<ContainerType, NDArray::ContainerType>) {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle)) {
             // Casting to a base class that NDArray can sub-class
-            ObjectPtr<Object> data =
-                    NDArray::FFIDataFromHandle(static_cast<TVMArrayHandle>(value_.v_handle));
+            ObjectPtr<Object> data = NDArray::FFIDataFromHandle(static_cast<TVMArrayHandle>(value_.v_handle));
             return TObjectRef(data);
         }
     }
