@@ -588,6 +588,7 @@ public:
         }
 
         LOG(FATAL) << TVM_LOG_INCORRECT_TYPE_CODE(type_code_, static_cast<int>(TVMArgTypeCode::kDLDevice));
+        return 0;
     }
 
     explicit operator int64_t() const {
@@ -818,8 +819,7 @@ public:
    * \brief move constructor from another return value.
    * \param other The other return value.
    */
-    TVMRetValue(TVMRetValue&& other) noexcept
-        : TVMPODValue_CRTP_(other.value_, other.type_code_) {
+    TVMRetValue(TVMRetValue&& other) noexcept : TVMPODValue_CRTP_(other.value_, other.type_code_) {
         other.value_.v_handle = nullptr;
         other.type_code_ = static_cast<int>(TVMArgTypeCode::kTVMNullptr);
     }
@@ -937,8 +937,8 @@ public:
         return *this;
     }
 
-    TVMRetValue& operator=(std::string value) {
-        this->SwitchToClass(static_cast<int>(TVMArgTypeCode::kTVMStr), std::move(value));
+    TVMRetValue& operator=(const std::string& value) {
+        this->SwitchToClass(static_cast<int>(TVMArgTypeCode::kTVMStr), value);
         return *this;
     }
 
@@ -954,7 +954,7 @@ public:
             value_.v_handle = NDArray::FFIGetHandle(other);
             ObjectRef::FFIClearAfterMove(&other);
         } else {
-            SwitchToPOD((int) TVMArgTypeCode::kTVMNullptr);
+            SwitchToPOD(static_cast<int>(TVMArgTypeCode::kTVMNullptr));
             value_.v_handle = nullptr;
         }
         return *this;
@@ -1054,7 +1054,7 @@ private:
     }
 
     template<typename T>
-    void SwitchToClass(int type_code, T v) {
+    void SwitchToClass(int type_code, const T& v) {
         if (type_code_ != type_code) {
             this->Clear();
             type_code_ = type_code;
@@ -1105,8 +1105,9 @@ private:
                 break;
             }
 
+            case static_cast<int>(TVMArgTypeCode::kTVMObjectRValueRefArg):
             case static_cast<int>(TVMArgTypeCode::kTVMObjectHandle): {
-                // We already known it is not NDArray/Module, but
+                // We have already known it is not NDArray/Module, but
                 // operator=(ObjectRef) also handles conversions from wrappers
                 // around primitive types.  For NDArray/Module, the duplicate
                 // checks are removed with if constexpr.
@@ -1114,10 +1115,10 @@ private:
                 break;
             }
 
-            case static_cast<int>(TVMArgTypeCode::kTVMObjectRValueRefArg): {
-                operator=(other.operator ObjectRef());
-                break;
-            }
+                // case static_cast<int>(TVMArgTypeCode::kTVMObjectRValueRefArg): {
+                //     operator=(other.operator ObjectRef());
+                //     break;
+                // }
 
             default: {
                 SwitchToPOD(other.type_code());
@@ -1130,31 +1131,32 @@ private:
     void Clear() {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNullptr))
             return;
+
         switch (type_code_) {
             case static_cast<int>(TVMArgTypeCode::kTVMStr):
-            case static_cast<int>(TVMArgTypeCode::kTVMBytes):
+            case static_cast<int>(TVMArgTypeCode::kTVMBytes): {
                 delete ptr<std::string>();
                 break;
-
-            case static_cast<int>(TVMArgTypeCode::kTVMPackedFuncHandle):
-                static_cast<Object*>(value_.v_handle)->DecRef();
-                break;
+            }
 
             case static_cast<int>(TVMArgTypeCode::kTVMNDArrayHandle): {
                 NDArray::FFIDecRef(static_cast<TVMArrayHandle>(value_.v_handle));
                 break;
             }
 
-            case static_cast<int>(TVMArgTypeCode::kTVMModuleHandle): {
-                static_cast<Object*>(value_.v_handle)->DecRef();
-                break;
-            }
+            case static_cast<int>(TVMArgTypeCode::kTVMPackedFuncHandle):
+            case static_cast<int>(TVMArgTypeCode::kTVMModuleHandle):
             case static_cast<int>(TVMArgTypeCode::kTVMObjectHandle): {
                 static_cast<Object*>(value_.v_handle)->DecRef();
                 break;
             }
+
+            default:
+                type_code_ = static_cast<int>(TVMArgTypeCode::kTVMNullptr);
+                break;
         }
-        type_code_ = static_cast<int>(TVMArgTypeCode::kTVMNullptr);
+
+        // type_code_ = static_cast<int>(TVMArgTypeCode::kTVMNullptr);
     }
 };
 
@@ -1207,11 +1209,11 @@ void PackedFuncObj::Extractor<TPackedFuncSubObj>::Call(const PackedFuncObj* obj,
 }
 
 TVM_ALWAYS_INLINE void PackedFuncObj::CallPacked(TVMArgs args, TVMRetValue* rv) const {
-    (f_call_packed_)(this, args, rv);
+    f_call_packed_(this, args, rv);
 }
 
 TVM_ALWAYS_INLINE void PackedFunc::CallPacked(TVMArgs args, TVMRetValue* rv) const {
-    (static_cast<PackedFuncObj*>(data_.get()))->CallPacked(args, rv);
+    static_cast<PackedFuncObj*>(data_.get())->CallPacked(args, rv);
 }
 
 // internal namespace
@@ -1306,24 +1308,31 @@ inline const char* DLDeviceType2Str(int type) {
 
 namespace detail {
 
-template<bool stop, std::size_t I, typename F>
-struct for_each_dispatcher {
-    template<typename T, typename... Args>
-    static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
-        f(I, std::forward<T>(value));
-        for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
-    }
-};
-
-template<std::size_t I, typename F>
-struct for_each_dispatcher<true, I, F> {
-    static void run(const F& f) {}// NOLINT(*)
-};
-
 template<typename F, typename... Args>
-inline void for_each(const F& f, Args&&... args) {// NOLINT(*)
-    for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
+void for_each(const F& f, Args&&... args) {
+    using IntArray = int[];
+    int i = 0;
+    (void) IntArray{(f(i++, std::forward<Args>(args)), 0)...};
 }
+
+// template<bool stop, std::size_t I, typename F>
+// struct for_each_dispatcher {
+//     template<typename T, typename... Args>
+//     static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
+//         f(I, std::forward<T>(value));
+//         for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
+//     }
+// };
+//
+// template<std::size_t I, typename F>
+// struct for_each_dispatcher<true, I, F> {
+//     static void run(const F& f) {}// NOLINT(*)
+// };
+
+// template<typename F, typename... Args>
+// void for_each(const F& f, Args&&... args) {// NOLINT(*)
+//     for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
+// }
 
 template<typename T>
 struct ModuleVTableEntryHelper {};
@@ -1390,11 +1399,11 @@ struct EnumeratedParamPack {
             using TExpander = int[];
             (void) TExpander{
                     0,
-                    (Functor<EnumArgs::i, typename EnumArgs::T>::F(std::forward<ExtraParams>(extra_params)),
-                     0)...,
+                    (Functor<EnumArgs::i, typename EnumArgs::T>::F(std::forward<ExtraParams>(extra_params)), 0)...,
             };
         }
     };
+
     struct InvokeWithArg {
         template<template<size_t i, typename TArgument> class Functor, typename ExtraParams,
                  typename... Params>
@@ -1597,10 +1606,9 @@ struct Type2Str<Array<T>> {
 template<typename T>
 struct TypeSimplifier {
     static std::string v() {
-        using U = typename std::remove_cv<
-                typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
-        return (std::is_const<T>::value ? "const " : "") + Type2Str<U>::v() +
-               (std::is_pointer<T>::value ? "*" : "") + (std::is_reference<T>::value ? "&" : "");
+        using U = std::remove_cv_t<std::remove_reference_t<std::remove_pointer_t<T>>>;
+        return (std::is_const_v<T> ? "const " : "") + Type2Str<U>::v() +
+               (std::is_pointer_v<T> ? "*" : "") + (std::is_reference_v<T> ? "&" : "");
     }
 };
 
@@ -1633,73 +1641,90 @@ struct SignaturePrinter {
 }// namespace detail
 
 
-/* \brief argument settter to PackedFunc */
+/* \brief argument setter to PackedFunc */
 class TVMArgsSetter {
 public:
     TVMArgsSetter(TVMValue* values, int* type_codes) : values_(values), type_codes_(type_codes) {}
+
     // setters for POD types
-    template<typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+    template<typename T,
+             typename = std::enable_if_t<std::is_integral_v<T>>>
     TVM_ALWAYS_INLINE void operator()(size_t i, T value) const {
         values_[i].v_int64 = static_cast<int64_t>(value);
         type_codes_[i] = static_cast<int>(DLDataTypeCode::kDLInt);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, bool value) const {
         values_[i].v_int64 = value;
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMArgBool);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, uint64_t value) const {
         values_[i].v_int64 = static_cast<int64_t>(value);
         CHECK_LE(value, static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
         type_codes_[i] = static_cast<int>(DLDataTypeCode::kDLInt);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, double value) const {
         values_[i].v_float64 = value;
         type_codes_[i] = static_cast<int>(DLDataTypeCode::kDLFloat);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, std::nullptr_t value) const {
         values_[i].v_handle = value;
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMNullptr);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, const TVMArgValue& value) const {
         values_[i] = value.value_;
         type_codes_[i] = value.type_code_;
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, void* value) const {
         values_[i].v_handle = value;
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMOpaqueHandle);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, DLTensor* value) const {
         values_[i].v_handle = value;
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMDLTensorHandle);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, Device value) const {
         values_[i].v_device = value;
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kDLDevice);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, DLDataType value) const {
         values_[i].v_type = value;
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMDataType);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, DataType dtype) const {
         operator()(i, dtype.operator DLDataType());
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, const char* value) const {
         values_[i].v_str = value;
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMStr);
     }
+
     // setters for container types
     TVM_ALWAYS_INLINE void operator()(size_t i, const std::string& value) const {
         values_[i].v_str = value.c_str();
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMStr);
     }
+
     TVM_ALWAYS_INLINE void operator()(size_t i, const TVMByteArray& value) const {
         values_[i].v_handle = const_cast<TVMByteArray*>(&value);
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMBytes);
     }
+
     template<typename FType>
     TVM_ALWAYS_INLINE void operator()(size_t i, const TypedPackedFunc<FType>& value) const {
         operator()(i, value.packed());
     }
+
     void operator()(size_t i, const TVMRetValue& value) const {
         if (value.type_code() == static_cast<int>(TVMArgTypeCode::kTVMStr)) {
             values_[i].v_str = value.ptr<std::string>()->c_str();
@@ -1710,16 +1735,16 @@ public:
             type_codes_[i] = value.type_code();
         }
     }
+
     // ObjectRef handling
     template<typename TObjectRef,
-             typename = typename std::enable_if<std::is_base_of<ObjectRef, TObjectRef>::value>::type>
+             typename = std::enable_if_t<std::is_base_of_v<ObjectRef, TObjectRef>>>
     TVM_ALWAYS_INLINE void operator()(size_t i, const TObjectRef& value) const {
         this->SetObject(i, value);
     }
 
     template<typename TObjectRef,
-             typename = typename std::enable_if<std::is_base_of<
-                     ObjectRef, typename std::remove_reference<TObjectRef>::type>::value>::type>
+             typename = std::enable_if_t<std::is_base_of_v<ObjectRef, std::remove_reference_t<TObjectRef>>>>
     TVM_ALWAYS_INLINE void operator()(size_t i, TObjectRef&& value) const {
         this->SetObject(i, std::forward<TObjectRef>(value));
     }
@@ -1741,8 +1766,7 @@ TVMRetValue PackedFunc::operator()(Args&&... args) const {
     int type_codes[kArraySize];
     detail::for_each(TVMArgsSetter(values, type_codes), std::forward<Args>(args)...);
     TVMRetValue rv;
-    (static_cast<PackedFuncObj*>(data_.get()))
-            ->CallPacked(TVMArgs(values, type_codes, kNumArgs), &rv);
+    static_cast<PackedFuncObj*>(data_.get())->CallPacked(TVMArgs(values, type_codes, kNumArgs), &rv);
     return rv;
 }
 
@@ -1899,7 +1923,7 @@ TVM_ALWAYS_INLINE R TypedPackedFunc<R(Args...)>::operator()(Args... args) const 
 // We use type traits to eliminate un-necessary checks.
 template<typename T>
 void TVMArgsSetter::SetObject(size_t i, T&& value) const {
-    using ContainerType = typename std::remove_reference<T>::type::ContainerType;
+    using ContainerType = typename std::remove_reference_t<T>::ContainerType;
     if (!value.defined()) {
         type_codes_[i] = static_cast<int>(TVMArgTypeCode::kTVMNullptr);
         values_[i].v_handle = nullptr;

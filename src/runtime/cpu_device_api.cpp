@@ -95,7 +95,7 @@ public:
         int ret = posix_memalign(&ptr, alignment, nbytes);
         if (ret != 0) throw std::bad_alloc();
 #endif
-        std::cout << "allocate " << nbytes << " bytes memory, alignment = " << alignment << std::endl;
+        // std::cout << "allocate " << nbytes << " bytes memory, alignment = " << alignment << std::endl;
         return ptr;
     }
 
@@ -105,7 +105,7 @@ public:
 #else
         free(ptr);
 #endif
-        std::cout << "free memory.\n";
+        // std::cout << "free memory.\n";
     }
 
     void StreamSync(Device dev, TVMStreamHandle stream) override {}

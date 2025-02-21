@@ -301,9 +301,9 @@ struct TVMByteArray {
     size_t size;
 };
 
-// #ifdef __cplusplus
-// extern "C" {
-// #endif
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*!
  * \brief return str message of the last error
@@ -417,8 +417,8 @@ LITETVM_API int TVMArrayToDLPack(TVMArrayHandle from, DLManagedTensor** out);
 LITETVM_API void TVMDLManagedTensorCallDeleter(DLManagedTensor* dltensor);
 
 
-// #ifdef __cplusplus
-// }  // TVM_EXTERN_C
-// #endif
+#ifdef __cplusplus
+}// TVM_EXTERN_C
+#endif
 
 #endif//LITETVM_RUNTIME_C_RUNTIME_API_H

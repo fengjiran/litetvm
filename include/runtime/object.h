@@ -10,10 +10,10 @@
 #include <cstdint>
 #include <dmlc/logging.h>
 // #include <glog/logging.h>
+#include <format>
+#include <functional>
 #include <optional>
 #include <string>
-#include <functional>
-#include <format>
 
 /*!
  * \brief Whether or not use atomic reference counter.
@@ -780,6 +780,11 @@ SubRef Downcast(BaseRef ref) {
 #else
 #define TVM_ATTRIBUTE_UNUSED
 #endif
+
+#define UNUSED(expr)   \
+    do {               \
+        (void) (expr); \
+    } while (0);
 
 #define TVM_STR_CONCAT_(__x, __y) __x##__y
 #define TVM_STR_CONCAT(__x, __y) TVM_STR_CONCAT_(__x, __y)
