@@ -196,12 +196,12 @@ using FSig = std::string();
 template<typename R, typename... Args>
 class TypedPackedFunc<R(Args...)> {
 public:
-    /*! \brief short hand for this function type */
-    using TSelf = TypedPackedFunc<R(Args...)>;
+    /*! \brief shorthand for this function type */
+    using TSelf = TypedPackedFunc;
     /*! \brief default constructor */
-    TypedPackedFunc() {}
+    TypedPackedFunc() = default;
     /*! \brief constructor from null */
-    TypedPackedFunc(std::nullptr_t null) {}// NOLINT(*)
+    TypedPackedFunc(std::nullptr_t) {}// NOLINT(*)
     /*!
    * \brief construct by wrap a PackedFunc
    *
@@ -219,22 +219,26 @@ public:
    *
    * \param packed The packed function
    */
-    inline TypedPackedFunc(PackedFunc packed);// NOLINT(*)
+    explicit TypedPackedFunc(PackedFunc packed);
+
     /*!
    * \brief constructor from TVMRetValue
    * \param value The TVMRetValue
    */
-    inline TypedPackedFunc(const TVMRetValue& value);// NOLINT(*)
+    explicit TypedPackedFunc(const TVMRetValue& value);
+
     /*!
    * \brief constructor from TVMArgValue
    * \param value The TVMArgValue
    */
-    inline TypedPackedFunc(const TVMArgValue& value);// NOLINT(*)
+    TypedPackedFunc(const TVMArgValue& value);// NOLINT(*)
+
     /*!
    * \brief constructor from TVMMovableArgValue_
    * \param value The TVMMovableArgValue_
    */
-    inline TypedPackedFunc(TVMMovableArgValueWithContext_&& value);// NOLINT(*)
+    TypedPackedFunc(TVMMovableArgValueWithContext_&& value);// NOLINT(*)
+
     /*!
    * \brief construct from a lambda function with the same signature.
    *
@@ -251,8 +255,8 @@ public:
    * \param name the name of the lambda function.
    * \tparam FLambda the type of the lambda function.
    */
-    template<typename FLambda, typename = typename std::enable_if<std::is_convertible<
-                                       FLambda, std::function<R(Args...)>>::value>::type>
+    template<typename FLambda,
+             typename = std::enable_if_t<std::is_convertible_v<FLambda, std::function<R(Args...)>>>>
     TypedPackedFunc(const FLambda& typed_lambda, std::string name) {// NOLINT(*)
         this->AssignTypedLambda(typed_lambda, name);
     }
@@ -274,8 +278,8 @@ public:
    * \param typed_lambda typed lambda function.
    * \tparam FLambda the type of the lambda function.
    */
-    template<typename FLambda, typename = typename std::enable_if<std::is_convertible<
-                                       FLambda, std::function<R(Args...)>>::value>::type>
+    template<typename FLambda,
+             typename = std::enable_if_t<std::is_convertible_v<FLambda, std::function<R(Args...)>>>>
     TypedPackedFunc(const FLambda& typed_lambda) {// NOLINT(*)
         this->AssignTypedLambda(typed_lambda);
     }
@@ -295,22 +299,23 @@ public:
    * \tparam FLambda the type of the lambda function.
    * \returns reference to self.
    */
-    template<typename FLambda, typename = typename std::enable_if<
-                                       std::is_convertible<FLambda,
-                                                           std::function<R(Args...)>>::value>::type>
+    template<typename FLambda,
+    typename = std::enable_if_t<std::is_convertible_v<FLambda,std::function<R(Args...)>>>>
     TSelf& operator=(FLambda typed_lambda) {// NOLINT(*)
         this->AssignTypedLambda(typed_lambda);
         return *this;
     }
+
     /*!
    * \brief copy assignment operator from PackedFunc.
    * \param packed The packed function.
    * \returns reference to self.
    */
-    TSelf& operator=(PackedFunc packed) {
+    TSelf& operator=(const PackedFunc& packed) {
         packed_ = packed;
         return *this;
     }
+
     /*!
    * \brief Invoke the operator.
    * \param args The arguments
@@ -327,14 +332,15 @@ public:
    */
     const PackedFunc& packed() const { return packed_; }
     /*! \return Whether the packed function is nullptr */
-    bool operator==(std::nullptr_t null) const { return packed_ == nullptr; }
+    bool operator==(std::nullptr_t) const { return packed_ == nullptr; }
     /*! \return Whether the packed function is not nullptr */
-    bool operator!=(std::nullptr_t null) const { return packed_ != nullptr; }
+    bool operator!=(std::nullptr_t) const { return packed_ != nullptr; }
 
 private:
     friend class TVMRetValue;
     /*! \brief The internal packed function */
     PackedFunc packed_;
+
     /*!
    * \brief Assign the packed field using a typed lambda function.
    *
@@ -1041,7 +1047,8 @@ public:
              typename = std::enable_if_t<std::is_base_of_v<ObjectRef, TObjectRef>>>
     TVMRetValue& operator=(TObjectRef other);
 
-    template<typename T, typename = std::enable_if_t<std::is_class_v<T>>>
+    template<typename T,
+             typename = std::enable_if_t<std::is_class_v<T>>>
     operator T() const;
 
 private:
@@ -1394,7 +1401,8 @@ namespace parameter_pack {
 template<typename... EnumArgs>
 struct EnumeratedParamPack {
     struct InvokeWithoutArg {
-        template<template<size_t i, typename TArgument> class Functor, typename ExtraParams>
+        template<template<size_t i, typename TArgument> class Functor,
+                 typename ExtraParams>
         static void F(ExtraParams&& extra_params) {
             using TExpander = int[];
             (void) TExpander{
@@ -1405,7 +1413,8 @@ struct EnumeratedParamPack {
     };
 
     struct InvokeWithArg {
-        template<template<size_t i, typename TArgument> class Functor, typename ExtraParams,
+        template<template<size_t i, typename TArgument> class Functor,
+                 typename ExtraParams,
                  typename... Params>
         static void F(ExtraParams&& extra_params, Params&&... params) {
             using TExpander = int[];
@@ -1424,7 +1433,7 @@ struct EnumerateImpl {
 private:
     template<size_t _i, typename _T>
     struct Item {
-        static const constexpr size_t i = _i;
+        static constexpr size_t i = _i;
         using T = _T;
     };
 
@@ -1450,10 +1459,10 @@ using EnumerateWithArg = typename EnumerateImpl<Args...>::WithArg;
 
 template<typename... Args>
 struct ParamPack {
-    template<template<size_t i, typename TArgument> class Functor, typename ExtraParams>
+    template<template<size_t i, typename TArgument> class Functor,
+             typename ExtraParams>
     static void InvokeWithoutArg(ExtraParams&& extra_params) {
-        EnumerateWithoutArg<Args...>::template F<Functor, ExtraParams>(
-                std::forward<ExtraParams>(extra_params));
+        EnumerateWithoutArg<Args...>::template F<Functor, ExtraParams>(std::forward<ExtraParams>(extra_params));
     }
 };
 
@@ -1473,7 +1482,7 @@ struct func_signature_helper<R (T::*)(Args...)> {
     using FType = R(Args...);
     using ParamType = parameter_pack::ParamPack<Args...>;
     using RetType = R;
-    static_assert(!std::is_reference<R>::value, "TypedPackedFunc return reference");
+    static_assert(!std::is_reference_v<R>, "TypedPackedFunc return reference");
 };
 
 template<typename T, typename R, typename... Args>
@@ -1481,7 +1490,7 @@ struct func_signature_helper<R (T::*)(Args...) const> {
     using FType = R(Args...);
     using ParamType = parameter_pack::ParamPack<Args...>;
     using RetType = R;
-    static_assert(!std::is_reference<R>::value, "TypedPackedFunc return reference");
+    static_assert(!std::is_reference_v<R>, "TypedPackedFunc return reference");
 };
 
 /*!
@@ -1501,16 +1510,16 @@ struct function_signature<R(Args...)> {
     using FType = R(Args...);
     using ParamType = parameter_pack::ParamPack<Args...>;
     using RetType = R;
-    static_assert(!std::is_reference<R>::value, "TypedPackedFunc return reference");
+    static_assert(!std::is_reference_v<R>, "TypedPackedFunc return reference");
 };
 
 // handle case of function ptr.
 template<typename R, typename... Args>
 struct function_signature<R (*)(Args...)> {
     using FType = R(Args...);
-    using ParamType = detail::parameter_pack::ParamPack<Args...>;
+    using ParamType = parameter_pack::ParamPack<Args...>;
     using RetType = R;
-    static_assert(!std::is_reference<R>::value, "TypedPackedFunc return reference");
+    static_assert(!std::is_reference_v<R>, "TypedPackedFunc return reference");
 };
 
 template<typename TSignature>
@@ -1523,7 +1532,7 @@ struct TypeSimplifier;
 
 template<typename T>
 struct Type2Str {
-    template<typename = std::enable_if_t<std::is_base_of<ObjectRef, T>::value>>
+    template<typename = std::enable_if_t<std::is_base_of_v<ObjectRef, T>>>
     static std::string v() {
         return T::ContainerType::_type_key;
     }
@@ -1870,7 +1879,7 @@ struct typed_packed_call_dispatcher<void> {
 }// namespace detail
 
 template<typename R, typename... Args>
-TypedPackedFunc<R(Args...)>::TypedPackedFunc(PackedFunc packed) : packed_(packed) {}
+TypedPackedFunc<R(Args...)>::TypedPackedFunc(PackedFunc packed) : packed_(std::move(packed)) {}
 
 template<typename R, typename... Args>
 TypedPackedFunc<R(Args...)>::TypedPackedFunc(const TVMRetValue& value)
@@ -1886,7 +1895,7 @@ TypedPackedFunc<R(Args...)>::TypedPackedFunc(TVMMovableArgValueWithContext_&& va
 
 template<typename R, typename... Args>
 template<typename FType>
-inline void TypedPackedFunc<R(Args...)>::AssignTypedLambda(FType flambda, std::string name) {
+void TypedPackedFunc<R(Args...)>::AssignTypedLambda(FType flambda, std::string name) {
     FSig* f_sig = detail::SignaturePrinter<detail::function_signature<FType>>::F;
     packed_ = PackedFunc([flambda, name, f_sig](const TVMArgs& args, TVMRetValue* rv) {
         if (args.size() != sizeof...(Args)) {
@@ -1899,7 +1908,7 @@ inline void TypedPackedFunc<R(Args...)>::AssignTypedLambda(FType flambda, std::s
 
 template<typename R, typename... Args>
 template<typename FType>
-inline void TypedPackedFunc<R(Args...)>::AssignTypedLambda(FType flambda) {
+void TypedPackedFunc<R(Args...)>::AssignTypedLambda(FType flambda) {
     FSig* f_sig = detail::SignaturePrinter<detail::function_signature<FType>>::F;
     packed_ = PackedFunc([flambda, f_sig](const TVMArgs& args, TVMRetValue* rv) {
         if (args.size() != sizeof...(Args)) {
