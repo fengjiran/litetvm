@@ -263,7 +263,7 @@ inline constexpr bool is_valid_iterator_v = is_valid_iterator<T, IterType>::valu
  * \tparam T The content ObjectRef type.
  */
 template<typename T,
-         typename = typename std::enable_if<std::is_base_of<ObjectRef, T>::value>::type>
+         typename = std::enable_if_t<std::is_base_of_v<ObjectRef, T>>>
 class Array : public ObjectRef {
 public:
     using value_type = T;
@@ -636,7 +636,8 @@ public:
    * \tparam F the type of the mutation function.
    * \note This function performs copy on write optimization.
    */
-    template<typename F, typename = std::enable_if_t<std::is_same_v<T, std::invoke_result_t<F, T>>>>
+    template<typename F,
+             typename = std::enable_if_t<std::is_same_v<T, std::invoke_result_t<F, T>>>>
     void MutateByApply(F fmutate) {
         data_ = MapHelper(std::move(data_), fmutate);
     }
@@ -873,7 +874,7 @@ inline constexpr bool is_tvm_array<Array<T>> = true;
  * \return The concatenated Array. Original Arrays are kept unchanged.
  */
 template<typename T,
-         typename = typename std::enable_if<std::is_base_of<ObjectRef, T>::value>::type>
+         typename = std::enable_if_t<std::is_base_of_v<ObjectRef, T>>>
 Array<T> Concat(Array<T> lhs, const Array<T>& rhs) {
     for (const auto& x: rhs) {
         lhs.push_back(x);

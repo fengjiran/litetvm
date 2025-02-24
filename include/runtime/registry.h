@@ -178,7 +178,7 @@ public:
    */
     template<typename T, typename R, typename... Args>
     Registry& set_body_method(R (T::*f)(Args...)) {
-        using R_ = typename std::remove_reference<R>::type;
+        using R_ = std::remove_reference_t<R>;
         auto fwrap = [f](T target, Args... params) -> R_ {
             // call method pointer
             return (target.*f)(params...);

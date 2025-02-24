@@ -2,8 +2,8 @@
 // Created by 赵丹 on 25-2-6.
 //
 
-#ifndef MAP_H
-#define MAP_H
+#ifndef LITETVM_RUNTIME_MAP_H
+#define LITETVM_RUNTIME_MAP_H
 
 #include "runtime/base.h"
 #include "runtime/optional.h"
@@ -14,6 +14,7 @@
 namespace litetvm {
 
 namespace runtime {
+
 class MapNode : public Object {
 public:
     /*! \brief Type of the keys in the hash map */
@@ -29,7 +30,7 @@ public:
     static_assert(sizeof(KVType) == 16 || sizeof(KVType) == 8, "sizeof(KVType) incorrect");
 
     static constexpr uint32_t _type_index = static_cast<uint32_t>(TypeIndex::kRuntimeMap);
-    static constexpr const char* _type_key = "Map";
+    static constexpr const char* _type_key = "runtime.Map";
     TVM_DECLARE_FINAL_OBJECT_INFO(MapNode, Object);
 
     /*!
@@ -1115,8 +1116,8 @@ ObjectPtr<MapNode> make_object<>() = delete;
  * \tparam V The value NodeRef type.
  */
 template<typename K, typename V,
-         typename = typename std::enable_if<std::is_base_of<ObjectRef, K>::value>::type,
-         typename = typename std::enable_if<std::is_base_of<ObjectRef, V>::value>::type>
+         typename = std::enable_if_t<std::is_base_of_v<ObjectRef, K>>,
+         typename = std::enable_if_t<std::is_base_of_v<ObjectRef, V>>>
 class Map : public ObjectRef {
 public:
     using key_type = K;
@@ -1329,4 +1330,4 @@ using runtime::Map;
 using runtime::MapNode;
 }// namespace litetvm
 
-#endif//MAP_H
+#endif//LITETVM_RUNTIME_MAP_H

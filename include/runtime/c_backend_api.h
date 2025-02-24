@@ -7,9 +7,9 @@
 
 #include "runtime/c_runtime_api.h"
 
-// #ifdef __cplusplus
-// extern "C" {
-// #endif
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*!
  * \brief Signature for backend functions exported as DLL.
@@ -143,9 +143,9 @@ int TVMBackendParallelBarrier(int task_id, TVMParallelGroupEnv* penv);
  */
 int TVMBackendRunOnce(void** handle, int (*f)(void*), void* cdata, int nbytes);
 
-// #ifdef __cplusplus
-// }  // TVM_EXTERN_C
-// #endif
+#ifdef __cplusplus
+}  // TVM_EXTERN_C
+#endif
 
 // int TVMBackendGetFuncFromEnv(void* mod_node, const char* func_name, TVMFunctionHandle* out);
 

@@ -5,5 +5,7 @@
 #include "runtime/packed_func.h"
 
 namespace litetvm::runtime {
+
 TVM_REGISTER_OBJECT_TYPE(PackedFuncObj);
+
 }

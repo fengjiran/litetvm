@@ -12,8 +12,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace litetvm {
-namespace runtime {
+namespace litetvm::runtime {
 
 /*!
  * \brief Get file format from given file name or format argument.
@@ -155,7 +154,7 @@ private:
     bool read_;
 };// class SimpleBinaryFileStream
 
-}// namespace runtime
-}// namespace litetvm
+} // namespace litetvm::runtime
+
 
 #endif//FILE_UTILS_H
