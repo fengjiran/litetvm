@@ -111,7 +111,7 @@ public:
    * \brief Destroy the Inplace Array Base object
    */
     ~InplaceArrayBase() {
-        if (!(std::is_standard_layout<ElemType>::value && std::is_trivial<ElemType>::value)) {
+        if (!(std::is_standard_layout_v<ElemType> && std::is_trivial_v<ElemType>) ) {
             size_t size = Self()->GetSize();
             for (size_t i = 0; i < size; ++i) {
                 auto* fp = reinterpret_cast<ElemType*>(AddressOf(i));
@@ -155,8 +155,7 @@ protected:
     NODISCARD void* AddressOf(size_t idx) const {
         static_assert(
                 alignof(ArrayType) % alignof(ElemType) == 0 && sizeof(ArrayType) % alignof(ElemType) == 0,
-                "The size and alignment of ArrayType should respect "
-                "ElemType's alignment.");
+                "The size and alignment of ArrayType should respect ElemType's alignment.");
 
         size_t kDataStart = sizeof(ArrayType);
         ArrayType* self = Self();
