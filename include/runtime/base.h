@@ -179,32 +179,40 @@ public:
     using iterator_category = typename std::iterator_traits<TIter>::iterator_category;
 
     explicit IterAdapter(TIter iter) : iter_(iter) {}
+
     IterAdapter& operator++() {
         ++iter_;
         return *this;
     }
+
     IterAdapter& operator--() {
         --iter_;
         return *this;
     }
+
     IterAdapter operator++(int) {
         IterAdapter copy = *this;
         ++iter_;
         return copy;
     }
+
     IterAdapter operator--(int) {
         IterAdapter copy = *this;
         --iter_;
         return copy;
     }
 
-    IterAdapter operator+(difference_type offset) const { return IterAdapter(iter_ + offset); }
+    IterAdapter operator+(difference_type offset) const {
+        return IterAdapter(iter_ + offset);
+    }
 
-    IterAdapter operator-(difference_type offset) const { return IterAdapter(iter_ - offset); }
+    IterAdapter operator-(difference_type offset) const {
+        return IterAdapter(iter_ - offset);
+    }
 
     template<typename T = IterAdapter>
-    typename std::enable_if<std::is_same<iterator_category, std::random_access_iterator_tag>::value,
-                            typename T::difference_type>::type inline
+    std::enable_if_t<std::is_same_v<iterator_category, std::random_access_iterator_tag>,
+                     typename T::difference_type>
     operator-(const IterAdapter& rhs) const {
         return iter_ - rhs.iter_;
     }
@@ -232,31 +240,36 @@ public:
     using iterator_category = typename std::iterator_traits<TIter>::iterator_category;
 
     explicit ReverseIterAdapter(TIter iter) : iter_(iter) {}
+
     ReverseIterAdapter& operator++() {
         --iter_;
         return *this;
     }
+
     ReverseIterAdapter& operator--() {
         ++iter_;
         return *this;
     }
+
     ReverseIterAdapter operator++(int) {
         ReverseIterAdapter copy = *this;
         --iter_;
         return copy;
     }
+
     ReverseIterAdapter operator--(int) {
         ReverseIterAdapter copy = *this;
         ++iter_;
         return copy;
     }
+
     ReverseIterAdapter operator+(difference_type offset) const {
         return ReverseIterAdapter(iter_ - offset);
     }
 
     template<typename T = ReverseIterAdapter>
-    typename std::enable_if<std::is_same<iterator_category, std::random_access_iterator_tag>::value,
-                            typename T::difference_type>::type inline
+    std::enable_if_t<std::is_same_v<iterator_category, std::random_access_iterator_tag>,
+                     typename T::difference_type>
     operator-(const ReverseIterAdapter& rhs) const {
         return rhs.iter_ - iter_;
     }
