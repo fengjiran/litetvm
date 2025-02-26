@@ -9,6 +9,7 @@
 #include "runtime/registry.h"
 #include "runtime/shape_tuple.h"
 #include "runtime/type_context.h"
+#include "ir/expr.h"
 
 using namespace litetvm::runtime;
 
