@@ -93,7 +93,7 @@ public:
     const ElemType& operator[](size_t idx) const {
         size_t size = Self()->GetSize();
         CHECK_LT(idx, size) << "Index " << idx << " out of bounds " << size << "\n";
-        return *(reinterpret_cast<ElemType*>(AddressOf(idx)));
+        return *(static_cast<ElemType*>(AddressOf(idx)));
     }
 
     /*!
@@ -104,7 +104,7 @@ public:
     ElemType& operator[](size_t idx) {
         size_t size = Self()->GetSize();
         CHECK_LT(idx, size) << "Index " << idx << " out of bounds " << size << "\n";
-        return *(reinterpret_cast<ElemType*>(AddressOf(idx)));
+        return *(static_cast<ElemType*>(AddressOf(idx)));
     }
 
     /*!
@@ -114,7 +114,7 @@ public:
         if (!(std::is_standard_layout_v<ElemType> && std::is_trivial_v<ElemType>) ) {
             size_t size = Self()->GetSize();
             for (size_t i = 0; i < size; ++i) {
-                auto* fp = reinterpret_cast<ElemType*>(AddressOf(i));
+                auto* fp = static_cast<ElemType*>(AddressOf(i));
                 fp->ElemType::~ElemType();
             }
         }
@@ -153,9 +153,9 @@ protected:
    * \return Raw pointer to the element.
    */
     NODISCARD void* AddressOf(size_t idx) const {
-        static_assert(
-                alignof(ArrayType) % alignof(ElemType) == 0 && sizeof(ArrayType) % alignof(ElemType) == 0,
-                "The size and alignment of ArrayType should respect ElemType's alignment.");
+        static_assert(alignof(ArrayType) % alignof(ElemType) == 0 &&
+                              sizeof(ArrayType) % alignof(ElemType) == 0,
+                      "The size and alignment of ArrayType should respect ElemType's alignment.");
 
         size_t kDataStart = sizeof(ArrayType);
         ArrayType* self = Self();
