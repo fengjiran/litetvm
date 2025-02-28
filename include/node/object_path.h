@@ -86,9 +86,6 @@ protected:
     explicit ObjectPathNode(const ObjectPathNode* parent)
         : parent_(GetRef<ObjectRef>(parent)), length_(parent ? parent->length_ + 1 : 1) {}
 
-    friend class ObjectPath;
-    friend std::string GetObjectPathRepr(const ObjectPathNode* node);
-
     const ObjectPathNode* ParentNode() const;
 
     /*! Compares just the last node of the path, without comparing the whole path. */
@@ -99,6 +96,9 @@ protected:
 private:
     Optional<ObjectRef> parent_;
     int32_t length_;
+
+    friend class ObjectPath;
+    friend std::string GetObjectPathRepr(const ObjectPathNode* node);
 };
 
 class ObjectPath : public ObjectRef {
@@ -107,6 +107,162 @@ public:
     static ObjectPath Root(Optional<String> name = NullOpt);
 
     TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(ObjectPath, ObjectRef, ObjectPathNode);
+};
+
+
+//-------------------------------------------------------------------------
+//-----   Concrete object path nodes   ------------------------------------
+//-------------------------------------------------------------------------
+
+// ----- Root -----
+
+class RootPathNode final : public ObjectPathNode {
+public:
+    Optional<String> name;
+
+    explicit RootPathNode(const Optional<String>& name = NullOpt);
+
+    static constexpr const char* _type_key = "RootPath";
+    TVM_DECLARE_FINAL_OBJECT_INFO(RootPathNode, ObjectPathNode);
+
+protected:
+    bool LastNodeEqual(const ObjectPathNode* other) const override;
+    std::string LastNodeString() const override;
+};
+
+class RootPath : public ObjectPath {
+public:
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(RootPath, ObjectPath, RootPathNode);
+};
+
+// ----- Attribute access -----
+
+class AttributeAccessPathNode final : public ObjectPathNode {
+public:
+    /*! \brief Name of the attribute being accessed. Must be a static string. */
+    String attr_key;
+
+    explicit AttributeAccessPathNode(const ObjectPathNode* parent, String attr_key);
+
+    static constexpr const char* _type_key = "AttributeAccessPath";
+    TVM_DECLARE_FINAL_OBJECT_INFO(AttributeAccessPathNode, ObjectPathNode);
+
+protected:
+    bool LastNodeEqual(const ObjectPathNode* other) const override;
+    std::string LastNodeString() const override;
+};
+
+class AttributeAccessPath : public ObjectPath {
+public:
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(AttributeAccessPath, ObjectPath,
+                                              AttributeAccessPathNode);
+};
+
+// ----- Unknown attribute access -----
+
+class UnknownAttributeAccessPathNode final : public ObjectPathNode {
+public:
+    explicit UnknownAttributeAccessPathNode(const ObjectPathNode* parent);
+
+    static constexpr const char* _type_key = "UnknownAttributeAccessPath";
+    TVM_DECLARE_FINAL_OBJECT_INFO(UnknownAttributeAccessPathNode, ObjectPathNode);
+
+protected:
+    bool LastNodeEqual(const ObjectPathNode* other) const final;
+    std::string LastNodeString() const final;
+};
+
+class UnknownAttributeAccessPath : public ObjectPath {
+public:
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(UnknownAttributeAccessPath, ObjectPath,
+                                              UnknownAttributeAccessPathNode);
+};
+
+// ----- Array element access by index -----
+
+class ArrayIndexPathNode : public ObjectPathNode {
+public:
+    /*! \brief Index of the array element that is being accessed. */
+    int32_t index;
+
+    explicit ArrayIndexPathNode(const ObjectPathNode* parent, int32_t index);
+
+    static constexpr const char* _type_key = "ArrayIndexPath";
+    TVM_DECLARE_FINAL_OBJECT_INFO(ArrayIndexPathNode, ObjectPathNode);
+
+protected:
+    bool LastNodeEqual(const ObjectPathNode* other) const final;
+    std::string LastNodeString() const final;
+};
+
+class ArrayIndexPath : public ObjectPath {
+public:
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(ArrayIndexPath, ObjectPath, ArrayIndexPathNode);
+};
+
+// ----- Missing array element -----
+
+class MissingArrayElementPathNode : public ObjectPathNode {
+public:
+    /*! \brief Index of the array element that is missing. */
+    int32_t index;
+
+    explicit MissingArrayElementPathNode(const ObjectPathNode* parent, int32_t index);
+
+    static constexpr const char* _type_key = "MissingArrayElementPath";
+    TVM_DECLARE_FINAL_OBJECT_INFO(MissingArrayElementPathNode, ObjectPathNode);
+
+protected:
+    bool LastNodeEqual(const ObjectPathNode* other) const final;
+    std::string LastNodeString() const final;
+};
+
+class MissingArrayElementPath : public ObjectPath {
+public:
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(MissingArrayElementPath, ObjectPath,
+                                              MissingArrayElementPathNode);
+};
+
+// ----- Map value -----
+
+class MapValuePathNode : public ObjectPathNode {
+public:
+    /*! \brief Key of the map entry that is being accessed */
+    ObjectRef key;
+
+    explicit MapValuePathNode(const ObjectPathNode* parent, ObjectRef key);
+
+    static constexpr const char* _type_key = "MapValuePath";
+    TVM_DECLARE_FINAL_OBJECT_INFO(MapValuePathNode, ObjectPathNode);
+
+protected:
+    bool LastNodeEqual(const ObjectPathNode* other) const final;
+    std::string LastNodeString() const final;
+};
+
+class MapValuePath : public ObjectPath {
+public:
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(MapValuePath, ObjectPath, MapValuePathNode);
+};
+
+// ----- Missing map entry -----
+
+class MissingMapEntryPathNode : public ObjectPathNode {
+public:
+    explicit MissingMapEntryPathNode(const ObjectPathNode* parent);
+
+    static constexpr const char* _type_key = "MissingMapEntryPath";
+    TVM_DECLARE_FINAL_OBJECT_INFO(MissingMapEntryPathNode, ObjectPathNode);
+
+protected:
+    bool LastNodeEqual(const ObjectPathNode* other) const final;
+    std::string LastNodeString() const final;
+};
+
+class MissingMapEntryPath : public ObjectPath {
+public:
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(MissingMapEntryPath, ObjectPath,
+                                              MissingMapEntryPathNode);
 };
 
 
