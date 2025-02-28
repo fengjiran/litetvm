@@ -3,6 +3,7 @@
 //
 
 #include "node/script_printer.h"
+#include "node/repr_printer.h"
 #include "runtime/registry.h"
 
 namespace litetvm {

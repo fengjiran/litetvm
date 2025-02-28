@@ -26,7 +26,7 @@ public:
     /*! \brief The node to be printed. */
     LITETVM_API void Print(const ObjectRef& node);
     /*! \brief Print indent to the stream */
-    LITETVM_API void PrintIndent();
+    LITETVM_API void PrintIndent() const;
     // Allow registration to be printer.
     using FType = NodeFunctor<void(const ObjectRef&, ReprPrinter*)>;
     LITETVM_API static FType& vtable();
@@ -44,7 +44,7 @@ public:
     /*! \brief The node to be printed. */
     LITETVM_API void Print(const ObjectRef& node);
     /*! \brief Print indent to the stream */
-    LITETVM_API void PrintIndent();
+    LITETVM_API void PrintIndent() const;
     /*! \brief Could the LegacyPrinter dispatch the node */
     LITETVM_API static bool CanDispatch(const ObjectRef& node);
     /*! \brief Return the ostream it maintains */
@@ -71,5 +71,24 @@ LITETVM_API void Dump(const ObjectRef& node);
 LITETVM_API void Dump(const Object* node);
 
 }// namespace litetvm
+
+
+namespace litetvm::runtime {
+
+// default print function for all objects
+// provide in the runtime namespace as this is where objectref originally comes from.
+inline std::ostream& operator<<(std::ostream& os, const ObjectRef& n) {  // NOLINT(*)
+    ReprPrinter(os).Print(n);
+    return os;
+}
+
+inline std::string AsLegacyRepr(const ObjectRef& n) {
+    std::ostringstream os;
+    ReprLegacyPrinter(os).Print(n);
+    return os.str();
+}
+
+}
+
 
 #endif//REPR_PRINTER_H

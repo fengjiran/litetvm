@@ -104,6 +104,10 @@ private:
 };
 
 }// namespace runtime
+
+using runtime::Error;
+using runtime::InternalError;
+
 }// namespace litetvm
 
 #endif//BACK_TRACE_H

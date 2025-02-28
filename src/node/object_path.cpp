@@ -3,6 +3,7 @@
 //
 
 #include "node/object_path.h"
+#include "node/repr_printer.h"
 #include "runtime/memory.h"
 #include "runtime/registry.h"
 
@@ -157,11 +158,11 @@ std::string GetObjectPathRepr(const ObjectPathNode* node) {
     return ret;
 }
 
-// static void PrintObjectPathRepr(const ObjectRef& node, ReprPrinter* p) {
-//     p->stream << GetObjectPathRepr(static_cast<const ObjectPathNode*>(node.get()));
-// }
-//
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<ObjectPathNode>(PrintObjectPathRepr);
+static void PrintObjectPathRepr(const ObjectRef& node, ReprPrinter* p) {
+    p->stream << GetObjectPathRepr(static_cast<const ObjectPathNode*>(node.get()));
+}
+
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<ObjectPathNode>(PrintObjectPathRepr);
 
 // --- Private/protected methods ---
 
@@ -201,7 +202,7 @@ std::string RootPathNode::LastNodeString() const {
     return name.value_or("<root>");
 }
 
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<RootPathNode>(PrintObjectPathRepr);
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<RootPathNode>(PrintObjectPathRepr);
 
 // ----- AttributeAccess -----
 
@@ -215,8 +216,8 @@ bool AttributeAccessPathNode::LastNodeEqual(const ObjectPathNode* other) const {
 
 std::string AttributeAccessPathNode::LastNodeString() const { return "." + attr_key; }
 
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
-//         .set_dispatch<AttributeAccessPathNode>(PrintObjectPathRepr);
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
+        .set_dispatch<AttributeAccessPathNode>(PrintObjectPathRepr);
 
 // ----- UnknownAttributeAccess -----
 
@@ -232,8 +233,8 @@ std::string UnknownAttributeAccessPathNode::LastNodeString() const {
     return ".<unknown attribute>";
 }
 
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
-//         .set_dispatch<UnknownAttributeAccessPathNode>(PrintObjectPathRepr);
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
+        .set_dispatch<UnknownAttributeAccessPathNode>(PrintObjectPathRepr);
 
 // ----- ArrayIndexPath -----
 
@@ -247,7 +248,7 @@ bool ArrayIndexPathNode::LastNodeEqual(const ObjectPathNode* other) const {
 
 std::string ArrayIndexPathNode::LastNodeString() const { return "[" + std::to_string(index) + "]"; }
 
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<ArrayIndexPathNode>(PrintObjectPathRepr);
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<ArrayIndexPathNode>(PrintObjectPathRepr);
 
 // ----- MissingArrayElement -----
 
@@ -264,8 +265,8 @@ std::string MissingArrayElementPathNode::LastNodeString() const {
     return "[<missing element #" + std::to_string(index) + ">]";
 }
 
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
-//         .set_dispatch<MissingArrayElementPathNode>(PrintObjectPathRepr);
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
+        .set_dispatch<MissingArrayElementPathNode>(PrintObjectPathRepr);
 
 // ----- MapValue -----
 
@@ -277,13 +278,13 @@ bool MapValuePathNode::LastNodeEqual(const ObjectPathNode* other) const {
     return ObjectEqual()(key, otherMapValue->key);
 }
 
-// std::string MapValuePathNode::LastNodeString() const {
-//     std::ostringstream s;
-//     s << "[" << key << "]";
-//     return s.str();
-// }
+std::string MapValuePathNode::LastNodeString() const {
+    std::ostringstream s;
+    s << "[" << key << "]";
+    return s.str();
+}
 
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<MapValuePathNode>(PrintObjectPathRepr);
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable).set_dispatch<MapValuePathNode>(PrintObjectPathRepr);
 
 // ----- MissingMapEntry -----
 
@@ -294,8 +295,8 @@ bool MissingMapEntryPathNode::LastNodeEqual(const ObjectPathNode* other) const {
 
 std::string MissingMapEntryPathNode::LastNodeString() const { return "[<missing entry>]"; }
 
-// TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
-//         .set_dispatch<MissingMapEntryPathNode>(PrintObjectPathRepr);
+TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
+        .set_dispatch<MissingMapEntryPathNode>(PrintObjectPathRepr);
 
 
 }// namespace litetvm
