@@ -168,22 +168,47 @@ public:
    * \param repr_bytes Bytes representation of the object if any.
    */
     NODISCARD LITETVM_API ObjectPtr<Object> CreateInitObject(const std::string& type_key,
-                                                             const std::string& repr_bytes = "") const {
-        uint32_t tindex = Object::TypeKey2Index(type_key);
-        if (tindex >= fcreate_.size() || fcreate_[tindex] == nullptr) {
-            LOG(FATAL) << "TypeError: " << type_key << " is not registered via TVM_REGISTER_NODE_TYPE";
-        }
-        return fcreate_[tindex](repr_bytes);
-    }
+                                                             const std::string& repr_bytes = "") const;
 
-  /*!
+    /*!
    * \brief Create an object by giving kwargs about its fields.
    *
    * \param type_key The type key.
    * \param kwargs the arguments in format key1, value1, ..., key_n, value_n.
    * \return The created object.
    */
-  LITETVM_API ObjectRef CreateObject(const std::string& type_key, const runtime::TVMArgs& kwargs);
+    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const runtime::TVMArgs& kwargs);
+
+    /*!
+   * \brief Create an object by giving kwargs about its fields.
+   *
+   * \param type_key The type key.
+   * \param kwargs The field arguments.
+   * \return The created object.
+   */
+    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const Map<String, ObjectRef>& kwargs);
+
+    /*!
+   * \brief Get an field object by the attr name.
+   * \param self The pointer to the object.
+   * \param attr_name The name of the field.
+   * \return The corresponding attribute value.
+   * \note This function will throw an exception if the object does not contain the field.
+   */
+    LITETVM_API runtime::TVMRetValue GetAttr(Object* self, const String& attr_name) const;
+
+    /*!
+   * \brief List all the fields in the object.
+   * \return All the fields.
+   */
+    LITETVM_API std::vector<std::string> ListAttrNames(Object* self) const;
+
+    /*! \return The global singleton. */
+    LITETVM_API static ReflectionVTable* Global();
+
+    class Registry;
+    template<typename T, typename TraitName>
+    Registry Register();
 
 private:
     /*! \brief Attribute visitor. */
@@ -197,6 +222,199 @@ private:
     /*! \brief ReprBytes function. */
     std::vector<FReprBytes> frepr_bytes_;
 };
+
+/*! \brief Registry of a reflection table. */
+class ReflectionVTable::Registry {
+public:
+    Registry(ReflectionVTable* parent, uint32_t type_index)
+        : parent_(parent), type_index_(type_index) {}
+    /*!
+   * \brief Set fcreate function.
+   * \param f The creator function.
+   * \return Reference to self.
+   */
+    Registry& set_creator(FCreate f) {// NOLINT(*)
+        CHECK_LT(type_index_, parent_->fcreate_.size());
+        parent_->fcreate_[type_index_] = f;
+        return *this;
+    }
+    /*!
+   * \brief Set bytes repr function.
+   * \param f The ReprBytes function.
+   * \return Reference to self.
+   */
+    Registry& set_repr_bytes(FReprBytes f) {// NOLINT(*)
+        CHECK_LT(type_index_, parent_->frepr_bytes_.size());
+        parent_->frepr_bytes_[type_index_] = f;
+        return *this;
+    }
+
+private:
+    ReflectionVTable* parent_;
+    uint32_t type_index_;
+};
+
+#define TVM_REFLECTION_REG_VAR_DEF \
+    static TVM_ATTRIBUTE_UNUSED ::litetvm::ReflectionVTable::Registry __make_reflection
+
+/*!
+ * \brief Directly register reflection VTable.
+ * \param TypeName The name of the type.
+ * \param TraitName A trait class that implements functions like VisitAttrs and SEqualReduce.
+ *
+ * \code
+ *
+ *  // Example SEQualReduce traits for runtime StringObj.
+ *
+ *  struct StringObjTrait {
+ *    static constexpr const std::nullptr_t VisitAttrs = nullptr;
+ *
+ *    static void SHashReduce(const runtime::StringObj* key, SHashReducer hash_reduce) {
+ *      hash_reduce->SHashReduceHashedValue(runtime::String::StableHashBytes(key->data, key->size));
+ *    }
+ *
+ *    static bool SEqualReduce(const runtime::StringObj* lhs,
+ *                             const runtime::StringObj* rhs,
+ *                             SEqualReducer equal) {
+ *      if (lhs == rhs) return true;
+ *      if (lhs->size != rhs->size) return false;
+ *      if (lhs->data != rhs->data) return true;
+ *      return std::memcmp(lhs->data, rhs->data, lhs->size) != 0;
+ *    }
+ *  };
+ *
+ *  TVM_REGISTER_REFLECTION_VTABLE(runtime::StringObj, StringObjTrait);
+ *
+ * \endcode
+ *
+ * \note This macro can be called in different place as TVM_REGISTER_OBJECT_TYPE.
+ *       And can be used to register the related reflection functions for runtime objects.
+ */
+#define TVM_REGISTER_REFLECTION_VTABLE(TypeName, TraitName)   \
+    TVM_STR_CONCAT(TVM_REFLECTION_REG_VAR_DEF, __COUNTER__) = \
+            ::litetvm::ReflectionVTable::Global()->Register<TypeName, TraitName>()
+
+/*!
+ * \brief Register a node type to object registry and reflection registry.
+ * \param TypeName The name of the type.
+ * \note This macro will call TVM_REGISTER_OBJECT_TYPE for the type as well.
+ */
+#define TVM_REGISTER_NODE_TYPE(TypeName)                                                   \
+    TVM_REGISTER_OBJECT_TYPE(TypeName);                                                    \
+    TVM_REGISTER_REFLECTION_VTABLE(TypeName, ::litetvm::detail::ReflectionTrait<TypeName>) \
+            .set_creator([](const std::string&) -> ObjectPtr<Object> {                     \
+                return ::litetvm::runtime::make_object<TypeName>();                        \
+            })
+
+// Implementation details
+namespace detail {
+
+template <typename T, bool = T::_type_has_method_visit_attrs>
+struct ImplVisitAttrs {
+  static constexpr const std::nullptr_t VisitAttrs = nullptr;
+};
+
+template <typename T>
+struct ImplVisitAttrs<T, true> {
+  static void VisitAttrs(T* self, AttrVisitor* v) { self->VisitAttrs(v); }
+};
+
+template <typename T, bool = T::_type_has_method_sequal_reduce>
+struct ImplSEqualReduce {
+  static constexpr const std::nullptr_t SEqualReduce = nullptr;
+};
+
+template <typename T>
+struct ImplSEqualReduce<T, true> {
+  static bool SEqualReduce(const T* self, const T* other, SEqualReducer equal) {
+    return self->SEqualReduce(other, equal);
+  }
+};
+
+template <typename T, bool = T::_type_has_method_shash_reduce>
+struct ImplSHashReduce {
+  static constexpr const std::nullptr_t SHashReduce = nullptr;
+};
+
+template <typename T>
+struct ImplSHashReduce<T, true> {
+  static void SHashReduce(const T* self, SHashReducer hash_reduce) {
+    self->SHashReduce(hash_reduce);
+  }
+};
+
+template <typename T>
+struct ReflectionTrait : public ImplVisitAttrs<T>,
+                         public ImplSEqualReduce<T>,
+                         public ImplSHashReduce<T> {};
+
+template <typename T, typename TraitName,
+          bool = std::is_null_pointer<decltype(TraitName::VisitAttrs)>::value>
+struct SelectVisitAttrs {
+  static constexpr const std::nullptr_t VisitAttrs = nullptr;
+};
+
+template <typename T, typename TraitName>
+struct SelectVisitAttrs<T, TraitName, false> {
+  static void VisitAttrs(Object* self, AttrVisitor* v) {
+    TraitName::VisitAttrs(static_cast<T*>(self), v);
+  }
+};
+
+template <typename T, typename TraitName,
+          bool = std::is_null_pointer<decltype(TraitName::SEqualReduce)>::value>
+struct SelectSEqualReduce {
+  static constexpr const std::nullptr_t SEqualReduce = nullptr;
+};
+
+template <typename T, typename TraitName>
+struct SelectSEqualReduce<T, TraitName, false> {
+  static bool SEqualReduce(const Object* self, const Object* other, SEqualReducer equal) {
+    return TraitName::SEqualReduce(static_cast<const T*>(self), static_cast<const T*>(other),
+                                   equal);
+  }
+};
+
+template <typename T, typename TraitName,
+          bool = std::is_null_pointer<decltype(TraitName::SHashReduce)>::value>
+struct SelectSHashReduce {
+  static constexpr const std::nullptr_t SHashReduce = nullptr;
+};
+
+template <typename T, typename TraitName>
+struct SelectSHashReduce<T, TraitName, false> {
+  static void SHashReduce(const Object* self, SHashReducer hash_reduce) {
+    return TraitName::SHashReduce(static_cast<const T*>(self), hash_reduce);
+  }
+};
+
+}  // namespace detail
+
+template <typename T, typename TraitName>
+ReflectionVTable::Registry ReflectionVTable::Register() {
+  uint32_t tindex = T::RuntimeTypeIndex();
+  if (tindex >= fvisit_attrs_.size()) {
+    fvisit_attrs_.resize(tindex + 1, nullptr);
+    fcreate_.resize(tindex + 1, nullptr);
+    frepr_bytes_.resize(tindex + 1, nullptr);
+    fsequal_reduce_.resize(tindex + 1, nullptr);
+    fshash_reduce_.resize(tindex + 1, nullptr);
+  }
+  // functor that implements the redirection.
+  fvisit_attrs_[tindex] = ::litetvm::detail::SelectVisitAttrs<T, TraitName>::VisitAttrs;
+
+  fsequal_reduce_[tindex] = ::litetvm::detail::SelectSEqualReduce<T, TraitName>::SEqualReduce;
+
+  fshash_reduce_[tindex] = ::litetvm::detail::SelectSHashReduce<T, TraitName>::SHashReduce;
+
+  return Registry(this, tindex);
+}
+
+/*!
+ * \brief Given an object and an address of its attribute, return the key of the attribute.
+ * \return nullptr if no attribute with the given address exists.
+ */
+Optional<String> GetAttrKeyByAddress(const Object* object, const void* attr_address);
 
 }// namespace litetvm
 

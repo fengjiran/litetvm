@@ -910,7 +910,7 @@ SubRef Downcast(BaseRef ref) {
                   "Object types that are declared as final, "        \
                   "using the TVM_DECLARE_FINAL_OBJECT_INFO macro."); \
     ObjectName* CopyOnWrite() {                                      \
-        ICHECK(data_ != nullptr);                                    \
+        CHECK(data_ != nullptr);                                    \
         if (!data_.unique()) {                                       \
             auto n = make_object<ObjectName>(*(operator->()));       \
             ObjectPtr<Object>(std::move(n)).swap(data_);             \
