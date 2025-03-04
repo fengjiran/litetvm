@@ -110,4 +110,11 @@ PrinterConfig::PrinterConfig(const Map<String, ObjectRef>& config_dict) {
     this->data_ = std::move(n);
 }
 
+// TVM_REGISTER_NODE_TYPE(PrinterConfigNode);
+TVM_REGISTER_GLOBAL("node.PrinterConfig").set_body_typed([](Map<String, ObjectRef> config_dict) {
+  return PrinterConfig(config_dict);
+});
+TVM_REGISTER_GLOBAL("node.TVMScriptPrinterScript").set_body_typed(TVMScriptPrinter::Script);
+
+
 }// namespace litetvm

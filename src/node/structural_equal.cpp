@@ -8,6 +8,9 @@
 #include "node/repr_printer.h"
 #include "runtime/registry.h"
 
+#include <optional>
+#include <unordered_map>
+
 namespace litetvm {
 
 using runtime::ObjectPtrEqual;

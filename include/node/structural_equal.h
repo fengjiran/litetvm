@@ -408,7 +408,7 @@ public:
      * \brief The entry point for equality testing
      * \param lhs The left operand.
      * \param rhs The right operand.
-     * \param map_free_vars Whether or not to remap variables if possible.
+     * \param map_free_vars Whether to remap variables if possible.
      * \return The equality result.
      */
     virtual bool Equal(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars);
@@ -418,7 +418,7 @@ protected:
      * \brief The dispatcher for equality testing of intermediate objects
      * \param lhs The left operand.
      * \param rhs The right operand.
-     * \param map_free_vars Whether or not to remap variables if possible.
+     * \param map_free_vars Whether to remap variables if possible.
      * \param current_paths Optional paths to `lhs` and `rhs` objects, for error traceability.
      * \return The equality result.
      */
@@ -429,7 +429,6 @@ private:
     class Impl;
     Impl* impl;
 };
-
 
 }// namespace litetvm
 
