@@ -25,6 +25,21 @@ TVM_REGISTER_GLOBAL("node.ObjectPathPairRhsPath")
             return object_path_pair->rhs_path;
         });
 
+namespace {
+ObjectPath GetAttrPath(const ObjectRef& obj, const void* attr_address, const ObjectPath& path) {
+    if (obj->IsInstance<runtime::Int::ContainerType>() ||
+        obj->IsInstance<runtime::Bool::ContainerType>() ||
+        obj->IsInstance<runtime::Float::ContainerType>()) {
+        // Special case for containers that contain boxed primitives.  The
+        // "value" attribute containing the boxed value should not be part
+        // of the reported mismatched path.
+        return path;
+    }
+
+    Optional<String> attr_key = GetAttrKeyByAddress(obj.get(), attr_address);
+    return path->Attr(attr_key);
+}
+}// namespace
 
 struct SEqualReducer::PathTracingData {
     ObjectPathPair current_paths;
