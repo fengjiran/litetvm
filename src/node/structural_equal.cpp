@@ -85,6 +85,59 @@ void SEqualReducer::GetPathsFromAttrAddressesAndStoreMismatch(
     }
 }
 
+template<typename T>
+bool SEqualReducer::CompareAttributeValues(const T& lhs, const T& rhs,
+                                           const PathTracingData* tracing_data,
+                                           Optional<ObjectPathPair> paths) {
+    if (BaseValueEqual()(lhs, rhs)) {
+        return true;
+    }
+
+    if (tracing_data && !tracing_data->first_mismatch->defined()) {
+        if (paths) {
+            *tracing_data->first_mismatch = paths.value();
+        } else {
+            GetPathsFromAttrAddressesAndStoreMismatch(&lhs, &rhs, tracing_data);
+        }
+    }
+    return false;
+}
+
+bool SEqualReducer::operator()(const double& lhs, const double& rhs,
+                               Optional<ObjectPathPair> paths) const {
+    return CompareAttributeValues(lhs, rhs, tracing_data_);
+}
+
+bool SEqualReducer::operator()(const int64_t& lhs, const int64_t& rhs,
+                               Optional<ObjectPathPair> paths) const {
+    return CompareAttributeValues(lhs, rhs, tracing_data_);
+}
+
+bool SEqualReducer::operator()(const uint64_t& lhs, const uint64_t& rhs,
+                               Optional<ObjectPathPair> paths) const {
+    return CompareAttributeValues(lhs, rhs, tracing_data_);
+}
+
+bool SEqualReducer::operator()(const int& lhs, const int& rhs,
+                               Optional<ObjectPathPair> paths) const {
+    return CompareAttributeValues(lhs, rhs, tracing_data_);
+}
+
+bool SEqualReducer::operator()(const bool& lhs, const bool& rhs,
+                               Optional<ObjectPathPair> paths) const {
+    return CompareAttributeValues(lhs, rhs, tracing_data_);
+}
+
+bool SEqualReducer::operator()(const std::string& lhs, const std::string& rhs,
+                               Optional<ObjectPathPair> paths) const {
+    return CompareAttributeValues(lhs, rhs, tracing_data_);
+}
+
+bool SEqualReducer::operator()(const DataType& lhs, const DataType& rhs,
+                               Optional<ObjectPathPair> paths) const {
+    return CompareAttributeValues(lhs, rhs, tracing_data_);
+}
+
 const ObjectPathPair& SEqualReducer::GetCurrentObjectPaths() const {
     CHECK(tracing_data_ != nullptr)
             << "GetCurrentObjectPaths() can only be called when path tracing is enabled";
@@ -495,5 +548,36 @@ TVM_REGISTER_GLOBAL("node.GetFirstStructuralMismatch")
             CHECK(equal == !first_mismatch.defined());
             return first_mismatch;
         });
+
+bool NDArrayEqual(const runtime::NDArray::Container* lhs, const runtime::NDArray::Container* rhs,
+                  SEqualReducer equal, bool compare_data) {
+    if (lhs == rhs) return true;
+
+    auto ldt = lhs->dl_tensor.dtype;
+    auto rdt = rhs->dl_tensor.dtype;
+    CHECK_EQ(lhs->dl_tensor.device.device_type, DLDeviceType::kDLCPU) << "can only compare CPU tensor";
+    CHECK_EQ(rhs->dl_tensor.device.device_type, DLDeviceType::kDLCPU) << "can only compare CPU tensor";
+    CHECK(runtime::IsContiguous(lhs->dl_tensor)) << "Can only compare contiguous tensor";
+    CHECK(runtime::IsContiguous(rhs->dl_tensor)) << "Can only compare contiguous tensor";
+
+    if (lhs->dl_tensor.ndim != rhs->dl_tensor.ndim) return false;
+    for (int i = 0; i < lhs->dl_tensor.ndim; ++i) {
+        if (!equal(lhs->dl_tensor.shape[i], rhs->dl_tensor.shape[i])) return false;
+    }
+    if (ldt.code == rdt.code && ldt.lanes == rdt.lanes && ldt.bits == rdt.bits) {
+        size_t data_size = runtime::GetDataSize(lhs->dl_tensor);
+        if (compare_data) {
+            return std::memcmp(lhs->dl_tensor.data, rhs->dl_tensor.data, data_size) == 0;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool NDArrayContainerTrait::SEqualReduce(const NDArray::Container* lhs,
+                                         const NDArray::Container* rhs,
+                                         SEqualReducer equal) {
+    return NDArrayEqual(lhs, rhs, equal, true);
+}
 
 }// namespace litetvm

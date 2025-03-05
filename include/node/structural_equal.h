@@ -363,20 +363,7 @@ private:
     template<typename T>
     static bool CompareAttributeValues(const T& lhs, const T& rhs,
                                        const PathTracingData* tracing_data,
-                                       Optional<ObjectPathPair> paths = NullOpt) {
-        if (BaseValueEqual()(lhs, rhs)) {
-            return true;
-        }
-
-        if (tracing_data && !tracing_data->first_mismatch->defined()) {
-            if (paths) {
-                *tracing_data->first_mismatch = paths.value();
-            } else {
-                GetPathsFromAttrAddressesAndStoreMismatch(&lhs, &rhs, tracing_data);
-            }
-        }
-        return false;
-    }
+                                       Optional<ObjectPathPair> paths = NullOpt);
 
     /*! \brief Internal class pointer. */
     Handler* handler_ = nullptr;

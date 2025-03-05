@@ -394,3 +394,12 @@ int TVMFuncCall(TVMFunctionHandle func, TVMValue* args, int* arg_type_codes, int
     }
     API_END();
 }
+
+int TVMSynchronize(int device_type, int device_id, TVMStreamHandle stream) {
+    API_BEGIN();
+    DLDevice dev;
+    dev.device_type = static_cast<DLDeviceType>(device_type);
+    dev.device_id = device_id;
+    DeviceAPIManager::Get(dev)->StreamSync(dev, stream);
+    API_END();
+}

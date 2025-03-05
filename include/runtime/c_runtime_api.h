@@ -416,6 +416,16 @@ LITETVM_API int TVMArrayToDLPack(TVMArrayHandle from, DLManagedTensor** out);
  */
 LITETVM_API void TVMDLManagedTensorCallDeleter(DLManagedTensor* dltensor);
 
+/*!
+   * \brief Wait until all computations on stream completes.
+   *
+   * \param device_type The device type.
+   * \param device_id The device id.
+   * \param stream The stream to be synchronized.
+   * \return 0 when success, nonzero when failure happens
+   */
+LITETVM_API int TVMSynchronize(int device_type, int device_id, TVMStreamHandle stream);
+
 
 #ifdef __cplusplus
 }// TVM_EXTERN_C

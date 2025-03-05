@@ -166,7 +166,7 @@ public:
    * \param key The key to be hashed.
    */
     template<typename T,
-             typename = typename std::enable_if<!std::is_base_of<ObjectRef, T>::value>::type>
+             typename = std::enable_if_t<!std::is_base_of_v<ObjectRef, T>>>
     void operator()(const T& key) const {
         // handle normal values.
         handler_->SHashReduceHashedValue(BaseValueHash()(key));
