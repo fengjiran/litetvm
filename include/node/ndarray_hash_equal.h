@@ -13,6 +13,8 @@ namespace litetvm {
 class SEqualReducer;
 class SHashReducer;
 
+using runtime::NDArray;
+
 /*! \brief A custom hash handler that ignores NDArray raw data. */
 class SHashHandlerIgnoreNDArray : public SHashHandlerDefault {
 protected:

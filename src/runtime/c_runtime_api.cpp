@@ -341,6 +341,11 @@ int TVMAPIHandleException(const std::exception& e) {
     return -1;
 }
 
+void TVMAPISetLastError(const char* msg) {
+    auto& last_error = TVMAPIRuntimeStore::Get()->last_error;
+    last_error = msg;
+}
+
 const char* TVMGetLastError() {
     auto* store = TVMAPIRuntimeStore::Get();
     const auto& last_error = store->last_error;

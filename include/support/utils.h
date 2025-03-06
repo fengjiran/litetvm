@@ -26,6 +26,8 @@
 namespace litetvm {
 namespace support {
 
+using runtime::String;
+
 /*!
  * \brief TVMPOpen wrapper of popen between windows / unix.
  * \param command executed command

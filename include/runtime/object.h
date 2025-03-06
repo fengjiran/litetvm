@@ -299,7 +299,7 @@ private:
  * \tparam ObjType The object type
  * \return The corresponding RefType
  */
-template<typename RefType, typename ObjType, typename>
+template<typename RefType, typename ObjType>
 RefType GetRef(const ObjType* ptr);
 
 /*!
@@ -468,7 +468,7 @@ private:
     template<typename>
     friend class BaseAllocator;
 
-    template<typename RefType, typename ObjType, typename>
+    template<typename RefType, typename ObjType>
     friend RefType GetRef(const ObjType* ptr);
 
     template<typename BaseType, typename ObjType>
@@ -631,6 +631,16 @@ protected:
     friend SubRef Downcast(BaseRef ref);
 };
 
+// template<typename RefType,
+//          typename ObjType,
+//          typename = std::enable_if_t<std::is_base_of_v<typename RefType::ContainerType, ObjType>>>
+// RefType GetRef(const ObjType* ptr) {
+//     if (!RefType::_type_is_nullable) {
+//         CHECK(ptr != nullptr);
+//     }
+//     return RefType(ObjectPtr<Object>(const_cast<Object*>(static_cast<const Object*>(ptr))));
+// }
+
 /*!
  * \brief Get an object ptr type from a raw object ptr.
  *
@@ -709,9 +719,10 @@ bool Object::IsInstance() const {
 }
 
 template<typename RefType,
-         typename ObjType,
-         typename = std::enable_if_t<std::is_base_of_v<typename RefType::ContainerType, ObjType>>>
+         typename ObjType>
 RefType GetRef(const ObjType* ptr) {
+    static_assert(std::is_base_of_v<typename RefType::ContainerType, ObjType>,
+                "Can only cast to the ref of same container type");
     if (!RefType::_type_is_nullable) {
         CHECK(ptr != nullptr);
     }

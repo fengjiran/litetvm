@@ -368,7 +368,7 @@ struct ModuleNodeTrait {
 
 void NDArrayHash(const NDArray::Container* arr, SHashReducer* hash_reduce,
                  bool hash_data) {
-    CHECK_EQ(arr->dl_tensor.device.device_type, DLDeviceType::kDLCPU) << "can only compare CPU tensor";
+    CHECK_EQ(static_cast<int>(arr->dl_tensor.device.device_type), static_cast<int>(DLDeviceType::kDLCPU)) << "can only compare CPU tensor";
     CHECK(runtime::IsContiguous(arr->dl_tensor)) << "Can only hash contiguous tensor";
     (*hash_reduce)(runtime::DataType(arr->dl_tensor.dtype));
     (*hash_reduce)(arr->dl_tensor.ndim);
@@ -504,7 +504,7 @@ struct ShapeTupleObjTrait {
 
     static bool SEqualReduce(const ShapeTupleNode* lhs, const ShapeTupleNode* rhs,
                              SEqualReducer equal) {
-        if (lhs->size != rhs->size) return false;
+        if (lhs->size() != rhs->size()) return false;
         for (uint32_t i = 0; i < lhs->size(); ++i) {
             if (!equal(lhs->data()[i], rhs->data()[i])) return false;
         }

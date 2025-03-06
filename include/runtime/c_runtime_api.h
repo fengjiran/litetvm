@@ -305,6 +305,13 @@ struct TVMByteArray {
 extern "C" {
 #endif
 
+  /*!
+ * \brief Used for implementing C API function.
+ *  Set last error message before return.
+ * \param msg The error message to be set.
+ */
+  LITETVM_API void TVMAPISetLastError(const char* msg);
+
 /*!
  * \brief return str message of the last error
  *  all function in this file will return 0 when success

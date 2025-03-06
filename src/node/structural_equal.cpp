@@ -555,8 +555,8 @@ bool NDArrayEqual(const runtime::NDArray::Container* lhs, const runtime::NDArray
 
     auto ldt = lhs->dl_tensor.dtype;
     auto rdt = rhs->dl_tensor.dtype;
-    CHECK_EQ(lhs->dl_tensor.device.device_type, DLDeviceType::kDLCPU) << "can only compare CPU tensor";
-    CHECK_EQ(rhs->dl_tensor.device.device_type, DLDeviceType::kDLCPU) << "can only compare CPU tensor";
+    CHECK_EQ(static_cast<int>(lhs->dl_tensor.device.device_type), static_cast<int>(DLDeviceType::kDLCPU)) << "can only compare CPU tensor";
+    CHECK_EQ(static_cast<int>(rhs->dl_tensor.device.device_type), static_cast<int>(DLDeviceType::kDLCPU)) << "can only compare CPU tensor";
     CHECK(runtime::IsContiguous(lhs->dl_tensor)) << "Can only compare contiguous tensor";
     CHECK(runtime::IsContiguous(rhs->dl_tensor)) << "Can only compare contiguous tensor";
 

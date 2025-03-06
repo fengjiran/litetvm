@@ -1,432 +1,498 @@
 //
-// Created by 赵丹 on 25-3-5.
+// Created by 赵丹 on 25-3-6.
 //
+#include "runtime/array.h"
+#include "runtime/c_backend_api.h"
+#include "runtime/c_runtime_api.h"
+#include "runtime/packed_func.h"
 #include "runtime/registry.h"
 #include "runtime/threading_backend.h"
+#include "support/utils.h"
 
 #include <algorithm>
-#include <thread>
-
-#if defined(__linux__) || defined(__ANDROID__)
-#if __ANDROID_API__ >= 21
-#include <pthread.h>
-#endif
-#include <fstream>
+#include <atomic>
+#include <condition_variable>
+#include <cstring>
+#include <dmlc/logging.h>
+#include <dmlc/thread_local.h>
+#include <memory>
+#include <mutex>
 #include <sstream>
-#else
-#endif
-#if defined(__linux__)
-#include <sched.h>
-#endif
-#if defined(__hexagon__)
-extern "C" {
-#include <qurt_hvx.h>
-}
-#include <dlfcn.h>
-#include <qurt.h>
-#include <stdlib.h>
-#define HEXAGON_STACK_SIZE 65536
-#define HEXAGON_STACK_ALIGNMENT 32
-#endif
-#include <algorithm>
+#include <string>
 #include <thread>
-#define CURRENT_THREAD_HANDLE (static_cast<std::thread::native_handle_type>(0))
+#include <vector>
+
+constexpr int kL1CacheBytes = 64;
 
 namespace litetvm {
 namespace runtime {
-namespace threading {
+namespace {
 
-#ifdef __hexagon__
-// pthreads are broken on older versions of qurt, so
-// we need to use native APIs instead of std::threads
-class QuRTThread {
-    typedef std::function<void()> Callback;
+using support::IsNumber;
+constexpr uint32_t kDefaultSpinCount = 300000;
 
-public:
-    explicit QuRTThread(Callback worker_callback) : worker_callback_(worker_callback) {
-        static int id = 1;
-        qurt_thread_attr_t attr;
-        char name[32];
-        int ret = posix_memalign(&stack_, HEXAGON_STACK_ALIGNMENT, HEXAGON_STACK_SIZE);
-        CHECK_EQ(ret, 0);
-        // When a std::function<> is cast to bool,
-        // it indicates whether it stores a callable target
-        CHECK_EQ((bool) worker_callback_, true);
-        qurt_thread_attr_init(&attr);
-        qurt_thread_attr_set_stack_size(&attr, HEXAGON_STACK_SIZE);
-        qurt_thread_attr_set_stack_addr(&attr, stack_);
-        snprintf(name, sizeof(name), "worker %d", id++);
-        qurt_thread_attr_set_name(&attr, name);
-        ret = qurt_thread_create(&thread_, &attr, (void (*)(void*)) RunFunction, this);
-        CHECK_EQ(ret, QURT_EOK);
+uint32_t GetSpinCount() {
+    const char* val = getenv("TVM_THREAD_POOL_SPIN_COUNT");
+    if (!val) {
+        return kDefaultSpinCount;
     }
-    QuRTThread(QuRTThread&& other)
-        : thread_(other.thread_),
-          worker_callback_(std::move(other.worker_callback_)),
-          stack_(other.stack_) {
-        other.thread_ = 0;
-        other.stack_ = nullptr;
-    }
-    ~QuRTThread() {
-        if (thread_) {
-            join();
-        }
-        if (stack_) {
-            free(stack_);
-        }
-    }
-    bool joinable() const { return qurt_thread_get_id() != thread_; }
-    void join() {
-        int status;
-        qurt_thread_join(thread_, &status);
-    }
-
-private:
-    static void RunFunction(QuRTThread* qrt_thread) {
-        qrt_thread->worker_callback_();
-        qurt_thread_exit(QURT_EOK);
-    }
-    qurt_thread_t thread_;
-    Callback worker_callback_;
-    void* stack_ = nullptr;
-};
-#endif// __hexagon__
-
-// This is a common function used to set thread affinity.
-void SetThreadAffinity(std::thread::native_handle_type thread,
-                       const std::vector<unsigned int>& ids) {
-#if defined(__linux__) || defined(__ANDROID__)
-    if (pthread_equal(thread, CURRENT_THREAD_HANDLE)) {
-        thread = pthread_self();
-    }
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    for (auto id: ids) {
-        CPU_SET(id, &cpuset);
-    }
-#if defined(__ANDROID__)
-#if __ANDROID_API__ >= 21
-    pid_t tid = pthread_gettid_np(thread);
-#else
-    typedef struct {
-        void* next;
-        void* pred;
-        pid_t tid;
-    } pthread_internal;
-    pid_t tid = reinterpret_cast<pthread_internal*>(thread)->tid;
-#endif
-    if (sched_setaffinity(tid, sizeof(cpu_set_t), &cpuset) != 0) {
-        LOG(WARNING) << "sched_setaffinity failed";
-    }
-#else
-    pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-#endif
-#endif
+    return atoi(val);
 }
+}// namespace
 
-thread_local int max_concurrency = 0;
-class ThreadGroup::Impl {
-public:
-    Impl(int num_workers, std::function<void(int)> worker_callback, bool exclude_worker0)
-        : num_workers_(num_workers) {
-        CHECK_GE(num_workers, 1) << "Requested a non-positive number of worker threads.";
-        for (int i = exclude_worker0; i < num_workers_; ++i) {
-            threads_.emplace_back([worker_callback, i] { worker_callback(i); });
-        }
-        InitSortedOrder();
-    }
-    ~Impl() { Join(); }
-
-    void Join() {
-        for (auto& t: threads_) {
-            if (t.joinable()) t.join();
-        }
-    }
-
-    int Configure(AffinityMode mode, int nthreads, bool exclude_worker0,
-                  std::vector<unsigned int> cpus) {
-        int num_workers_used = 0;
-        switch (mode) {
-            case kLittle:
-                num_workers_used = little_count_;
-                break;
-            case kBig:
-                num_workers_used = big_count_;
-                break;
-            case kSpecifyOneCorePerThread:
-            case kSpecifyThreadShareAllCore:
-                num_workers_used = cpus.size();
-                sorted_order_ = cpus;
-                break;
-            default:
-                // use default
-                num_workers_used = threading::MaxConcurrency();
-        }
-        // if a specific number was given, use that
-        if (nthreads) {
-            num_workers_used = nthreads;
-        }
-        // if MaxConcurrency restricted the number of workers (e.g., due to
-        // hyperthreading), respect the restriction. On CPUs with N logical cores
-        // and N/2 physical cores this will set affinity to the first N/2 logical
-        // ones.
-        num_workers_used = std::min(num_workers_, num_workers_used);
-        SetAffinity(exclude_worker0, mode);
-        return num_workers_used;
-    }
-
-private:
-    // bind worker threads to disjoint cores
-    // if worker 0 is offloaded to main, i.e. exclude_worker0 is true,
-    // the main thread is bound to core 0.
-    void SetAffinity(bool exclude_worker0, AffinityMode mode) {
-#ifndef __hexagon__
-        const char* val = getenv("TVM_BIND_THREADS");
-        if (val != nullptr && atoi(val) != 1) {
-            return;
-        }
-        // Do not set affinity if there are more workers than found cores and mode is not kSpecify*.
-        if (sorted_order_.size() < static_cast<unsigned int>(num_workers_)) {
-            switch (mode) {
-                // When the mode is kSpecifyOneCorePerThread or kSpecifyThreadShareAllCore, we should
-                // let the threads share all the cpu cores.
-                case kSpecifyOneCorePerThread:
-                case kSpecifyThreadShareAllCore:
-                    for (unsigned i = 0; i < threads_.size(); ++i) {
-                        SetThreadFullCpuAffinity(threads_[i].native_handle(), mode);
-                    }
-                    if (exclude_worker0) {// main thread run task
-                        SetMainThreadFullCpuAffinity(mode);
-                    }
-                    break;
-                case kLittle:
-                case kBig:
-                default:
-                    LOG(WARNING) << "The thread affinity cannot be set when the number of workers"
-                                 << "is larger than the number of available cores in the system.";
-                    break;
-            }
-        } else {
-            CHECK_GE(sorted_order_.size(), num_workers_);
-            switch (mode) {
-                case kSpecifyThreadShareAllCore:
-                    for (unsigned i = 0; i < threads_.size(); ++i) {
-                        SetThreadFullCpuAffinity(threads_[i].native_handle(), mode);
-                    }
-                    break;
-                case kLittle:
-                case kBig:
-                case kSpecifyOneCorePerThread:
-                    for (unsigned i = 0; i < threads_.size(); ++i) {
-                        bool reverse = mode == kLittle;
-                        unsigned core_id;
-                        if (reverse) {
-                            core_id = sorted_order_[sorted_order_.size() - (i + exclude_worker0) - 1];
-                        } else {
-                            core_id = sorted_order_[i + exclude_worker0];
-                        }
-                        SetThreadAffinity(threads_[i].native_handle(), {core_id});
-                    }
-                    break;
-            }
-            if (exclude_worker0) {// main thread run task
-                // Main thread will have free migration on needed cores.
-                // Typically, the OS will schedule the main thread to run at core 0,
-                // which is idle, when other workers are running.
-                // See the comment inside SetMainThreadFullCpuAffinity function to get more detail.
-                SetMainThreadFullCpuAffinity(mode);
-            }
-        }
-#endif// __hexagon__
-    }
-
-    void SetThreadFullCpuAffinity(std::thread::native_handle_type thread, AffinityMode mode) {
-        // For example, we have 2xA72 + 4xA53 (id is 0 - 5, 4, 5 is A72 big core)
-        // And we use config_threadpool API to set we will only use 4xA53.
-        // The sorted_order will be [4, 5, 0, 1, 2, 3].
-        // When to call this API, we have spawn threads on little cores for other workers
-        // in SetAffinity function. And for tvm main thread, it should also run on little cores,
-        // not big cores (4, 5).
-
-        // Note: this works well on x86 too. Because x86 doesn't have BIG.LITTLE,
-        // our implementation will use kBig mode by default and will let main thread
-        // run on intended cores.
-#ifndef __hexagon__
-        std::vector<unsigned> ids;
-        switch (mode) {
-            case kSpecifyOneCorePerThread:
-            case kSpecifyThreadShareAllCore:
-                for (size_t i = 0; i < sorted_order_.size(); ++i) {
-                    ids.push_back(sorted_order_[i]);
-                }
-                break;
-            case kLittle:
-                for (int i = 0; i < little_count_; ++i) {
-                    ids.push_back(sorted_order_[sorted_order_.size() - i - 1]);
-                }
-                break;
-            case kBig:
-                int num_cpu_workers = std::min(MaxConcurrency(), big_count_);
-                for (int i = 0; i < num_cpu_workers; ++i) {
-                    ids.push_back(sorted_order_[i]);
-                }
-                break;
-        }
-        SetThreadAffinity(thread, ids);
-#endif// __hexagon__
-    }
-
-    void SetMainThreadFullCpuAffinity(AffinityMode mode) {
-        SetThreadFullCpuAffinity(CURRENT_THREAD_HANDLE, mode);
-    }
-
-    void InitSortedOrder() {
-        unsigned int threads = std::thread::hardware_concurrency();
-#if defined(__hexagon__)
-        // With unsigned PDs, getting the number of available hardware threads
-        // is not supported in earlier versions of QuRT. In such cases assume 4.
-        if (threads == 0) threads = 4;
-#endif
-        std::vector<std::pair<unsigned int, int64_t>> max_freqs;
-
-        for (unsigned int i = 0; i < threads; ++i) {
-            int64_t cur_freq = 0;
-#if defined(__linux__) || defined(__ANDROID__)
-            std::ostringstream filepath;
-            // according to https://www.kernel.org/doc/Documentation/cpu-freq/user-guide.txt
-            // it's better to use cpuinfo_max_freq instead of scaling_max_freq for our
-            // purposes since scaling values can be changed dynamically according "policy limits"
-            // while we are looking for persistent definition of cores
-            filepath << "/sys/devices/system/cpu/cpu" << i << "/cpufreq/cpuinfo_max_freq";
-            std::ifstream ifs(filepath.str());
-            if (!ifs.fail()) {
-                if (!(ifs >> cur_freq)) {
-                    cur_freq = -1;
-                }
-                ifs.close();
-            }
-#endif
-            max_freqs.push_back(std::make_pair(i, cur_freq));
-        }
-
-        auto fcmpbyfreq = [](const std::pair<unsigned int, int64_t>& a,
-                             const std::pair<unsigned int, int64_t>& b) {
-            return a.second == b.second ? a.first < b.first : a.second > b.second;
-        };
-        std::stable_sort(max_freqs.begin(), max_freqs.end(), fcmpbyfreq);
-        int64_t big_freq = max_freqs.begin()->second;
-        int64_t little_freq = max_freqs.rbegin()->second;
-        for (auto it = max_freqs.begin(); it != max_freqs.end(); it++) {
-            sorted_order_.push_back(it->first);
-            if (big_freq == it->second) {
-                big_count_++;
-            }
-            if (big_freq != little_freq && little_freq == it->second) {
-                little_count_++;
-            }
-        }
-        if (big_count_ + little_count_ != static_cast<int>(sorted_order_.size())) {
-            big_count_ = static_cast<int>(sorted_order_.size()) - little_count_;
-            LOG(WARNING) << "more than two frequencies detected! Forced big_count_ to " << big_count_;
-        }
-    }
-
-    int num_workers_;
-#if defined(__hexagon__)
-    std::vector<QuRTThread> threads_;
-#else
-    std::vector<std::thread> threads_;
-#endif
-    std::vector<unsigned int> sorted_order_;
-    int big_count_ = 0;
-    int little_count_ = 0;
-};
-
-ThreadGroup::ThreadGroup(int num_workers, std::function<void(int)> worker_callback,
-                         bool exclude_worker0)
-    : impl_(new Impl(num_workers, worker_callback, exclude_worker0)) {}
-ThreadGroup::~ThreadGroup() { delete impl_; }
-void ThreadGroup::Join() { impl_->Join(); }
-
-int ThreadGroup::Configure(AffinityMode mode, int nthreads, bool exclude_worker0,
-                           std::vector<unsigned int> cpus) {
-    return impl_->Configure(mode, nthreads, exclude_worker0, cpus);
-}
-
-void Yield() {
-#ifdef __hexagon__
-    // QuRT doesn't have a yield API, so instead we sleep for the minimum amount
-    // of time to let the OS schedule another thread. std::this_thread::yield()
-    // compiles down to an empty function.
-    qurt_sleep(1);
-#else
-    std::this_thread::yield();
-#endif
-}
+// stride in the page, fit to cache line.
+constexpr int kSyncStride = 64 / sizeof(std::atomic<int>);
 
 /*!
- * \brief Set the maximum number of available cores.
+ * \brief Thread local main environment.
  */
-void SetMaxConcurrency(int value) {
-    if (value < 0) {
-        LOG(WARNING) << "The value of maximum concurrency '" << value << "' can not be negative "
-                     << "the setting of maximum concurrency is not success.";
-        return;
-    }
-    max_concurrency = value;
-}
-
-int MaxConcurrency() {
-    int max_concurrency = 1;
-    if (threading::max_concurrency != 0) {
-        max_concurrency = threading::max_concurrency;
-    } else {
-        const char* val = getenv("TVM_NUM_THREADS");
-        if (val == nullptr) {
-            val = getenv("OMP_NUM_THREADS");
-        }
-        if (val != nullptr) {
-            max_concurrency = atoi(val);
-        } else {
-            max_concurrency = std::thread::hardware_concurrency();
-#if defined(_M_X64) || defined(__x86_64__)
-            max_concurrency /= 2;// ignore hyper-threading
-#elif defined(__hexagon__)
-            // Ideally max_concurrency is set to the total count of 128B
-            // HVX units available. This prevenets threads unable to lock
-            // an HVX unit from scheduling work on the Scalar cores instead
-            // of HVX.
-            int num_hvx128_contexts = (qurt_hvx_get_units() >> 8) & 0xFF;
-            // With unsigned PDs, getting the number of available hardware threads
-            // is not supported in earlier versions of QuRT. In such cases assume
-            // the number of HVX units available. If running on simulator, set
-            // max_concurrency to 1.
-            if (max_concurrency == 0) {
-                if (dlsym(RTLD_DEFAULT, "running_in_sim_dev_17bc90206f6cf5a7")) {
-                    max_concurrency = 1;
-                } else {
-                    max_concurrency = num_hvx128_contexts;
-                }
-            } else {
-                // If the hardware_concurrency has already set the max_concurrency to
-                // a non-zero value then make sure it is not greater than the number
-                // of HVX units available.
-                max_concurrency = std::min(num_hvx128_contexts, max_concurrency);
+class ParallelLauncher {
+public:
+    // Reset the task request.
+    void Init(FTVMParallelLambda flambda, void* cdata, int num_task, bool need_sync) {
+        num_pending_.store(num_task);
+        this->cdata = cdata;
+        this->flambda = flambda;
+        this->env.num_task = num_task;
+        has_error_.store(false);
+        // reshape
+        if (static_cast<size_t>(num_task) > par_errors_.size()) {
+            par_errors_.resize(num_task + 1);
+            if (need_sync) {
+                delete[] sync_counter_;
+                sync_counter_ = new std::atomic<int>[num_task * kSyncStride];
             }
+        }
+        if (need_sync) {
+            for (int i = 0; i < num_task; ++i) {
+                sync_counter_[i * kSyncStride].store(0, std::memory_order_relaxed);
+            }
+            this->env.sync_handle = sync_counter_;
+        } else {
+            this->env.sync_handle = nullptr;
+        }
+    }
+    ~ParallelLauncher() { delete[] sync_counter_; }
+    // Wait n jobs to finish
+    int WaitForJobs() {
+        while (num_pending_.load() != 0) {
+            threading::Yield();
+        }
+        if (!has_error_.load()) return 0;
+        std::ostringstream os;
+        for (size_t i = 0; i < par_errors_.size(); ++i) {
+            if (par_errors_[i].length() != 0) {
+                os << "Task " << i << " error: " << par_errors_[i] << '\n';
+                par_errors_[i].clear();
+            }
+        }
+        TVMAPISetLastError(os.str().c_str());
+        return -1;
+    }
+    // Signal that one job has finished.
+    void SignalJobError(int task_id) {
+        num_pending_.fetch_sub(1);
+        par_errors_[task_id] = TVMGetLastError();
+        has_error_.store(true);
+    }
+    // Signal that one job has finished.
+    void SignalJobFinish() { num_pending_.fetch_sub(1); }
+    // Get thread local version of the store.
+    static ParallelLauncher* ThreadLocal() { return dmlc::ThreadLocalStore<ParallelLauncher>::Get(); }
+    // The parallel lambda
+    FTVMParallelLambda flambda;
+    // The closure data
+    void* cdata;
+    // Local env
+    TVMParallelGroupEnv env;
+    // Whether this thread is worker of the pool.
+    // used to prevent recursive launch.
+    bool is_worker{false};
+
+private:
+    // The pending jobs.
+    std::atomic<int32_t> num_pending_;
+    // Whether error has been countered.
+    std::atomic<bool> has_error_;
+    // The counter page.
+    std::atomic<int32_t>* sync_counter_{nullptr};
+    // The error message
+    std::vector<std::string> par_errors_;
+};
+
+/*! \brief Lock-free single-producer-single-consumer queue for each thread */
+class SpscTaskQueue {
+public:
+    /*! \brief The task entry */
+    struct Task {
+        ParallelLauncher* launcher;
+        int32_t task_id;
+    };
+
+    SpscTaskQueue() : buffer_(new Task[kRingSize]), head_(0), tail_(0) {}
+
+    ~SpscTaskQueue() { delete[] buffer_; }
+
+    /*!
+   * \brief Push a task into the queue and notify the comsumer if it is on wait.
+   * \param input The task to be dequeued.
+   */
+    void Push(const Task& input) {
+        while (!Enqueue(input)) {
+            threading::Yield();
+        }
+        if (pending_.fetch_add(1) == -1) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.notify_one();
+        }
+    }
+
+    /*!
+   * \brief Pop a task out of the queue and condition wait if no tasks.
+   * \param output The pointer to the task to be dequeued.
+   * \param spin_count The number of iterations to spin before sleep.
+   * \return Whether pop is successful (true) or we need to exit now (false).
+   */
+    bool Pop(Task* output, uint32_t spin_count) {
+        // Busy wait a bit when the queue is empty.
+        // If a new task comes to the queue quickly, this wait avoid the worker from sleeping.
+        // The default spin count is set by following the typical omp convention
+        for (uint32_t i = 0; i < spin_count && pending_.load() == 0; ++i) {
+            threading::Yield();
+        }
+        if (pending_.fetch_sub(1) == 0) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.wait(lock, [this] { return pending_.load() >= 0 || exit_now_.load(); });
+        }
+        if (exit_now_.load(std::memory_order_relaxed)) {
+            return false;
+        }
+        const uint32_t head = head_.load(std::memory_order_relaxed);
+        // sanity check if the queue is empty
+        CHECK(tail_.load(std::memory_order_acquire) != head);
+        *output = buffer_[head];
+        head_.store((head + 1) % kRingSize, std::memory_order_release);
+        return true;
+    }
+
+    /*!
+   * \brief Signal to terminate the worker.
+   */
+    void SignalForKill() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        exit_now_.store(true);
+        cv_.notify_all();
+    }
+
+protected:
+    /*!
+   * \brief Lock-free enqueue.
+   * \param input The task to be enqueued.
+   * \return Whether the task is enqueued.
+   */
+    bool Enqueue(const Task& input) {
+        if (exit_now_.load(std::memory_order_relaxed)) return false;
+
+        const uint32_t tail = tail_.load(std::memory_order_relaxed);
+
+        if ((tail + 1) % kRingSize != (head_.load(std::memory_order_acquire))) {
+            buffer_[tail] = input;
+            tail_.store((tail + 1) % kRingSize, std::memory_order_release);
+            return true;
+        }
+        return false;
+    }
+
+    // the cache line paddings are used for avoid false sharing between atomic variables
+    typedef char cache_line_pad_t[kL1CacheBytes];
+    cache_line_pad_t pad0_;
+    // size of the queue, the queue can host size_ - 1 items at most
+    // define it as a constant for better compiler optimization
+    static constexpr const int kRingSize = 2;
+    // pointer to access the item
+    Task* const buffer_;
+
+    cache_line_pad_t pad1_;
+    // queue head, where one gets a task from the queue
+    std::atomic<uint32_t> head_;
+
+    cache_line_pad_t pad2_;
+    // queue tail, when one puts a task to the queue
+    std::atomic<uint32_t> tail_;
+
+    cache_line_pad_t pad3_;
+    // pending tasks in the queue
+    std::atomic<int8_t> pending_{0};
+
+    cache_line_pad_t pad4_;
+    // signal for exit now
+    std::atomic<bool> exit_now_{false};
+
+    // internal mutex
+    std::mutex mutex_;
+    // cv for consumer
+    std::condition_variable cv_;
+};
+
+// The thread pool
+class ThreadPool {
+public:
+    ThreadPool() : num_workers_(threading::MaxConcurrency()) {
+        const char* exclude_worker0 = getenv("TVM_EXCLUDE_WORKER0");
+        if (exclude_worker0 && atoi(exclude_worker0) == 0) {
+            exclude_worker0_ = false;
+        }
+        Init();
+    }
+
+    ~ThreadPool() {
+        for (std::unique_ptr<SpscTaskQueue>& q: queues_) {
+            q->SignalForKill();
+        }
+        threads_.reset();
+    }
+
+    void Reset() {
+        for (std::unique_ptr<SpscTaskQueue>& q: queues_) {
+            q->SignalForKill();
+        }
+        // Destroy threads before we destory the shared queue, otherwise we segfault on MacOS
+        threads_.reset();
+        queues_.clear();
+        Init();
+    }
+
+    int Launch(FTVMParallelLambda flambda, void* cdata, int num_task, int need_sync) {
+        ParallelLauncher* launcher = ParallelLauncher::ThreadLocal();
+        CHECK(!launcher->is_worker)
+                << "Cannot launch parallel job inside worker, consider fuse then parallel";
+        if (num_task == 0) {
+            num_task = num_workers_used_;
+        }
+        if (need_sync != 0) {
+            CHECK_LE(num_task, num_workers_used_)
+                    << "Request parallel sync task larger than number of threads used "
+                    << " workers=" << num_workers_used_ << " request=" << num_task;
+        }
+        launcher->Init(flambda, cdata, num_task, need_sync != 0);
+        SpscTaskQueue::Task tsk;
+        tsk.launcher = launcher;
+        // if worker0 is taken by the main, queues_[0] is abandoned
+        for (int i = exclude_worker0_; i < num_task; ++i) {
+            tsk.task_id = i;
+            queues_[i]->Push(tsk);
+        }
+        // use the main thread to run task 0
+        if (exclude_worker0_) {
+            TVMParallelGroupEnv* penv = &(tsk.launcher->env);
+            if ((*tsk.launcher->flambda)(0, penv, cdata) == 0) {
+                tsk.launcher->SignalJobFinish();
+            } else {
+                tsk.launcher->SignalJobError(tsk.task_id);
+            }
+        }
+        int res = launcher->WaitForJobs();
+        return res;
+    }
+
+    static ThreadPool* ThreadLocal() { return dmlc::ThreadLocalStore<ThreadPool>::Get(); }
+
+    void UpdateWorkerConfiguration(threading::ThreadGroup::AffinityMode mode, int nthreads,
+                                   const std::vector<unsigned int>& cpus) {
+        // this will also reset the affinity of the ThreadGroup
+        // may use less than the MaxConcurrency number of workers
+        num_workers_used_ = threads_->Configure(mode, nthreads, exclude_worker0_, cpus);
+        // if MaxConcurrency restricted the number of workers (e.g., due to
+        // hyperthreading), respect the restriction
+        num_workers_used_ = std::min(num_workers_, num_workers_used_);
+    }
+
+    int32_t NumThreads() const { return num_workers_used_; }
+
+private:
+    // Shared initialization code
+    void Init() {
+        for (int i = 0; i < num_workers_; ++i) {
+            // The SpscTaskQueue only hosts ONE item at a time
+            queues_.emplace_back(std::make_unique<SpscTaskQueue>());
+        }
+        threads_ = std::make_unique<threading::ThreadGroup>(
+                num_workers_, [this](int worker_id) { this->RunWorker(worker_id); },
+                exclude_worker0_ /* include_main_thread */);
+        num_workers_used_ = threads_->Configure(threading::ThreadGroup::kBig, 0, exclude_worker0_);
+    }
+
+    // Internal worker function.
+    void RunWorker(int worker_id) {
+        SpscTaskQueue* queue = queues_[worker_id].get();
+        SpscTaskQueue::Task task;
+        ParallelLauncher::ThreadLocal()->is_worker = true;
+        // Initialize the spin count (from envvar TVM_THREAD_POOL_SPIN_COUNT) on
+        // the global first use of the ThreadPool.
+        // TODO(tulloch): should we make this configurable via standard APIs?
+        static size_t spin_count = GetSpinCount();
+        while (queue->Pop(&task, spin_count)) {
+            CHECK(task.launcher != nullptr);
+            TVMParallelGroupEnv* penv = &(task.launcher->env);
+            void* cdata = task.launcher->cdata;
+            if ((*task.launcher->flambda)(task.task_id, penv, cdata) == 0) {
+                task.launcher->SignalJobFinish();
+            } else {
+                task.launcher->SignalJobError(task.task_id);
+            }
+        }
+    }
+    int num_workers_;
+    // number of workers used (can be restricted with affinity pref)
+    int num_workers_used_;
+    // if or not to exclude worker 0 and use main to run task 0
+    bool exclude_worker0_{true};
+    std::vector<std::unique_ptr<SpscTaskQueue>> queues_;
+    std::unique_ptr<threading::ThreadGroup> threads_;
+};
+
+/*!
+ * \brief args[0] is the AffinityMode, args[1] is the number of threads.
+ *  args2 is a list of CPUs which is used to set the CPU affinity.
+ */
+TVM_REGISTER_GLOBAL("runtime.config_threadpool").set_body([](TVMArgs args, TVMRetValue* rv) {
+    threading::ThreadGroup::AffinityMode mode =
+            static_cast<threading::ThreadGroup::AffinityMode>(static_cast<int>(args[0]));
+    int nthreads(args[1]);
+    std::vector<unsigned int> cpus;
+    if (args.num_args >= 3) {
+        Array<String> cpu_array(args[2]);
+        for (auto cpu: cpu_array) {
+            CHECK(IsNumber(cpu)) << "The CPU core information '" << cpu << "' is not a number.";
+            cpus.push_back(std::stoi(cpu));
+        }
+    }
+    threading::Configure(mode, nthreads, cpus);
+});
+
+TVM_REGISTER_GLOBAL("runtime.NumThreads").set_body_typed([]() -> int32_t {
+    return threading::NumThreads();
+});
+
+namespace threading {
+
+#if TVM_THREADPOOL_USE_OPENMP
+/*!
+ * \brief Helper function that allows to pin threads to cores in case of multi instance execution
+ *        when we use OpenMP thread pool.
+ *
+ * \param mode Affinity mode (now supports only kSpecifyOneCorePerThread and
+ *             kSpecifyThreadShareAllCore).
+ * \param nthreads The number of threads to use (0 = use all).
+ * \param cpus A list of CPU ids to set 'cpu affinity'.
+ *
+ */
+static void ConfigureOMP(tvm::runtime::threading::ThreadGroup::AffinityMode mode, int nthreads,
+                         const std::vector<unsigned int>& cpus) {
+#if defined(__linux__) || defined(__ANDROID__)
+    const int num_workers = MaxConcurrency();
+
+    if (mode == ThreadGroup::kSpecifyOneCorePerThread) {
+#pragma omp parallel num_threads(num_workers)
+        {
+            int core_id = cpus[omp_get_thread_num()];
+            cpu_set_t cpuset;
+            CPU_ZERO(&cpuset);
+            CPU_SET(core_id, &cpuset);
+#if defined(__ANDROID__)
+            sched_setaffinity(pthread_self(), sizeof(cpu_set_t), &cpuset);
+#else
+            pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+#endif
+        }
+    } else if (mode == ThreadGroup::kSpecifyThreadShareAllCore) {
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        for (auto id: cpus) {
+            CPU_SET(id, &cpuset);
+        }
+
+#pragma omp parallel num_threads(num_workers)
+        {
+#if defined(__ANDROID__)
+            sched_setaffinity(pthread_self(), sizeof(cpu_set_t), &cpuset);
+#else
+            pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 #endif
         }
     }
-    return std::max(max_concurrency, 1);
+#endif
 }
 
-// This global function can be used by disco runtime to bind processes
-// to CPUs.
-TVM_REGISTER_GLOBAL("tvm.runtime.threading.set_current_thread_affinity")
-        .set_body_typed([](IntTuple cpu_ids) {
-            SetThreadAffinity(CURRENT_THREAD_HANDLE,
-                              std::vector<unsigned int>{cpu_ids.begin(), cpu_ids.end()});
-        });
+#endif
 
+void ResetThreadPool() { ThreadPool::ThreadLocal()->Reset(); }
+/*!
+ * \brief configure the CPU id affinity
+ * \param mode The preferred CPU type (1 = big, -1 = little, -2 = kSpecifyOneCorePerThread,
+ *  -3 = kSpecifyThreadShareAllCore).
+ * \param nthreads The number of threads to use (0 = use all).
+ * \param cpus cpus A list of CPUs is used to set the 'cpu affinity' for the worker threads.
+ *
+ */
+LITETVM_API void Configure(ThreadGroup::AffinityMode mode, int nthreads,
+                           std::vector<unsigned int> cpus) {
+    SetMaxConcurrency(cpus.size());
+#if !TVM_THREADPOOL_USE_OPENMP
+    ThreadPool::ThreadLocal()->UpdateWorkerConfiguration(mode, nthreads, cpus);
+#else
+    ConfigureOMP(mode, nthreads, cpus);
+#endif
+}
+int32_t NumThreads() { return ThreadPool::ThreadLocal()->NumThreads(); }
 }// namespace threading
+
 }// namespace runtime
 }// namespace litetvm
+
+int TVMBackendParallelLaunch(FTVMParallelLambda flambda, void* cdata, int num_task) {
+    int num_workers = litetvm::runtime::threading::MaxConcurrency();
+    if (num_workers == 1) {
+        std::atomic<int32_t> sync_counter{0};
+        TVMParallelGroupEnv env;
+        env.num_task = 1;
+        env.sync_handle = &sync_counter;
+        (*flambda)(0, &env, cdata);
+        return 0;
+    }
+
+#if !TVM_THREADPOOL_USE_OPENMP
+    int res = litetvm::runtime::ThreadPool::ThreadLocal()->Launch(flambda, cdata, num_task, 1);
+    return res;
+#else
+    if (num_task == 0) num_task = num_workers;
+    omp_set_num_threads(num_task);
+#pragma omp parallel num_threads(num_task)
+    {
+        TVMParallelGroupEnv env;
+        env.num_task = num_task;
+        (*flambda)(omp_get_thread_num(), &env, cdata);
+    }
+    return 0;
+#endif
+}
+
+int TVMBackendParallelBarrier(int task_id, TVMParallelGroupEnv* penv) {
+#if TVM_THREADPOOL_USE_OPENMP
+#pragma omp barrier
+#else
+    using litetvm::runtime::kSyncStride;
+    int num_task = penv->num_task;
+    std::atomic<int>* sync_counter = reinterpret_cast<std::atomic<int>*>(penv->sync_handle);
+    int old_counter = sync_counter[task_id * kSyncStride].fetch_add(1, std::memory_order_release);
+    for (int i = 0; i < num_task; ++i) {
+        if (i != task_id) {
+            while (sync_counter[i * kSyncStride].load(std::memory_order_relaxed) <= old_counter) {
+                litetvm::runtime::threading::Yield();
+            }
+        }
+    }
+    std::atomic_thread_fence(std::memory_order_acquire);
+#endif
+    return 0;
+}
