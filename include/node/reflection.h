@@ -136,7 +136,7 @@ public:
    * \param equal The equality comparator.
    * \return the result.
    */
-    bool SEqualReduce(const Object* self, const Object* other, SEqualReducer equal) const {
+    bool SEqualReduce(const Object* self, const Object* other, const SEqualReducer& equal) const {
         uint32_t tindex = self->type_index();
         if (tindex >= fsequal_reduce_.size() || fsequal_reduce_[tindex] == nullptr) {
             LOG(FATAL) << "TypeError: SEqualReduce of " << self->GetTypeKey()
@@ -177,7 +177,7 @@ public:
    * \param kwargs the arguments in format key1, value1, ..., key_n, value_n.
    * \return The created object.
    */
-    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const runtime::TVMArgs& kwargs);
+    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const runtime::TVMArgs& kwargs) const;
 
     /*!
    * \brief Create an object by giving kwargs about its fields.
@@ -186,7 +186,7 @@ public:
    * \param kwargs The field arguments.
    * \return The created object.
    */
-    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const Map<String, ObjectRef>& kwargs);
+    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const Map<String, ObjectRef>& kwargs) const;
 
     /*!
    * \brief Get an field object by the attr name.
@@ -207,6 +207,7 @@ public:
     LITETVM_API static ReflectionVTable* Global();
 
     class Registry;
+
     template<typename T, typename TraitName>
     Registry Register();
 
@@ -311,7 +312,7 @@ namespace detail {
 
 template <typename T, bool = T::_type_has_method_visit_attrs>
 struct ImplVisitAttrs {
-  static constexpr const std::nullptr_t VisitAttrs = nullptr;
+  static constexpr std::nullptr_t VisitAttrs = nullptr;
 };
 
 template <typename T>
@@ -321,7 +322,7 @@ struct ImplVisitAttrs<T, true> {
 
 template <typename T, bool = T::_type_has_method_sequal_reduce>
 struct ImplSEqualReduce {
-  static constexpr const std::nullptr_t SEqualReduce = nullptr;
+  static constexpr std::nullptr_t SEqualReduce = nullptr;
 };
 
 template <typename T>
@@ -333,7 +334,7 @@ struct ImplSEqualReduce<T, true> {
 
 template <typename T, bool = T::_type_has_method_shash_reduce>
 struct ImplSHashReduce {
-  static constexpr const std::nullptr_t SHashReduce = nullptr;
+  static constexpr std::nullptr_t SHashReduce = nullptr;
 };
 
 template <typename T>
@@ -344,14 +345,12 @@ struct ImplSHashReduce<T, true> {
 };
 
 template <typename T>
-struct ReflectionTrait : public ImplVisitAttrs<T>,
-                         public ImplSEqualReduce<T>,
-                         public ImplSHashReduce<T> {};
+struct ReflectionTrait : ImplVisitAttrs<T>, ImplSEqualReduce<T>, ImplSHashReduce<T> {};
 
 template <typename T, typename TraitName,
-          bool = std::is_null_pointer<decltype(TraitName::VisitAttrs)>::value>
+          bool = std::is_null_pointer_v<decltype(TraitName::VisitAttrs)>>
 struct SelectVisitAttrs {
-  static constexpr const std::nullptr_t VisitAttrs = nullptr;
+  static constexpr std::nullptr_t VisitAttrs = nullptr;
 };
 
 template <typename T, typename TraitName>
@@ -362,9 +361,9 @@ struct SelectVisitAttrs<T, TraitName, false> {
 };
 
 template <typename T, typename TraitName,
-          bool = std::is_null_pointer<decltype(TraitName::SEqualReduce)>::value>
+          bool = std::is_null_pointer_v<decltype(TraitName::SEqualReduce)>>
 struct SelectSEqualReduce {
-  static constexpr const std::nullptr_t SEqualReduce = nullptr;
+  static constexpr std::nullptr_t SEqualReduce = nullptr;
 };
 
 template <typename T, typename TraitName>
@@ -376,9 +375,9 @@ struct SelectSEqualReduce<T, TraitName, false> {
 };
 
 template <typename T, typename TraitName,
-          bool = std::is_null_pointer<decltype(TraitName::SHashReduce)>::value>
+          bool = std::is_null_pointer_v<decltype(TraitName::SHashReduce)>>
 struct SelectSHashReduce {
-  static constexpr const std::nullptr_t SHashReduce = nullptr;
+  static constexpr std::nullptr_t SHashReduce = nullptr;
 };
 
 template <typename T, typename TraitName>
@@ -401,11 +400,11 @@ ReflectionVTable::Registry ReflectionVTable::Register() {
     fshash_reduce_.resize(tindex + 1, nullptr);
   }
   // functor that implements the redirection.
-  fvisit_attrs_[tindex] = ::litetvm::detail::SelectVisitAttrs<T, TraitName>::VisitAttrs;
+  fvisit_attrs_[tindex] = detail::SelectVisitAttrs<T, TraitName>::VisitAttrs;
 
-  fsequal_reduce_[tindex] = ::litetvm::detail::SelectSEqualReduce<T, TraitName>::SEqualReduce;
+  fsequal_reduce_[tindex] = detail::SelectSEqualReduce<T, TraitName>::SEqualReduce;
 
-  fshash_reduce_[tindex] = ::litetvm::detail::SelectSHashReduce<T, TraitName>::SHashReduce;
+  fshash_reduce_[tindex] = detail::SelectSHashReduce<T, TraitName>::SHashReduce;
 
   return Registry(this, tindex);
 }

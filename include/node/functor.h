@@ -36,7 +36,7 @@ using runtime::ObjectRef;
  *   LOG(INFO) << tostr(y, "My");
  * \endcode
  *
- * \tparam FType function signiture
+ * \tparam FType function signature
  *  This type if only defined for FType with function signature
  */
 template<typename FType>
@@ -71,7 +71,7 @@ public:
    * \param args The additional arguments
    * \return The result.
    */
-    R operator()(const ObjectRef& n, Args... args) const {
+    R operator()(const ObjectRef& n, Args&&... args) const {
         CHECK(can_dispatch(n)) << "NodeFunctor calls un-registered function on type " << n->GetTypeKey();
         return (*func_[n->type_index()])(n, std::forward<Args>(args)...);
     }

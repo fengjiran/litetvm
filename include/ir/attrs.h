@@ -27,8 +27,8 @@
  *
  * \sa AttrsNode, TVM_DECLARE_ATTRS, TVM_ATTR_FIELD
  */
-#ifndef ATTRS_H
-#define ATTRS_H
+#ifndef LITETVM_IR_ATTRS_H
+#define LITETVM_IR_ATTRS_H
 
 #include "ir/expr.h"
 #include "node/reflection.h"
@@ -50,6 +50,8 @@ using runtime::Downcast;
 using runtime::make_object;
 using runtime::PackedFunc;
 using runtime::TVMRetValue;
+using runtime::TVMArgValue;
+using runtime::TVMArgs;
 
 /*!
  * \brief Declare an attribute function.
@@ -127,14 +129,11 @@ public:
 
 /*!
  * \brief Base class of all attribute class
- * \note Do not subclass AttrBaseNode directly,
- *       subclass AttrsNode instead.
+ * \note Do not subclass BaseAttrsNode directly, subclass AttrsNode instead.
  * \sa AttrsNode
  */
 class BaseAttrsNode : public Object {
 public:
-    using TVMArgs = runtime::TVMArgs;
-    using TVMRetValue = runtime::TVMRetValue;
     /*! \brief virtual destructor */
     virtual ~BaseAttrsNode() {}
     // visit function
@@ -276,7 +275,7 @@ public:
     Optional<TObjectRef> GetAttr(
             const std::string& attr_key,
             Optional<TObjectRef> default_value = Optional<TObjectRef>(nullptr)) const {
-        static_assert(std::is_base_of<ObjectRef, TObjectRef>::value,
+        static_assert(std::is_base_of_v<ObjectRef, TObjectRef>,
                       "Can only call GetAttr with ObjectRef types.");
         if (!defined()) return default_value;
         const DictAttrsNode* node = this->as<DictAttrsNode>();
@@ -293,9 +292,8 @@ public:
             ret = (*it).second;
             Optional<TObjectRef> obj = ret;
             return obj;
-        } else {
-            return default_value;
         }
+        return default_value;
     }
     // variant that uses TObjectRef to enable implicit conversion to default value.
     template<typename TObjectRef>
@@ -982,4 +980,4 @@ private:
 
 }// namespace litetvm
 
-#endif//ATTRS_H
+#endif//LITETVM_IR_ATTRS_H

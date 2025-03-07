@@ -11,6 +11,8 @@ namespace litetvm {
 using runtime::PackedFunc;
 using runtime::TVMArgs;
 using runtime::TVMRetValue;
+using runtime::TVMArgValue;
+using runtime::NDArray;
 
 // Attr getter.
 class AttrGetter : public AttrVisitor {
@@ -23,43 +25,141 @@ public:
     bool found_ref_object{false};
 
     void Visit(const char* key, double* value) final {
-        if (skey == key) *ret = value[0];
+        if (skey == key) {
+            *ret = value[0];
+        }
     }
+
     void Visit(const char* key, int64_t* value) final {
-        if (skey == key) *ret = value[0];
+        if (skey == key) {
+            *ret = value[0];
+        }
     }
+
     void Visit(const char* key, uint64_t* value) final {
         CHECK_LE(value[0], static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
                 << "cannot return too big constant";
-        if (skey == key) *ret = static_cast<int64_t>(value[0]);
-    }
-    void Visit(const char* key, int* value) final {
-        if (skey == key) *ret = static_cast<int64_t>(value[0]);
-    }
-    void Visit(const char* key, bool* value) final {
-        if (skey == key) *ret = static_cast<int64_t>(value[0]);
-    }
-    void Visit(const char* key, void** value) final {
-        if (skey == key) *ret = static_cast<void*>(value[0]);
-    }
-    void Visit(const char* key, DataType* value) final {
-        if (skey == key) *ret = value[0];
-    }
-    void Visit(const char* key, std::string* value) final {
-        if (skey == key) *ret = value[0];
+        if (skey == key) {
+            *ret = static_cast<int64_t>(value[0]);
+        }
     }
 
-    void Visit(const char* key, runtime::NDArray* value) final {
+    void Visit(const char* key, int* value) final {
+        if (skey == key) {
+            *ret = static_cast<int64_t>(value[0]);
+        }
+    }
+
+    void Visit(const char* key, bool* value) final {
+        if (skey == key) {
+            *ret = static_cast<int64_t>(value[0]);
+        }
+    }
+
+    void Visit(const char* key, void** value) final {
+        if (skey == key) {
+            *ret = value[0];
+        }
+    }
+
+    void Visit(const char* key, DataType* value) final {
+        if (skey == key) {
+            *ret = value[0];
+        }
+    }
+
+    void Visit(const char* key, std::string* value) final {
+        if (skey == key) {
+            *ret = value[0];
+        }
+    }
+
+    void Visit(const char* key, NDArray* value) final {
         if (skey == key) {
             *ret = value[0];
             found_ref_object = true;
         }
     }
-    void Visit(const char* key, runtime::ObjectRef* value) final {
+
+    void Visit(const char* key, ObjectRef* value) final {
         if (skey == key) {
             *ret = value[0];
             found_ref_object = true;
         }
+    }
+};
+
+// List names;
+class AttrDir : public AttrVisitor {
+public:
+    std::vector<std::string>* names;
+
+    void Visit(const char* key, double* value) final { names->push_back(key); }
+    void Visit(const char* key, int64_t* value) final { names->push_back(key); }
+    void Visit(const char* key, uint64_t* value) final { names->push_back(key); }
+    void Visit(const char* key, bool* value) final { names->push_back(key); }
+    void Visit(const char* key, int* value) final { names->push_back(key); }
+    void Visit(const char* key, void** value) final { names->push_back(key); }
+    void Visit(const char* key, DataType* value) final { names->push_back(key); }
+    void Visit(const char* key, std::string* value) final { names->push_back(key); }
+    void Visit(const char* key, NDArray* value) final { names->push_back(key); }
+    void Visit(const char* key, ObjectRef* value) final { names->push_back(key); }
+};
+
+class NodeAttrSetter : public AttrVisitor {
+public:
+    std::string type_key;
+    std::unordered_map<std::string, TVMArgValue> attrs;
+
+    void Visit(const char* key, double* value) final {
+        *value = GetAttr(key).operator double();
+    }
+
+    void Visit(const char* key, int64_t* value) final {
+        *value = GetAttr(key).operator int64_t();
+    }
+
+    void Visit(const char* key, uint64_t* value) final {
+        *value = GetAttr(key).operator uint64_t();
+    }
+
+    void Visit(const char* key, int* value) final {
+        *value = GetAttr(key).operator int();
+    }
+
+    void Visit(const char* key, bool* value) final {
+        *value = GetAttr(key).operator bool();
+    }
+
+    void Visit(const char* key, std::string* value) final {
+        *value = GetAttr(key).operator std::string();
+    }
+
+    void Visit(const char* key, void** value) final {
+        *value = GetAttr(key).operator void*();
+    }
+
+    void Visit(const char* key, DataType* value) final {
+        *value = GetAttr(key).operator DataType();
+    }
+
+    void Visit(const char* key, NDArray* value) final {
+        *value = GetAttr(key).operator runtime::NDArray();
+    }
+
+    void Visit(const char* key, ObjectRef* value) final {
+        *value = GetAttr(key).operator ObjectRef();
+    }
+
+private:
+    TVMArgValue GetAttr(const char* key) {
+        auto it = attrs.find(key);
+        if (it == attrs.end()) {
+            LOG(FATAL) << type_key << ": require field " << key;
+        }
+        TVMArgValue v = it->second;
+        attrs.erase(it);
+        return v;
     }
 };
 
@@ -85,29 +185,13 @@ TVMRetValue ReflectionVTable::GetAttr(Object* self, const String& field_name) co
             success = false;
         }
     }
+
     if (!success) {
         LOG(FATAL) << "AttributeError: " << self->GetTypeKey() << " object has no attributed "
                    << getter.skey;
     }
     return ret;
 }
-
-// List names;
-class AttrDir : public AttrVisitor {
-public:
-    std::vector<std::string>* names;
-
-    void Visit(const char* key, double* value) final { names->push_back(key); }
-    void Visit(const char* key, int64_t* value) final { names->push_back(key); }
-    void Visit(const char* key, uint64_t* value) final { names->push_back(key); }
-    void Visit(const char* key, bool* value) final { names->push_back(key); }
-    void Visit(const char* key, int* value) final { names->push_back(key); }
-    void Visit(const char* key, void** value) final { names->push_back(key); }
-    void Visit(const char* key, DataType* value) final { names->push_back(key); }
-    void Visit(const char* key, std::string* value) final { names->push_back(key); }
-    void Visit(const char* key, runtime::NDArray* value) final { names->push_back(key); }
-    void Visit(const char* key, runtime::ObjectRef* value) final { names->push_back(key); }
-};
 
 std::vector<std::string> ReflectionVTable::ListAttrNames(Object* self) const {
     std::vector<std::string> names;
@@ -140,41 +224,7 @@ ObjectPtr<Object> ReflectionVTable::CreateInitObject(const std::string& type_key
     return fcreate_[tindex](repr_bytes);
 }
 
-class NodeAttrSetter : public AttrVisitor {
-public:
-    std::string type_key;
-    std::unordered_map<std::string, runtime::TVMArgValue> attrs;
-
-    void Visit(const char* key, double* value) final { *value = GetAttr(key).operator double(); }
-    void Visit(const char* key, int64_t* value) final { *value = GetAttr(key).operator int64_t(); }
-    void Visit(const char* key, uint64_t* value) final { *value = GetAttr(key).operator uint64_t(); }
-    void Visit(const char* key, int* value) final { *value = GetAttr(key).operator int(); }
-    void Visit(const char* key, bool* value) final { *value = GetAttr(key).operator bool(); }
-    void Visit(const char* key, std::string* value) final {
-        *value = GetAttr(key).operator std::string();
-    }
-    void Visit(const char* key, void** value) final { *value = GetAttr(key).operator void*(); }
-    void Visit(const char* key, DataType* value) final { *value = GetAttr(key).operator DataType(); }
-    void Visit(const char* key, runtime::NDArray* value) final {
-        *value = GetAttr(key).operator runtime::NDArray();
-    }
-    void Visit(const char* key, ObjectRef* value) final {
-        *value = GetAttr(key).operator ObjectRef();
-    }
-
-private:
-    runtime::TVMArgValue GetAttr(const char* key) {
-        auto it = attrs.find(key);
-        if (it == attrs.end()) {
-            LOG(FATAL) << type_key << ": require field " << key;
-        }
-        runtime::TVMArgValue v = it->second;
-        attrs.erase(it);
-        return v;
-    }
-};
-
-void InitNodeByPackedArgs(ReflectionVTable* reflection, Object* n, const TVMArgs& args) {
+void InitNodeByPackedArgs(const ReflectionVTable* reflection, Object* n, const TVMArgs& args) {
     NodeAttrSetter setter;
     setter.type_key = n->GetTypeKey();
     CHECK_EQ(args.size() % 2, 0);
@@ -193,7 +243,7 @@ void InitNodeByPackedArgs(ReflectionVTable* reflection, Object* n, const TVMArgs
     }
 }
 
-ObjectRef ReflectionVTable::CreateObject(const std::string& type_key, const TVMArgs& kwargs) {
+ObjectRef ReflectionVTable::CreateObject(const std::string& type_key, const TVMArgs& kwargs) const {
     ObjectPtr<Object> n = this->CreateInitObject(type_key);
     if (n->IsInstance<BaseAttrsNode>()) {
         static_cast<BaseAttrsNode*>(n.get())->InitByPackedArgs(kwargs);
@@ -204,7 +254,7 @@ ObjectRef ReflectionVTable::CreateObject(const std::string& type_key, const TVMA
 }
 
 ObjectRef ReflectionVTable::CreateObject(const std::string& type_key,
-                                         const Map<String, ObjectRef>& kwargs) {
+                                         const Map<String, ObjectRef>& kwargs) const {
     // Redirect to the TVMArgs version
     // It is not the most efficient way, but CreateObject is not meant to be used
     // in a fast code-path and is mainly reserved as a flexible API for frontends.
@@ -225,17 +275,15 @@ ObjectRef ReflectionVTable::CreateObject(const std::string& type_key,
 
 // Expose to FFI APIs.
 void NodeGetAttr(TVMArgs args, TVMRetValue* ret) {
-    CHECK_EQ(args[0].type_code(), (int) TVMArgTypeCode::kTVMObjectHandle);
+    CHECK_EQ(args[0].type_code(), static_cast<int>(TVMArgTypeCode::kTVMObjectHandle));
     Object* self = static_cast<Object*>(args[0].value().v_handle);
     *ret = ReflectionVTable::Global()->GetAttr(self, String(args[1]));
 }
 
 void NodeListAttrNames(TVMArgs args, TVMRetValue* ret) {
-    CHECK_EQ(args[0].type_code(), (int) TVMArgTypeCode::kTVMObjectHandle);
-    Object* self = static_cast<Object*>(args[0].value().v_handle);
-
-    auto names =
-            std::make_shared<std::vector<std::string>>(ReflectionVTable::Global()->ListAttrNames(self));
+    CHECK_EQ(args[0].type_code(), static_cast<int>(TVMArgTypeCode::kTVMObjectHandle));
+    auto* self = static_cast<Object*>(args[0].value().v_handle);
+    auto names = std::make_shared<std::vector<std::string>>(ReflectionVTable::Global()->ListAttrNames(self));
 
     *ret = PackedFunc([names](TVMArgs args, TVMRetValue* rv) {
         int64_t i(args[0]);
@@ -279,8 +327,8 @@ public:
     void Visit(const char* key, std::string* value) final { DoVisit(key, value); }
     void Visit(const char* key, void** value) final { DoVisit(key, value); }
     void Visit(const char* key, DataType* value) final { DoVisit(key, value); }
-    void Visit(const char* key, runtime::NDArray* value) final { DoVisit(key, value); }
-    void Visit(const char* key, runtime::ObjectRef* value) final { DoVisit(key, value); }
+    void Visit(const char* key, NDArray* value) final { DoVisit(key, value); }
+    void Visit(const char* key, ObjectRef* value) final { DoVisit(key, value); }
 
     const char* GetKey() const { return key_; }
 
@@ -302,9 +350,8 @@ Optional<String> GetAttrKeyByAddress(const Object* object, const void* attr_addr
     const char* key = visitor.GetKey();
     if (key == nullptr) {
         return NullOpt;
-    } else {
-        return String(key);
     }
+    return String(key);
 }
 
 }// namespace litetvm
