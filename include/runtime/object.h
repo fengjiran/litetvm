@@ -795,7 +795,7 @@ SubRef Downcast(BaseRef ref) {
 #define UNUSED(expr)   \
     do {               \
         (void) (expr); \
-    } while (0);
+    } while (false);
 
 #define TVM_STR_CONCAT_(__x, __y) __x##__y
 #define TVM_STR_CONCAT(__x, __y) TVM_STR_CONCAT_(__x, __y)

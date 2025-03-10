@@ -94,16 +94,46 @@ class AttrDir : public AttrVisitor {
 public:
     std::vector<std::string>* names;
 
-    void Visit(const char* key, double* value) final { names->push_back(key); }
-    void Visit(const char* key, int64_t* value) final { names->push_back(key); }
-    void Visit(const char* key, uint64_t* value) final { names->push_back(key); }
-    void Visit(const char* key, bool* value) final { names->push_back(key); }
-    void Visit(const char* key, int* value) final { names->push_back(key); }
-    void Visit(const char* key, void** value) final { names->push_back(key); }
-    void Visit(const char* key, DataType* value) final { names->push_back(key); }
-    void Visit(const char* key, std::string* value) final { names->push_back(key); }
-    void Visit(const char* key, NDArray* value) final { names->push_back(key); }
-    void Visit(const char* key, ObjectRef* value) final { names->push_back(key); }
+    void Visit(const char* key, double* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, int64_t* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, uint64_t* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, bool* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, int* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, void** value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, DataType* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, std::string* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, NDArray* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
+    void Visit(const char* key, ObjectRef* value) final {
+        names->push_back(key);
+        UNUSED(value);
+    }
 };
 
 class NodeAttrSetter : public AttrVisitor {

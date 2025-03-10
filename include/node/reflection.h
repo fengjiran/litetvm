@@ -229,6 +229,7 @@ class ReflectionVTable::Registry {
 public:
     Registry(ReflectionVTable* parent, uint32_t type_index)
         : parent_(parent), type_index_(type_index) {}
+
     /*!
    * \brief Set fcreate function.
    * \param f The creator function.
@@ -239,6 +240,7 @@ public:
         parent_->fcreate_[type_index_] = f;
         return *this;
     }
+
     /*!
    * \brief Set bytes repr function.
    * \param f The ReprBytes function.
@@ -310,103 +312,103 @@ private:
 // Implementation details
 namespace detail {
 
-template <typename T, bool = T::_type_has_method_visit_attrs>
+template<typename T, bool = T::_type_has_method_visit_attrs>
 struct ImplVisitAttrs {
-  static constexpr std::nullptr_t VisitAttrs = nullptr;
+    static constexpr std::nullptr_t VisitAttrs = nullptr;
 };
 
-template <typename T>
+template<typename T>
 struct ImplVisitAttrs<T, true> {
-  static void VisitAttrs(T* self, AttrVisitor* v) { self->VisitAttrs(v); }
+    static void VisitAttrs(T* self, AttrVisitor* v) { self->VisitAttrs(v); }
 };
 
-template <typename T, bool = T::_type_has_method_sequal_reduce>
+template<typename T, bool = T::_type_has_method_sequal_reduce>
 struct ImplSEqualReduce {
-  static constexpr std::nullptr_t SEqualReduce = nullptr;
+    static constexpr std::nullptr_t SEqualReduce = nullptr;
 };
 
-template <typename T>
+template<typename T>
 struct ImplSEqualReduce<T, true> {
-  static bool SEqualReduce(const T* self, const T* other, SEqualReducer equal) {
-    return self->SEqualReduce(other, equal);
-  }
+    static bool SEqualReduce(const T* self, const T* other, SEqualReducer equal) {
+        return self->SEqualReduce(other, equal);
+    }
 };
 
-template <typename T, bool = T::_type_has_method_shash_reduce>
+template<typename T, bool = T::_type_has_method_shash_reduce>
 struct ImplSHashReduce {
-  static constexpr std::nullptr_t SHashReduce = nullptr;
+    static constexpr std::nullptr_t SHashReduce = nullptr;
 };
 
-template <typename T>
+template<typename T>
 struct ImplSHashReduce<T, true> {
-  static void SHashReduce(const T* self, SHashReducer hash_reduce) {
-    self->SHashReduce(hash_reduce);
-  }
+    static void SHashReduce(const T* self, SHashReducer hash_reduce) {
+        self->SHashReduce(hash_reduce);
+    }
 };
 
-template <typename T>
+template<typename T>
 struct ReflectionTrait : ImplVisitAttrs<T>, ImplSEqualReduce<T>, ImplSHashReduce<T> {};
 
-template <typename T, typename TraitName,
-          bool = std::is_null_pointer_v<decltype(TraitName::VisitAttrs)>>
+template<typename T, typename TraitName,
+         bool = std::is_null_pointer_v<decltype(TraitName::VisitAttrs)>>
 struct SelectVisitAttrs {
-  static constexpr std::nullptr_t VisitAttrs = nullptr;
+    static constexpr auto VisitAttrs = nullptr;
 };
 
-template <typename T, typename TraitName>
+template<typename T, typename TraitName>
 struct SelectVisitAttrs<T, TraitName, false> {
-  static void VisitAttrs(Object* self, AttrVisitor* v) {
-    TraitName::VisitAttrs(static_cast<T*>(self), v);
-  }
+    static void VisitAttrs(Object* self, AttrVisitor* v) {
+        TraitName::VisitAttrs(static_cast<T*>(self), v);
+    }
 };
 
-template <typename T, typename TraitName,
-          bool = std::is_null_pointer_v<decltype(TraitName::SEqualReduce)>>
+template<typename T, typename TraitName,
+         bool = std::is_null_pointer_v<decltype(TraitName::SEqualReduce)>>
 struct SelectSEqualReduce {
-  static constexpr std::nullptr_t SEqualReduce = nullptr;
+    static constexpr std::nullptr_t SEqualReduce = nullptr;
 };
 
-template <typename T, typename TraitName>
+template<typename T, typename TraitName>
 struct SelectSEqualReduce<T, TraitName, false> {
-  static bool SEqualReduce(const Object* self, const Object* other, SEqualReducer equal) {
-    return TraitName::SEqualReduce(static_cast<const T*>(self), static_cast<const T*>(other),
-                                   equal);
-  }
+    static bool SEqualReduce(const Object* self, const Object* other, SEqualReducer equal) {
+        return TraitName::SEqualReduce(static_cast<const T*>(self), static_cast<const T*>(other),
+                                       equal);
+    }
 };
 
-template <typename T, typename TraitName,
-          bool = std::is_null_pointer_v<decltype(TraitName::SHashReduce)>>
+template<typename T, typename TraitName,
+         bool = std::is_null_pointer_v<decltype(TraitName::SHashReduce)>>
 struct SelectSHashReduce {
-  static constexpr std::nullptr_t SHashReduce = nullptr;
+    static constexpr std::nullptr_t SHashReduce = nullptr;
 };
 
-template <typename T, typename TraitName>
+template<typename T, typename TraitName>
 struct SelectSHashReduce<T, TraitName, false> {
-  static void SHashReduce(const Object* self, SHashReducer hash_reduce) {
-    return TraitName::SHashReduce(static_cast<const T*>(self), hash_reduce);
-  }
+    static void SHashReduce(const Object* self, SHashReducer hash_reduce) {
+        return TraitName::SHashReduce(static_cast<const T*>(self), hash_reduce);
+    }
 };
 
-}  // namespace detail
+}// namespace detail
 
-template <typename T, typename TraitName>
+template<typename T, typename TraitName>
 ReflectionVTable::Registry ReflectionVTable::Register() {
-  uint32_t tindex = T::RuntimeTypeIndex();
-  if (tindex >= fvisit_attrs_.size()) {
-    fvisit_attrs_.resize(tindex + 1, nullptr);
-    fcreate_.resize(tindex + 1, nullptr);
-    frepr_bytes_.resize(tindex + 1, nullptr);
-    fsequal_reduce_.resize(tindex + 1, nullptr);
-    fshash_reduce_.resize(tindex + 1, nullptr);
-  }
-  // functor that implements the redirection.
-  fvisit_attrs_[tindex] = detail::SelectVisitAttrs<T, TraitName>::VisitAttrs;
+    uint32_t tindex = T::RuntimeTypeIndex();
+    if (tindex >= fvisit_attrs_.size()) {
+        fvisit_attrs_.resize(tindex + 1, nullptr);
+        fcreate_.resize(tindex + 1, nullptr);
+        frepr_bytes_.resize(tindex + 1, nullptr);
+        fsequal_reduce_.resize(tindex + 1, nullptr);
+        fshash_reduce_.resize(tindex + 1, nullptr);
+    }
+    // functor that implements the redirection.
+    fvisit_attrs_[tindex] = detail::SelectVisitAttrs<T, TraitName>::VisitAttrs;
 
-  fsequal_reduce_[tindex] = detail::SelectSEqualReduce<T, TraitName>::SEqualReduce;
+    fsequal_reduce_[tindex] = detail::SelectSEqualReduce<T, TraitName>::SEqualReduce;
 
-  fshash_reduce_[tindex] = detail::SelectSHashReduce<T, TraitName>::SHashReduce;
+    fshash_reduce_[tindex] = detail::SelectSHashReduce<T, TraitName>::SHashReduce;
 
-  return Registry(this, tindex);
+    return Registry(this, tindex);
 }
 
 /*!
