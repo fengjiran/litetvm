@@ -2,6 +2,7 @@
 // Created by richard on 3/6/25.
 //
 #include "ir/expr.h"
+#include "tir/expr.h"
 #include "runtime/memory.h"
 #include "runtime/registry.h"
 #include "support/scalars.h"
@@ -10,27 +11,26 @@ namespace litetvm {
 
 using runtime::make_object;
 
+PrimExpr::PrimExpr(int32_t value) : PrimExpr(IntImm(DataType::Int(32), value)) {}
+
+PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(DataType::Float(32), value)) {}
+
 IntImm::IntImm(DataType dtype, int64_t value) {
-    CHECK(dtype.is_scalar()) << "ValueError: IntImm can only take scalar, but " << dtype
-                             << " was supplied.";
-    CHECK(dtype.is_int() || dtype.is_uint())
-            << "ValueError: IntImm supports only int or uint type, but " << dtype << " was supplied.";
+    CHECK(dtype.is_scalar()) << "ValueError: IntImm can only take scalar, but " << dtype << " was supplied.";
+    CHECK(dtype.is_int() || dtype.is_uint()) << "ValueError: IntImm supports only int or uint type, but " << dtype << " was supplied.";
     if (dtype.is_uint()) {
-        CHECK_GE(value, 0U) << "ValueError: Literal value " << value
-                            << " is negative for unsigned integer type " << dtype;
+        CHECK_GE(value, 0U) << "ValueError: Literal value " << value << " is negative for unsigned integer type " << dtype;
         if (dtype.bits() < 64) {
-            CHECK_LT(value, 1LL << dtype.bits())
-                    << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
+            CHECK_LT(value, 1LL << dtype.bits()) << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
         }
     } else if (dtype.bits() == 1) {
         // int(1)
         CHECK(value == 0 || value == 1) << "ValueError: " << value << " exceeds range of " << dtype;
     } else if (dtype.bits() < 64) {
-        CHECK_GE(value, -(1LL << (dtype.bits() - 1)))
-                << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
-        CHECK_LT(value, 1LL << (dtype.bits() - 1))
-                << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
+        CHECK_GE(value, -(1LL << (dtype.bits() - 1))) << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
+        CHECK_LT(value, 1LL << (dtype.bits() - 1)) << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
     }
+
     ObjectPtr<IntImmNode> node = make_object<IntImmNode>();
     node->dtype = dtype;
     node->value = value;
@@ -46,7 +46,6 @@ TVM_REGISTER_NODE_TYPE(IntImmNode);
 
 FloatImm::FloatImm(DataType dtype, double value) {
     CHECK_EQ(dtype.lanes(), 1) << "ValueError: FloatImm can only take scalar.";
-
     CHECK(dtype.is_float() || dtype.is_bfloat16() || dtype.is_float8() ||
           dtype.code() >= static_cast<int>(DataType::TypeCode::kCustomBegin))
             << "ValueError: FloatImm supports only float, but " << dtype << " was supplied.";
@@ -69,11 +68,9 @@ FloatImm::FloatImm(DataType dtype, double value) {
             CHECK_LE(value, support::kMaxBFloat16)
                     << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
         } else if (dtype.is_float8()) {
-            double bound = (dtype.code() == static_cast<int>(DataType::TypeCode::kE4M3Float)) ? support::kMaxE4M3 : support::kMaxE5M2;
-            CHECK_GE(value, -bound) << "ValueError: Literal value " << value << " exceeds minimum of "
-                                    << dtype;
-            CHECK_LE(value, bound) << "ValueError: Literal vaule " << value << " exceeds maximum of "
-                                   << dtype;
+            double bound = dtype.code() == static_cast<int>(DataType::TypeCode::kE4M3Float) ? support::kMaxE4M3 : support::kMaxE5M2;
+            CHECK_GE(value, -bound) << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
+            CHECK_LE(value, bound) << "ValueError: Literal vaule " << value << " exceeds maximum of " << dtype;
         }
     }
     ObjectPtr<FloatImmNode> node = make_object<FloatImmNode>();

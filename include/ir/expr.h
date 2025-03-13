@@ -2,8 +2,8 @@
 // Created by 赵丹 on 25-2-26.
 //
 
-#ifndef EXPR_H
-#define EXPR_H
+#ifndef LITETVM_IR_EXPR_H
+#define LITETVM_IR_EXPR_H
 
 #include "node/script_printer.h"
 #include "runtime/object.h"
@@ -75,7 +75,7 @@ public:
    * dtype is sufficient to decide the Type of the PrimExpr
    * when it corresponds to POD value types such as i32.
    *
-   * When dtype is DataType::Handle(), the expression could corresponds to
+   * When dtype is DataType::Handle(), the expression could correspond to
    * a more fine-grained Type, and we can get the type by running lazy type inference.
    */
     DataType dtype;
@@ -98,6 +98,7 @@ public:
    * \param value The value to be constructed.
    */
     LITETVM_API PrimExpr(int32_t value);// NOLINT(*)
+
     /*!
    * \brief construct from float.
    * \param value The value to be constructed.
@@ -443,20 +444,33 @@ public:
     TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(Bool, IntImm, IntImmNode);
 };
 
-// Overload operators to make sure we have the most fine grained types.
-inline Bool operator||(const Bool& a, bool b) { return Bool(a.operator bool() || b); }
-inline Bool operator||(bool a, const Bool& b) { return Bool(a || b.operator bool()); }
+// Overload operators to make sure we have the most fine-grained types.
+inline Bool operator||(const Bool& a, bool b) {
+    return Bool(a.operator bool() || b);
+}
+inline Bool operator||(bool a, const Bool& b) {
+    return Bool(a || b.operator bool());
+}
 inline Bool operator||(const Bool& a, const Bool& b) {
     return Bool(a.operator bool() || b.operator bool());
 }
-inline Bool operator&&(const Bool& a, bool b) { return Bool(a.operator bool() && b); }
-inline Bool operator&&(bool a, const Bool& b) { return Bool(a && b.operator bool()); }
+
+inline Bool operator&&(const Bool& a, bool b) {
+    return Bool(a.operator bool() && b);
+}
+inline Bool operator&&(bool a, const Bool& b) {
+    return Bool(a && b.operator bool());
+}
 inline Bool operator&&(const Bool& a, const Bool& b) {
     return Bool(a.operator bool() && b.operator bool());
 }
 
-inline bool operator==(const Bool& a, bool b) { return a.operator bool() == b; }
-inline bool operator==(bool a, const Bool& b) { return a == b.operator bool(); }
+inline bool operator==(const Bool& a, bool b) {
+    return a.operator bool() == b;
+}
+inline bool operator==(bool a, const Bool& b) {
+    return a == b.operator bool();
+}
 inline bool operator==(const Bool& a, const Bool& b) {
     return a.operator bool() == b.operator bool();
 }
@@ -493,19 +507,21 @@ public:
    * \tparam Enum The enum type.
    * \param value The enum value.
    */
-    template<typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
+    template<typename Enum,
+             typename = std::enable_if_t<std::is_enum_v<Enum>>>
     explicit Integer(Enum value) : Integer(static_cast<int>(value)) {
-        static_assert(std::is_same<int, typename std::underlying_type<Enum>::type>::value,
-                      "declare enum to be enum int to use visitor");
+        static_assert(std::is_same_v<int, std::underlying_type_t<Enum>>, "declare enum to be enum int to use visitor");
     }
+
     /*!
    * \brief Assign an expression to integer.
    * \param other another expression.
    */
     Integer& operator=(const IntImm& other) {
-        data_ = ObjectRef::GetDataPtr<Object>(other);
+        data_ = GetDataPtr<Object>(other);
         return *this;
     }
+
     /*!
    * \brief convert to int64_t
    */
@@ -513,17 +529,25 @@ public:
         CHECK(data_ != nullptr) << " Trying to reference a null Integer";
         return (*this)->value;
     }
+
     // comparators
     Bool operator==(int other) const {
         if (data_ == nullptr) return Bool(false);
         return Bool((*this)->value == other);
     }
-    Bool operator!=(int other) const { return !(*this == other); }
-    template<typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
+
+    Bool operator!=(int other) const {
+        return !(*this == other);
+    }
+
+    template<typename Enum,
+             typename = std::enable_if_t<std::is_enum_v<Enum>>>
     Bool operator==(Enum other) const {
         return *this == static_cast<int>(other);
     }
-    template<typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
+
+    template<typename Enum,
+             typename = std::enable_if_t<std::is_enum_v<Enum>>>
     Bool operator!=(Enum other) const {
         return *this != static_cast<int>(other);
     }
@@ -531,4 +555,4 @@ public:
 
 }// namespace litetvm
 
-#endif//EXPR_H
+#endif//LITETVM_IR_EXPR_H
