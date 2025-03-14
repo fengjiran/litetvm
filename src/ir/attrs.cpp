@@ -5,6 +5,7 @@
 #include "ir/attrs.h"
 #include "runtime/registry.h"
 #include "node/reflection.h"
+#include "node/attr_registry_map.h"
 
 namespace litetvm {
 
