@@ -156,6 +156,103 @@ public:
     TVM_DEFINE_OBJECT_REF_METHODS(PointerType, Type, PointerTypeNode);
 };
 
+/*! \brief Possible kinds of TypeVars. */
+enum class TypeKind : int {
+    kType = 0,
+    /*! \brief Template variable in shape expression. */
+    kShapeVar = 1,
+    kBaseType = 2,
+    kConstraint = 4,
+    kAdtHandle = 5,
+    kTypeData = 6
+};
+
+/*! \brief Converts a TypeKind to a string. */
+inline String TypeKind2String(TypeKind kind) {
+    switch (kind) {
+        case TypeKind::kType:
+            return "Type";
+        case TypeKind::kShapeVar:
+            return "ShapeVar";
+        case TypeKind::kBaseType:
+            return "BaseType";
+        case TypeKind::kConstraint:
+            return "Constraint";
+        case TypeKind::kAdtHandle:
+            return "AdtHandle";
+        case TypeKind::kTypeData:
+            return "TypeData";
+    }
+    LOG(FATAL) << "ValueError: Unknown TypeKind: " << static_cast<int>(kind);
+}
+
+/*!
+ * \brief Type parameter in functions.
+ *
+ * A type variable can be viewed as template parameter in c++ template function.
+ *
+ * For example, in the following pesudo code,
+ * the TypeVar of f is TypeVar("n", kind=kShapeVar).
+ * This function can take in a Tensor with shape=(3, 3) and
+ * returns a Tensor with shape=(9,)
+ *
+ * \code
+ *
+ *  template<i32 n>
+ *  f(x : Tensor[i32, (n, n)]) -> Tensor[i32, (n * n)]
+ *
+ * \endcode
+ * \sa TypeVar, TypeKind
+ */
+class TypeVarNode : public TypeNode {
+public:
+    /*!
+     * \brief The name of the variable,
+     *  this only acts as a hint to the user,
+     *  and is not used for equality.
+     */
+    String name_hint;
+    /*! \brief The kind of type parameter */
+    TypeKind kind;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("name_hint", &name_hint);
+        v->Visit("kind", &kind);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const TypeVarNode* other, SEqualReducer equal) const {
+        return equal(kind, other->kind) && equal.FreeVarEqualImpl(this, other);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(kind);
+        hash_reduce.FreeVarHashImpl(this);
+    }
+
+    static constexpr const char* _type_key = "TypeVar";
+    TVM_DECLARE_FINAL_OBJECT_INFO(TypeVarNode, TypeNode);
+};
+
+/*!
+ * \brief Managed reference to TypeVarNode
+ * \sa TypeVarNode
+ */
+class TypeVar : public Type {
+public:
+    /*!
+     * \brief Constructor
+     * \param name_hint The name of the type var.
+     * \param kind The kind of the type var.
+     * \param span The span information.
+     */
+    // TVM_DLL TypeVar(String name_hint, TypeKind kind, Span span = Span());
+    LITETVM_API TypeVar(String name_hint, TypeKind kind);
+
+    TVM_DEFINE_OBJECT_REF_METHODS(TypeVar, Type, TypeVarNode);
+};
+
+
 }// namespace litetvm
 
 #endif//LITETVM_IR_TYPE_H

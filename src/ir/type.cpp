@@ -33,4 +33,18 @@ TVM_REGISTER_GLOBAL("ir.PointerType")
             return PointerType(element_type, storage_scope);
         });
 
+TypeVar::TypeVar(String name_hint, TypeKind kind) {
+    auto n = runtime::make_object<TypeVarNode>();
+    n->name_hint = name_hint;
+    n->kind = kind;
+    data_ = std::move(n);
+}
+
+TVM_REGISTER_NODE_TYPE(TypeVarNode);
+
+TVM_REGISTER_GLOBAL("ir.TypeVar").set_body_typed([](String name, int kind) {
+    return TypeVar(name, static_cast<TypeKind>(kind));
+});
+
+
 }// namespace litetvm
