@@ -86,18 +86,25 @@ public:
      * \param map The internal map.
      */
     explicit AttrRegistryMap(const AttrRegistryMapContainerMap<KeyType>& map) : map_(map) {}
+
     /*!
      * \brief Check if the map has op as a key.
      * \param key The key to the map
      * \return 1 if op is contained in a map, 0 otherwise.
      */
-    int count(const KeyType& key) const { return map_.count(key); }
+    int count(const KeyType& key) const {
+        return map_.count(key);
+    }
+
     /*!
      * \brief get the corresponding value element at a key.
      * \param key The key to the map
      * \return the const reference to the content value.
      */
-    ValueType operator[](const KeyType& key) const { return map_[key]; }
+    ValueType operator[](const KeyType& key) const {
+        return map_[key];
+    }
+
     /*!
      * \brief get the corresponding value element at key with default value.
      * \param key The key to the map
