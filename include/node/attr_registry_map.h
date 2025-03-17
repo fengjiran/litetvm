@@ -20,7 +20,7 @@ public:
     /*!
    * \brief Check if the map has key.
    * \param key The key to the map
-   * \return 1 if key is contained in map, 0 otherwise.
+   * \return 1 if key is contained in a map, 0 otherwise.
    */
     int count(const KeyType& key) const {
         if (key.defined()) {
@@ -29,8 +29,9 @@ public:
         }
         return 0;
     }
+
     /*!
-   * \brief get the corresponding value element at key.
+   * \brief get the corresponding value element at a key.
    * \param key The key to the map
    * \return the const reference to the content value.
    */
@@ -41,8 +42,9 @@ public:
                 << "Attribute " << attr_name_ << " has not been registered for " << key->name;
         return data_[idx].first;
     }
+
     /*!
-   * \brief get the corresponding value element at key with default value.
+   * \brief get the corresponding value element at a key with default value.
    * \param key The key to the map
    * \param def_value The default value when the key does not exist.
    * \return the const reference to the content value.
@@ -62,12 +64,51 @@ private:
     /*! \brief The name of the attr field */
     String attr_name_;
     /*! \brief The internal data. */
-    std::vector<std::pair<runtime::TVMRetValue, int>> data_;
+    std::vector<std::pair<TVMRetValue, int>> data_;
     /*! \brief The constructor */
     AttrRegistryMapContainerMap() = default;
+
     template<typename, typename>
     friend class AttrRegistry;
     friend class OpRegEntry;
+};
+
+/*!
+ * \brief Map<Key, ValueType> used to store meta-data.
+ * \tparam KeyType The type of the key
+ * \tparam ValueType The type of the value stored in map.
+ */
+template<typename KeyType, typename ValueType>
+class AttrRegistryMap {
+public:
+    /*!
+     * \brief constructor
+     * \param map The internal map.
+     */
+    explicit AttrRegistryMap(const AttrRegistryMapContainerMap<KeyType>& map) : map_(map) {}
+    /*!
+     * \brief Check if the map has op as a key.
+     * \param key The key to the map
+     * \return 1 if op is contained in a map, 0 otherwise.
+     */
+    int count(const KeyType& key) const { return map_.count(key); }
+    /*!
+     * \brief get the corresponding value element at a key.
+     * \param key The key to the map
+     * \return the const reference to the content value.
+     */
+    ValueType operator[](const KeyType& key) const { return map_[key]; }
+    /*!
+     * \brief get the corresponding value element at key with default value.
+     * \param key The key to the map
+     * \param def_value The default value when the key does not exist.
+     * \return the const reference to the content value.
+     */
+    ValueType get(const KeyType& key, ValueType def_value) const { return map_.get(key, def_value); }
+
+protected:
+    /*! \brief The internal map field */
+    const AttrRegistryMapContainerMap<KeyType>& map_;
 };
 
 }// namespace litetvm
