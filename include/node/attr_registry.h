@@ -35,7 +35,9 @@ public:
    */
     const EntryType* Get(const String& name) const {
         auto it = entry_map_.find(name);
-        if (it != entry_map_.end()) return it->second;
+        if (it != entry_map_.end()) {
+            return it->second;
+        }
         return nullptr;
     }
 
@@ -46,7 +48,10 @@ public:
    */
     EntryType& RegisterOrGet(const String& name) {
         auto it = entry_map_.find(name);
-        if (it != entry_map_.end()) return *it->second;
+        if (it != entry_map_.end()) {
+            return *it->second;
+        }
+
         uint32_t registry_index = static_cast<uint32_t>(entries_.size());
         auto entry = std::unique_ptr<EntryType>(new EntryType(registry_index));
         auto* eptr = entry.get();
@@ -75,9 +80,9 @@ public:
    * \param value The value to be set.
    * \param plevel The support level.
    */
-    void UpdateAttr(const String& attr_name, const KeyType& key, runtime::TVMRetValue value,
+    void UpdateAttr(const String& attr_name, const KeyType& key, TVMRetValue value,
                     int plevel) {
-        using runtime::TVMRetValue;
+        // using runtime::TVMRetValue;
         std::lock_guard<std::mutex> lock(mutex_);
         auto& op_map = attrs_[attr_name];
         if (op_map == nullptr) {

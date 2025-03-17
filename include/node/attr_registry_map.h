@@ -25,7 +25,7 @@ public:
     int count(const KeyType& key) const {
         if (key.defined()) {
             const uint32_t idx = key->AttrRegistryIndex();
-            return idx < data_.size() ? (data_[idx].second != 0) : 0;
+            return idx < data_.size() ? data_[idx].second != 0 : 0;
         }
         return 0;
     }
