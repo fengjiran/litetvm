@@ -19,11 +19,14 @@
 
 namespace litetvm {
 
+using runtime::make_object;
 using runtime::Object;
 using runtime::ObjectRef;
 using runtime::PackedFunc;
 using runtime::String;
+using runtime::TVMRetValue;
 using runtime::TypedPackedFunc;
+
 
 class Target;
 
@@ -145,7 +148,7 @@ private:
 
 /*!
  * \brief Map<TargetKind, ValueType> used to store meta-information about TargetKind
- * \tparam ValueType The type of the value stored in map
+ * \tparam ValueType The type of the value stored in a map
  */
 template<typename ValueType>
 class TargetKindAttrMap : public AttrRegistryMap<TargetKind, ValueType> {
@@ -163,11 +166,238 @@ static constexpr const char* kTvmRuntimeCpp = "c++";
 /*! \brief Value used with --runtime in target specs to indicate the C runtime. */
 static constexpr const char* kTvmRuntimeCrt = "c";
 
+/*!
+ * \brief Helper structure to register TargetKind
+ * \sa TVM_REGISTER_TARGET_KIND
+ */
+class TargetKindRegEntry {
+public:
+    /*!
+   * \brief Register additional attributes to target_kind.
+   * \param attr_name The name of the attribute.
+   * \param value The value to be set.
+   * \param plevel The priority level of this attribute,
+   *  a higher priority level attribute
+   *  will replace lower priority level attribute.
+   *  Must be bigger than 0.
+   *
+   *  Cannot set with same plevel twice in the code.
+   *
+   * \tparam ValueType The type of the value to be set.
+   */
+    template<typename ValueType>
+    TargetKindRegEntry& set_attr(const String& attr_name, const ValueType& value,
+                                 int plevel = 10);
+    /*!
+   * \brief Set DLPack's device_type the target
+   * \param device_type Device type
+   */
+    inline TargetKindRegEntry& set_default_device_type(int device_type);
+    /*!
+   * \brief Set DLPack's device_type the target
+   * \param keys The default keys
+   */
+    inline TargetKindRegEntry& set_default_keys(std::vector<String> keys);
+    /*!
+   * \brief Set the pre-processing function applied upon target creation
+   * \tparam FLambda Type of the function
+   * \param f The pre-processing function
+   */
+    template<typename FLambda>
+    TargetKindRegEntry& set_attrs_preprocessor(FLambda f);
+    /*!
+   * \brief Set the parsing function applied upon target creation
+   * \param parser The Target parsing function
+   */
+    inline TargetKindRegEntry& set_target_parser(FTVMTargetParser parser);
+    /*!
+   * \brief Register a valid configuration option and its ValueType for validation
+   * \param key The configuration key
+   * \tparam ValueType The value type to be registered
+   */
+    template<typename ValueType>
+    TargetKindRegEntry& add_attr_option(const String& key);
+
+    /*!
+   * \brief Register a valid configuration option and its ValueType for validation
+   * \param key The configuration key
+   * \param default_value The default value of the key
+   * \tparam ValueType The value type to be registered
+   */
+    template<typename ValueType>
+    TargetKindRegEntry& add_attr_option(const String& key, ObjectRef default_value);
+
+    /*! \brief Set the name of the TargetKind to be the same as registry if it is empty */
+    inline TargetKindRegEntry& set_name();
+
+    /*!
+   * \brief List all the entry names in the registry.
+   * \return The entry names.
+   */
+    LITETVM_API static Array<String> ListTargetKinds();
+
+    /*!
+   * \brief Get all supported option names and types for a given Target kind.
+   * \return Map of option name to type
+   */
+    LITETVM_API static Map<String, String> ListTargetKindOptions(const TargetKind& kind);
+
+    /*!
+   * \brief Register or get a new entry.
+   * \param target_kind_name The name of the TargetKind.
+   * \return the corresponding entry.
+   */
+    LITETVM_API static TargetKindRegEntry& RegisterOrGet(const String& target_kind_name);
+
+private:
+    TargetKind kind_;
+    String name;
+
+    /*! \brief private constructor */
+    explicit TargetKindRegEntry(uint32_t reg_index) : kind_(make_object<TargetKindNode>()) {
+        kind_->index_ = reg_index;
+    }
+    /*!
+   * \brief update the attribute TargetKindAttrMap
+   * \param key The name of the attribute
+   * \param value The value to be set
+   * \param plevel The priority level
+   */
+    LITETVM_API void UpdateAttr(const String& key, TVMRetValue value, int plevel) const;
+    template<typename, typename>
+    friend class AttrRegistry;
+    friend class TargetKind;
+};
+
+namespace detail {
+template<typename Type, template<typename...> class Container>
+struct is_specialized : std::false_type {
+    using type = std::false_type;
+};
+
+template<template<typename...> class Container, typename... Args>
+struct is_specialized<Container<Args...>, Container> : std::true_type {
+    using type = std::true_type;
+};
+
+template<typename ValueType, typename IsArray = typename is_specialized<ValueType, Array>::type,
+         typename IsMap = typename is_specialized<ValueType, Map>::type>
+struct ValueTypeInfoMaker {};
+
+template<typename ValueType>
+struct ValueTypeInfoMaker<ValueType, std::false_type, std::false_type> {
+    using ValueTypeInfo = TargetKindNode::ValueTypeInfo;
+
+    ValueTypeInfo operator()() const {
+        uint32_t tindex = ValueType::ContainerType::_GetOrAllocRuntimeTypeIndex();
+        ValueTypeInfo info;
+        info.type_index = tindex;
+        info.type_key = Object::TypeIndex2Key(tindex);
+        info.key = nullptr;
+        info.val = nullptr;
+        return info;
+    }
+};
+
+template<typename ValueType>
+struct ValueTypeInfoMaker<ValueType, std::true_type, std::false_type> {
+    using ValueTypeInfo = TargetKindNode::ValueTypeInfo;
+
+    ValueTypeInfo operator()() const {
+        using key_type = ValueTypeInfoMaker<typename ValueType::value_type>;
+        uint32_t tindex = ValueType::ContainerType::_GetOrAllocRuntimeTypeIndex();
+        ValueTypeInfo info;
+        info.type_index = tindex;
+        info.type_key = Object::TypeIndex2Key(tindex);
+        info.key = std::make_unique<ValueTypeInfo>(key_type()());
+        info.val = nullptr;
+        return info;
+    }
+};
+
+template<typename ValueType>
+struct ValueTypeInfoMaker<ValueType, std::false_type, std::true_type> {
+    using ValueTypeInfo = TargetKindNode::ValueTypeInfo;
+    ValueTypeInfo operator()() const {
+        using key_type = ValueTypeInfoMaker<typename ValueType::key_type>;
+        using val_type = ValueTypeInfoMaker<typename ValueType::mapped_type>;
+        uint32_t tindex = ValueType::ContainerType::_GetOrAllocRuntimeTypeIndex();
+        ValueTypeInfo info;
+        info.type_index = tindex;
+        info.type_key = Object::TypeIndex2Key(tindex);
+        info.key = std::make_unique<ValueTypeInfo>(key_type()());
+        info.val = std::make_unique<ValueTypeInfo>(val_type()());
+        return info;
+    }
+};
+
+}// namespace detail
+
 
 template<typename ValueType>
 TargetKindAttrMap<ValueType> TargetKind::GetAttrMap(const String& attr_name) {
     return TargetKindAttrMap<ValueType>(GetAttrMapContainer(attr_name));
 }
+
+template<typename ValueType>
+TargetKindRegEntry& TargetKindRegEntry::set_attr(const String& attr_name,
+                                                 const ValueType& value, int plevel) {
+    CHECK_GT(plevel, 0) << "plevel in set_attr must be greater than 0";
+    TVMRetValue rv;
+    rv = value;
+    UpdateAttr(attr_name, rv, plevel);
+    return *this;
+}
+
+inline TargetKindRegEntry& TargetKindRegEntry::set_default_device_type(int device_type) {
+    kind_->default_device_type = device_type;
+    return *this;
+}
+
+inline TargetKindRegEntry& TargetKindRegEntry::set_default_keys(std::vector<String> keys) {
+    kind_->default_keys = keys;
+    return *this;
+}
+
+template<typename FLambda>
+TargetKindRegEntry& TargetKindRegEntry::set_attrs_preprocessor(FLambda f) {
+    LOG(WARNING) << "set_attrs_preprocessor is deprecated please use set_target_parser instead";
+    using FType = typename runtime::detail::function_signature<FLambda>::FType;
+    kind_->preprocessor = runtime::TypedPackedFunc<FType>(std::move(f)).packed();
+    return *this;
+}
+
+inline TargetKindRegEntry& TargetKindRegEntry::set_target_parser(FTVMTargetParser parser) {
+    kind_->target_parser = parser;
+    return *this;
+}
+
+template<typename ValueType>
+TargetKindRegEntry& TargetKindRegEntry::add_attr_option(const String& key) {
+    CHECK(!kind_->key2vtype_.count(key))
+            << "AttributeError: add_attr_option failed because '" << key << "' has been set once";
+    kind_->key2vtype_[key] = detail::ValueTypeInfoMaker<ValueType>()();
+    return *this;
+}
+
+template<typename ValueType>
+TargetKindRegEntry& TargetKindRegEntry::add_attr_option(const String& key,
+                                                        ObjectRef default_value) {
+    add_attr_option<ValueType>(key);
+    kind_->key2default_[key] = default_value;
+    return *this;
+}
+
+inline TargetKindRegEntry& TargetKindRegEntry::set_name() {
+    if (kind_->name.empty()) {
+        kind_->name = name;
+    }
+    return *this;
+}
+
+#define TVM_TARGET_KIND_REGISTER_VAR_DEF \
+    static DMLC_ATTRIBUTE_UNUSED ::litetvm::TargetKindRegEntry& __make_##TargetKind
+
 
 }// namespace litetvm
 

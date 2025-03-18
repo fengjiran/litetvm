@@ -20,7 +20,7 @@ using runtime::ObjectRef;
 /*!
  * \brief Type is the base type of all types.
  *
- * Relay's type system contains following subclasses:
+ * Relay's type system contains the following subclasses:
  *
  * - PrimType: type of primitive type values used in the low-level IR.
  * - FuncType: type of function.
@@ -68,13 +68,17 @@ public:
    */
     runtime::DataType dtype;
 
-    void VisitAttrs(AttrVisitor* v) { v->Visit("dtype", &dtype); }
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+    }
 
     bool SEqualReduce(const PrimTypeNode* other, SEqualReducer equal) const {
         return equal(dtype, other->dtype);
     }
 
-    void SHashReduce(SHashReducer hash_reduce) const { hash_reduce(dtype); }
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+    }
 
     static constexpr const char* _type_key = "PrimType";
     TVM_DECLARE_FINAL_OBJECT_INFO(PrimTypeNode, TypeNode);
