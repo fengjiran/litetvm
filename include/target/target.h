@@ -258,7 +258,7 @@ private:
    * \brief Pop a target off the thread local context stack,
    *  restoring the previous target as the current context.
    */
-    LITETVM_API void ExitWithScope();
+    LITETVM_API void ExitWithScope() const;
 };
 
 

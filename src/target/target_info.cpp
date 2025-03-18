@@ -26,7 +26,7 @@ MemoryInfo GetMemoryInfo(const std::string& scope) {
     const runtime::PackedFunc* f = runtime::RegistryManager::Global().Get(fname);
     if (f == nullptr) {
         LOG(WARNING) << "MemoryInfo for scope = " << scope << " is undefined";
-        return MemoryInfo();
+        return {};
     }
     return (*f)();
 }
