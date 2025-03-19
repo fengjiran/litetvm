@@ -285,6 +285,8 @@ private:
 
     template<typename>
     friend class BaseAllocator;
+
+    friend class ObjectInternal;
 };
 
 /*!
@@ -626,6 +628,7 @@ protected:
     friend struct ObjectPtrHash;
     friend class TVMRetValue;
     friend class TVMArgsSetter;
+    friend class ObjectInternal;
 
     template<typename SubRef, typename BaseRef>
     friend SubRef Downcast(BaseRef ref);

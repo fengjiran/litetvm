@@ -6,7 +6,9 @@
 #include "ir/expr.h"
 #include "node/repr_printer.h"
 #include "runtime/device_api.h"
+#include "runtime/object_internal.h"
 #include "runtime/registry.h"
+#include "target/tag.h"
 #include "target/target_kind.h"
 
 #include <algorithm>
