@@ -14,6 +14,7 @@
 #include <limits>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace litetvm {
 
@@ -485,7 +486,7 @@ inline bool operator==(const Bool& a, const Bool& b) {
  */
 class Integer : public IntImm {
 public:
-    Integer() {}
+    Integer() = default;
     /*!
    * \brief constructor from node.
    */
@@ -494,7 +495,7 @@ public:
    * \brief Construct integer from int value.
    */
     // Integer(int value, Span span = Span()) : IntImm(DataType::Int(32), value, span) {}  // NOLINT(*)
-    Integer(int value) : IntImm(DataType::Int(32), value) {}
+    explicit Integer(int value) : IntImm(DataType::Int(32), value) {}
 
     /*!
    * \brief Construct integer from int imm.
@@ -552,6 +553,73 @@ public:
         return *this != static_cast<int>(other);
     }
 };
+
+/*! \brief range over one dimension */
+class RangeNode : public Object {
+public:
+    /*! \brief beginning of the node */
+    PrimExpr min;
+    /*! \brief the extend of range */
+    PrimExpr extent;
+    /*! \brief the location of this range in the source */
+    // mutable Span span;
+    /*! \brief constructor */
+    RangeNode() = default;
+
+    // RangeNode(PrimExpr min, PrimExpr extent, Span span = Span())
+    //     : min(min), extent(extent), span(span) {}
+    RangeNode(PrimExpr min, PrimExpr extent) : min(std::move(min)), extent(std::move(extent)) {}
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("min", &min);
+        v->Visit("extent", &extent);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const RangeNode* other, SEqualReducer equal) const {
+        return equal(min, other->min) && equal(extent, other->extent);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(min);
+        hash_reduce(extent);
+    }
+
+    static constexpr const char* _type_key = "Range";
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
+    TVM_DECLARE_FINAL_OBJECT_INFO(RangeNode, Object);
+};
+
+/*! \brief Range container  */
+class Range : public ObjectRef {
+public:
+    /*!
+     * \brief constructor by begin and end
+     * \param begin The begin of the range.
+     * \param end The end of the range.
+     * \param span The location of the Range in the source.
+     */
+    // TVM_DLL Range(PrimExpr begin, PrimExpr end, Span span = Span());
+    LITETVM_API Range(PrimExpr begin, PrimExpr end);
+
+    /*!
+     * \brief construct a new range with min and extent
+     *  The corresponding constructor is removed,
+     *  because that is counter convention of tradition meaning
+     *  of range(begin, end)
+     *
+     * \param min The minimum range.
+     * \param extent The extent of the range.
+     * \param span The location of the Range in the source.
+     */
+    // static Range FromMinExtent(PrimExpr min, PrimExpr extent, Span span = Span());
+    static Range FromMinExtent(PrimExpr min, PrimExpr extent);
+
+    // declare range.
+    TVM_DEFINE_OBJECT_REF_METHODS(Range, ObjectRef, RangeNode);
+};
+
 
 }// namespace litetvm
 
