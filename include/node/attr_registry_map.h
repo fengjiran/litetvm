@@ -6,9 +6,13 @@
 #define LITETVM_NODE_ATTR_REGISTRY_MAP_H
 
 #include "runtime/string.h"
+#include "runtime/packed_func.h"
 #include <vector>
 
 namespace litetvm {
+
+using runtime::String;
+using runtime::TVMRetValue;
 
 /*!
  * \brief Generic attribute map.

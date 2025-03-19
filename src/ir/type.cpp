@@ -3,7 +3,9 @@
 //
 
 #include "ir/type.h"
+
 #include "runtime/registry.h"
+#include <utility>
 
 namespace litetvm {
 
@@ -21,8 +23,8 @@ TVM_REGISTER_GLOBAL("ir.PrimType").set_body_typed([](runtime::DataType dtype) {
 
 PointerType::PointerType(Type element_type, String storage_scope) {
     auto n = runtime::make_object<PointerTypeNode>();
-    n->element_type = element_type;
-    n->storage_scope = storage_scope;
+    n->element_type = std::move(element_type);
+    n->storage_scope = std::move(storage_scope);
     data_ = std::move(n);
 }
 
@@ -35,7 +37,7 @@ TVM_REGISTER_GLOBAL("ir.PointerType")
 
 TypeVar::TypeVar(String name_hint, TypeKind kind) {
     auto n = runtime::make_object<TypeVarNode>();
-    n->name_hint = name_hint;
+    n->name_hint = std::move(name_hint);
     n->kind = kind;
     data_ = std::move(n);
 }
@@ -48,7 +50,7 @@ TVM_REGISTER_GLOBAL("ir.TypeVar").set_body_typed([](String name, int kind) {
 
 GlobalTypeVar::GlobalTypeVar(String name_hint, TypeKind kind) {
     auto n = runtime::make_object<GlobalTypeVarNode>();
-    n->name_hint = name_hint;
+    n->name_hint = std::move(name_hint);
     n->kind = kind;
     data_ = std::move(n);
 }
@@ -106,7 +108,7 @@ TVM_REGISTER_GLOBAL("ir.IncompleteType").set_body_typed([](int kind) {
 
 RelayRefType::RelayRefType(Type value) {
     auto n = runtime::make_object<RelayRefTypeNode>();
-    n->value = value;
+    n->value = std::move(value);
     data_ = std::move(n);
 }
 

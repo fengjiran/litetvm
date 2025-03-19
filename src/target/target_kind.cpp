@@ -3,6 +3,7 @@
 //
 
 #include "target/target_kind.h"
+#include "target/target.h"
 #include "ir/expr.h"
 #include "node/attr_registry.h"
 #include "node/reflection.h"

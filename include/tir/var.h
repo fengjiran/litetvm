@@ -65,7 +65,61 @@ public:
     TVM_DECLARE_BASE_OBJECT_INFO(VarNode, PrimExprNode);
 };
 
+/*! \brief a named variable in TIR */
+class Var : public PrimExpr {
+public:
+    explicit Var(ObjectPtr<Object> n) : PrimExpr(n) {}
+    /*!
+     * \brief Constructor
+     * \param name_hint variable name
+     * \param dtype data type
+     * \param span The location of this object in the source code.
+     */
+    // LITETVM_API explicit Var(String name_hint = "v", DataType dtype = DataType::Int(32),
+    //                      Span span = Span());
+    LITETVM_API explicit Var(String name_hint = "v", DataType dtype = DataType::Int(32));
 
+    /*!
+     * \brief Constructor which provides a more detailed type annotation.
+     * \param name_hint variable name.
+     * \param type_annotation The type annotation.
+     * \param span The location of this object in the source code.
+     */
+    LITETVM_API explicit Var(String name_hint, Type type_annotation);
+    // LITETVM_API explicit Var(String name_hint, Type type_annotation, Span span = Span());
+
+    /*!
+     * \brief Make a new copy of var with same type, but a different nam
+     * \param name The new name to be used.
+     * \return the new Var copy
+     */
+    LITETVM_API Var copy_with_name(const String& name) const;
+    /*!
+     * \brief Make a new copy of var with same type, append suffix
+     * \param suffix The suffix to be appended.
+     * \return the new Var copy
+     */
+    LITETVM_API Var copy_with_suffix(const String& suffix) const;
+    /*!
+     * \brief Make a new copy of the variable with specified dtype
+     * \param dtype The specified dtype
+     * \return The new variable
+     */
+    LITETVM_API Var copy_with_dtype(DataType dtype) const;
+
+    /*!
+     * \brief Get pointer to the internal value.
+     * \return the corresponding Variable.
+     */
+    const VarNode* operator->() const { return get(); }
+    /*!
+     * \brief Get pointer to the internal value.
+     * \return the corresponding Variable.
+     */
+    const VarNode* get() const { return static_cast<const VarNode*>(data_.get()); }
+    /*! \brief type indicate the container type */
+    using ContainerType = VarNode;
+};
 
 }// namespace tir
 }// namespace litetvm

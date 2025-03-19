@@ -195,10 +195,10 @@ inline String TypeKind2String(TypeKind kind) {
  *
  * A type variable can be viewed as template parameter in c++ template function.
  *
- * For example, in the following pesudo code,
+ * For example, in the following pseudocode,
  * the TypeVar of f is TypeVar("n", kind=kShapeVar).
  * This function can take in a Tensor with shape=(3, 3) and
- * returns a Tensor with shape=(9,)
+ * return a Tensor with shape=(9,)
  *
  * \code
  *
@@ -317,7 +317,7 @@ public:
     /*! \brief The type of each field in the tuple. */
     Array<Type> fields;
 
-    TupleTypeNode() {}
+    TupleTypeNode() = default;
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("fields", &fields);
@@ -369,7 +369,7 @@ inline Type VoidType() {
  */
 inline bool IsVoidType(const Type& type) {
     auto* n = type.as<TupleTypeNode>();
-    return n && n->fields.size() == 0;
+    return n && n->fields.empty();
 }
 
 /*!
