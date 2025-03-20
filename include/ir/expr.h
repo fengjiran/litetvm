@@ -5,6 +5,8 @@
 #ifndef LITETVM_IR_EXPR_H
 #define LITETVM_IR_EXPR_H
 
+#include "ir/type.h"
+#include "node/repr_printer.h"
 #include "node/script_printer.h"
 #include "runtime/object.h"
 #include "runtime/string.h"
@@ -331,6 +333,113 @@ LITETVM_API PrimExpr operator^(PrimExpr a, PrimExpr b);
  */
 LITETVM_API PrimExpr operator~(PrimExpr a);
 
+/*!
+ * \brief Base node of all non-primitive expressions.
+ *
+ * RelaxExpr supports tensor and functions as first class citizen.
+ * The life-cycle of the corresponding
+ * objects are implicitly managed by the language.
+ *
+ * \sa RelaxExpr
+ */
+class RelaxExprNode : public BaseExprNode {
+public:
+    /*!
+     * \brief Stores the result of type inference(type checking).
+     *
+     * \note This can be undefined before type inference.
+     *       This value is discarded during serialization.
+     */
+    mutable Type checked_type_ = Type(nullptr);
+
+    /*!
+     * \brief Stores the result of structure information of the
+     *        expression that encapsulate both static shape and
+     *        runtime information such as shape.
+     */
+    mutable Optional<ObjectRef> struct_info_ = Optional<ObjectRef>();
+
+    /*!
+     * \return The checked_type
+     */
+    inline const Type& checked_type() const;
+
+    /*!
+     * \brief Check if the inferred(checked) type of the Expr
+     *  is backed by a TTypeNode and return it.
+     *
+     * \note This function will throw an error if the node type
+     *       of this Expr is not TTypeNode.
+     *
+     * \return The corresponding TTypeNode pointer.
+     * \tparam The specific TypeNode we look for.
+     */
+    template<typename TTypeNode>
+    const TTypeNode* type_as() const;
+
+    static constexpr const char* _type_key = "RelaxExpr";
+    static constexpr uint32_t _type_child_slots = 22;
+    TVM_DECLARE_BASE_OBJECT_INFO(RelaxExprNode, BaseExprNode);
+};
+
+/*!
+ * \brief Managed reference to RelaxExprNode.
+ * \sa RelaxExprNode
+ */
+class RelaxExpr : public BaseExpr {
+public:
+    TVM_DEFINE_OBJECT_REF_METHODS(RelaxExpr, BaseExpr, RelaxExprNode);
+};
+
+class GlobalVar;
+/*!
+ * \brief Global variable that lives in the top-level module.
+ *
+ * A GlobalVar only refers to function definitions.
+ * This is used to enable recursive calls between function.
+ *
+ * \sa GlobalVarNode
+ */
+class GlobalVarNode : public RelaxExprNode {
+public:
+    /*! \brief The name of the variable, this only acts as a hint. */
+    String name_hint;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("name_hint", &name_hint);
+        // v->Visit("span", &span);
+        v->Visit("_checked_type_", &checked_type_);
+        v->Visit("struct_info_", &struct_info_);
+    }
+
+    bool SEqualReduce(const GlobalVarNode* other, SEqualReducer equal) const {
+        // name matters for global var.
+        return equal(name_hint, other->name_hint) && equal.FreeVarEqualImpl(this, other);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(name_hint);
+        hash_reduce.FreeVarHashImpl(this);
+    }
+
+    static constexpr const char* _type_key = "GlobalVar";
+    TVM_DECLARE_FINAL_OBJECT_INFO(GlobalVarNode, RelaxExprNode);
+};
+
+/*!
+ * \brief Managed reference to GlobalVarNode.
+ * \sa GlobalVarNode
+ */
+class GlobalVar : public RelaxExpr {
+public:
+    // TVM_DLL explicit GlobalVar(String name_hint, Type type = {}, Span span = {});
+    LITETVM_API explicit GlobalVar(String name_hint, Type type = {});
+
+    TVM_DEFINE_OBJECT_REF_METHODS(GlobalVar, RelaxExpr, GlobalVarNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(GlobalVarNode);
+};
+
+
 // PrimExprs that are useful as runtime containers.
 //
 /*!
@@ -620,7 +729,169 @@ public:
     TVM_DEFINE_OBJECT_REF_METHODS(Range, ObjectRef, RangeNode);
 };
 
+// implementations
+inline const Type& RelaxExprNode::checked_type() const {
+    CHECK(checked_type_.defined()) << "internal error: the type checker has "
+                                   << "not populated the checked_type "
+                                   << "field for " << GetRef<RelaxExpr>(this);
+    return this->checked_type_;
+}
+
+template<typename TTypeNode>
+const TTypeNode* RelaxExprNode::type_as() const {
+    static_assert(std::is_base_of_v<TypeNode, TTypeNode>, "TType must be a special case of type");
+    CHECK(checked_type_.defined())
+            << "Type inference for this Expr has not completed. Try to call infer_type pass.";
+    const TTypeNode* node = checked_type_.as<TTypeNode>();
+    CHECK(node != nullptr) << "Expected type to be " << TTypeNode::_type_key << ", but get "
+                           << checked_type_->GetTypeKey();
+    return node;
+}
 
 }// namespace litetvm
+
+namespace litetvm {
+namespace runtime {
+
+// Automatic conversion into IntImm, Integer, and Bool, when called
+// through the FFI.  Automatic conversions into PrimExpr are
+// registered in "tvm/tir/expr.h", as it includes conversions to the
+// TIR-only StringImm.
+//
+// While the FFI only requires the From() method, these
+// implementations also define a TryFrom() method to avoid duplicate
+// logic in the PrimExpr conversion.
+template<>
+struct PackedFuncValueConverter<IntImm> {
+    template<typename PODSubclass>
+    static Optional<IntImm> TryFrom(const PODSubclass& val) {
+        if (auto opt = val.TryAsInt()) {
+            int64_t value = opt.value();
+            auto dtype =
+                    (value > std::numeric_limits<int>::max() || value < std::numeric_limits<int>::min())
+                            ? DataType::Int(64)
+                            : DataType::Int(32);
+            return IntImm(dtype, value);
+        }
+        if (auto opt = val.TryAsBool()) {
+            return IntImm(DataType::Int(32), opt.value());
+        }
+        return NullOpt;
+    }
+
+    template<typename PODSubclass>
+    static IntImm From(const PODSubclass& val) {
+        if (auto opt = TryFrom(val)) {
+            return opt.value();
+        }
+        return val.template AsObjectRef<IntImm>();
+    }
+};
+
+template<>
+struct PackedFuncValueConverter<Integer> {
+    template<typename PODSubclass>
+    static Integer From(const PODSubclass& val) {
+        if (auto opt = PackedFuncValueConverter<IntImm>::TryFrom(val)) {
+            return Integer(opt.value());
+        }
+        return val.template AsObjectRef<Integer>();
+    }
+};
+
+template<>
+struct PackedFuncValueConverter<Bool> {
+    template<typename PODSubclass>
+    static Optional<Bool> TryFrom(const PODSubclass& val) {
+        if (auto opt = val.TryAsBool()) {
+            return Bool(opt.value());
+        }
+        if (auto opt = val.TryAsInt()) {
+            int value = opt.value();
+            CHECK(value == 0 || value == 1)
+                    << "ValueError: boolean value can only be 0 or 1, but get " << value;
+            return Bool(static_cast<bool>(value));
+        }
+        return NullOpt;
+    }
+
+    template<typename PODSubclass>
+    static Bool From(const PODSubclass& val) {
+        if (auto opt = TryFrom(val)) {
+            return opt.value();
+        }
+        return val.template AsObjectRef<Bool>();
+    }
+};
+
+template<>
+struct PackedFuncValueConverter<FloatImm> {
+    static Optional<FloatImm> TryFrom(const TVMPODValue_& val) {
+        if (auto opt = val.TryAsFloat()) {
+            return FloatImm(DataType::Float(32), opt.value());
+        }
+        return NullOpt;
+    }
+
+    template<typename PODSubclass>
+    static FloatImm From(const PODSubclass& val) {
+        if (auto opt = TryFrom(val)) {
+            return opt.value();
+        }
+        return val.template AsObjectRef<FloatImm>();
+    }
+};
+
+/* \brief Backwards compatibility wrapper for IntImm arguments
+ *
+ * In previous versions of TVM, IntImm was the default FFI type for
+ * integer arguments, instead of runtime::Int.  For backwards
+ * compatibility where the callee has been updated to expected a
+ * runtime::Int, the caller has not been updated to provide a
+ * runtime::Int, and the auto-unboxing of
+ * runtime::Int does not apply (e.g. making an `Array<runtime::Int>`),
+ * allow the IntImm to be generated.
+ */
+template<>
+struct PackedFuncValueConverter<Int> {
+    template<typename PODSubclass>
+    static Int From(const PODSubclass& val) {
+        if (val.template IsObjectRef<IntImm>()) {
+            return Int(val.template AsObjectRef<IntImm>()->value);
+        }
+        return val.template AsObjectRef<Int>();
+    }
+};
+
+}// namespace runtime
+}// namespace litetvm
+
+/* \brief Allow tvm.GLobalVar as key in STL tables
+ *
+ * For most IR expressions, it would be ambiguous whether the
+ * expression should follow reference equality or structural equality.
+ * This is not the case for variables, which do not contain nested
+ * internal structure, and are frequently used as keys in lookup
+ * tables.
+ *
+ * Providing `std::hash` and `std::equal_to` specializations for
+ * `tvm::GlobalVar` allows it to be used as a key in STL tables.  For
+ * other IR expressions, the user must specify the type of equality
+ * used (e.g. `std::unordered_set<T, StructuralHash, StructuralEqual>`
+ * or `std::unordered_set<T, ObjectPtrHash, ObjectPtrEqual>`).
+ */
+template<>
+struct std::hash<litetvm::GlobalVar> {
+    std::size_t operator()(const litetvm::GlobalVar& var) const {
+        return litetvm::runtime::ObjectPtrHash()(var);
+    }
+};
+
+template<>
+struct std::equal_to<litetvm::GlobalVar> {
+    bool operator()(const litetvm::GlobalVar& var_a, const litetvm::GlobalVar& var_b) const {
+        return litetvm::runtime::ObjectPtrEqual()(var_a, var_b);
+    }
+};
 
 #endif//LITETVM_IR_EXPR_H
