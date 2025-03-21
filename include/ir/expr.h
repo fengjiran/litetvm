@@ -396,7 +396,7 @@ class GlobalVar;
  * \brief Global variable that lives in the top-level module.
  *
  * A GlobalVar only refers to function definitions.
- * This is used to enable recursive calls between function.
+ * This is used to enable recursive calls between functions.
  *
  * \sa GlobalVarNode
  */
@@ -604,7 +604,7 @@ public:
    * \brief Construct integer from int value.
    */
     // Integer(int value, Span span = Span()) : IntImm(DataType::Int(32), value, span) {}  // NOLINT(*)
-    explicit Integer(int value) : IntImm(DataType::Int(32), value) {}
+    Integer(int value) : IntImm(DataType::Int(32), value) {}
 
     /*!
    * \brief Construct integer from int imm.
@@ -730,7 +730,7 @@ public:
 };
 
 // implementations
-inline const Type& RelaxExprNode::checked_type() const {
+inline const litetvm::Type& RelaxExprNode::checked_type() const {
     CHECK(checked_type_.defined()) << "internal error: the type checker has "
                                    << "not populated the checked_type "
                                    << "field for " << GetRef<RelaxExpr>(this);
@@ -739,7 +739,7 @@ inline const Type& RelaxExprNode::checked_type() const {
 
 template<typename TTypeNode>
 const TTypeNode* RelaxExprNode::type_as() const {
-    static_assert(std::is_base_of_v<TypeNode, TTypeNode>, "TType must be a special case of type");
+    static_assert(std::is_base_of_v<litetvm::TypeNode, TTypeNode>, "TType must be a special case of type");
     CHECK(checked_type_.defined())
             << "Type inference for this Expr has not completed. Try to call infer_type pass.";
     const TTypeNode* node = checked_type_.as<TTypeNode>();

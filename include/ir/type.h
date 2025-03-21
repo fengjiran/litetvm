@@ -5,10 +5,11 @@
 #ifndef LITETVM_IR_TYPE_H
 #define LITETVM_IR_TYPE_H
 
-#include "ir/expr.h"
+// #include "ir/expr.h"
 #include "runtime/array.h"
 #include "runtime/data_type.h"
 #include "runtime/object.h"
+#include "node/reflection.h"
 
 #include <string>
 
