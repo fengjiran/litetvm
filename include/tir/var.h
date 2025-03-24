@@ -111,12 +111,16 @@ public:
      * \brief Get pointer to the internal value.
      * \return the corresponding Variable.
      */
-    const VarNode* operator->() const { return get(); }
+    const VarNode* operator->() const {
+        return get();
+    }
     /*!
      * \brief Get pointer to the internal value.
      * \return the corresponding Variable.
      */
-    const VarNode* get() const { return static_cast<const VarNode*>(data_.get()); }
+    const VarNode* get() const {
+        return static_cast<const VarNode*>(data_.get());
+    }
     /*! \brief type indicate the container type */
     using ContainerType = VarNode;
 };
