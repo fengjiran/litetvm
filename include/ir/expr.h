@@ -668,7 +668,7 @@ class RangeNode : public Object {
 public:
     /*! \brief beginning of the node */
     PrimExpr min;
-    /*! \brief the extend of range */
+    /*! \brief the extent of range */
     PrimExpr extent;
     /*! \brief the location of this range in the source */
     // mutable Span span;
