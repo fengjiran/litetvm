@@ -115,7 +115,9 @@ public:
      * \param def_value The default value when the key does not exist.
      * \return the const reference to the content value.
      */
-    ValueType get(const KeyType& key, ValueType def_value) const { return map_.get(key, def_value); }
+    ValueType get(const KeyType& key, ValueType def_value) const {
+        return map_.get(key, def_value);
+    }
 
 protected:
     /*! \brief The internal map field */

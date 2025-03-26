@@ -99,9 +99,14 @@ public:
 
 private:
     /*! \return the internal attr registry index. */
-    uint32_t AttrRegistryIndex() const { return index_; }
+    uint32_t AttrRegistryIndex() const {
+        return index_;
+    }
+
     /*! \brief repr to be printed in registry*/
-    std::string AttrRegistryName() const { return name; }
+    std::string AttrRegistryName() const {
+        return name;
+    }
 
     // friend class
     template<typename>
@@ -130,12 +135,14 @@ public:
    */
     template<typename ValueType>
     static OpAttrMap<ValueType> GetAttrMap(const String& attr_name);
+
     /*!
    * \brief Checks if an attr map is present in the registry.
    * \param attr_name The name of the attribute.
    * \return bool True if the attr is present.
    */
     LITETVM_API static bool HasAttrMap(const String& attr_name);
+
     /*!
    * \brief Get an Op for a given operator name.
    *  Will raise an error if the op has not been registered.
@@ -250,14 +257,18 @@ public:
    * \tparam ValueType The type of the value to be set.
    */
     template<typename ValueType>
-    OpRegEntry& set_attr(const std::string& attr_name,// NOLINT(*)
-                         const ValueType& value, int plevel = 10);
+    OpRegEntry& set_attr(const std::string& attr_name, const ValueType& value, int plevel = 10) {
+        CHECK_GT(plevel, 0) << "plevel in set_attr must be greater than 0";
+        TVMRetValue rv = value;
+        UpdateAttr(attr_name, rv, plevel);
+        return *this;
+    }
 
     /*!
    * \brief Resets an attr of the registry.
    * \param attr_name The name of the attribute.
    */
-    inline void reset_attr(const std::string& attr_name);
+    inline void reset_attr(const std::string& attr_name) const;
 
     // set the name of the op to be the same as registry
     OpRegEntry& set_name() {// NOLINT(*)
@@ -266,6 +277,7 @@ public:
         }
         return *this;
     }
+
     /*!
    * \brief Register or get a new entry.
    * \param name The name of the operator.
@@ -289,8 +301,71 @@ private:
     }
 
     // update the attribute OpAttrMap
-    LITETVM_API void UpdateAttr(const String& key, TVMRetValue value, int plevel);
+    LITETVM_API void UpdateAttr(const String& key, TVMRetValue value, int plevel) const;
 };
+
+/*!
+ * \brief Map<Op,ValueType> used to store meta-information about Op.
+ * \tparam ValueType The type of the value stored in map.
+ */
+template<typename ValueType>
+class OpAttrMap : public AttrRegistryMap<Op, ValueType> {
+public:
+    /*!
+   * \brief get the corresponding value element at op with default value.
+   * \param expr The key to the map
+   * \param def_value The default value when the key does not exist
+   *         or if expr is not an Op.
+   * \return the const reference to the content value.
+   */
+    ValueType get(const RelaxExpr& expr, ValueType def_value) const {
+        CHECK(expr.defined());
+        if (const auto* op = expr.as<OpNode>()) {
+            return this->map_.get(runtime::GetRef<Op>(op), def_value);
+        }
+        return def_value;
+    }
+
+    using TParent = AttrRegistryMap<Op, ValueType>;
+    using TParent::count;
+    using TParent::get;
+    using TParent::operator[];
+
+private:
+    friend class Op;
+
+    // constructor
+    explicit OpAttrMap(const AttrRegistryMapContainerMap<Op>& map) : TParent(map) {}
+};
+
+// internal macros to make
+#define TVM_OP_REGISTER_VAR_DEF static DMLC_ATTRIBUTE_UNUSED ::litetvm::OpRegEntry& __make_##Op
+
+/*!
+ * \def TVM_REGISTER_OP
+ * \brief Register a new operator, or set attribute of the corresponding op.
+ *
+ * \param OpName The name of registry
+ *
+ * \code
+ *
+ *  TVM_REGISTER_OP("add")
+ *  .describe("add two inputs together")
+ *  .set_num_inputs(2)
+ *  .set_attr<OpKernel>("gpu_kernel", AddKernel);
+ *
+ * \endcode
+ */
+#define TVM_REGISTER_OP(OpName)                            \
+    TVM_STR_CONCAT(TVM_OP_REGISTER_VAR_DEF, __COUNTER__) = \
+            ::litetvm::OpRegEntry::RegisterOrGet(OpName).set_name()
+
+
+template<typename ValueType>
+OpAttrMap<ValueType> Op::GetAttrMap(const String& attr_name) {
+    return OpAttrMap<ValueType>(GetAttrMapContainer(attr_name));
+}
+
 
 }// namespace litetvm
 
