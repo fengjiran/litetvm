@@ -52,7 +52,7 @@ public:
             return *it->second;
         }
 
-        uint32_t registry_index = static_cast<uint32_t>(entries_.size());
+        auto registry_index = static_cast<uint32_t>(entries_.size());
         auto entry = std::unique_ptr<EntryType>(new EntryType(registry_index));
         auto* eptr = entry.get();
         eptr->name = name;
