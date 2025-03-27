@@ -300,7 +300,7 @@ public:
    * \returns reference to self.
    */
     template<typename FLambda,
-    typename = std::enable_if_t<std::is_convertible_v<FLambda,std::function<R(Args...)>>>>
+             typename = std::enable_if_t<std::is_convertible_v<FLambda, std::function<R(Args...)>>>>
     TSelf& operator=(FLambda typed_lambda) {// NOLINT(*)
         this->AssignTypedLambda(typed_lambda);
         return *this;
@@ -466,7 +466,7 @@ public:
         return Module(ObjectPtr<Object>(static_cast<Object*>(value_.v_handle)));
     }
 
-    explicit operator PackedFunc() const {
+    operator PackedFunc() const {
         if (type_code_ == static_cast<int>(TVMArgTypeCode::kTVMNullptr)) {
             return PackedFunc(ObjectPtr<Object>(nullptr));
         }
@@ -695,7 +695,7 @@ public:
 
     template<typename T,
              typename = std::enable_if_t<std::is_class_v<T>>>
-    explicit operator T() const;
+    operator T() const;
 
     inline explicit operator DLDataType() const;
     inline explicit operator DataType() const;

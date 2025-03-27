@@ -259,7 +259,8 @@ public:
     template<typename ValueType>
     OpRegEntry& set_attr(const std::string& attr_name, const ValueType& value, int plevel = 10) {
         CHECK_GT(plevel, 0) << "plevel in set_attr must be greater than 0";
-        TVMRetValue rv = value;
+        TVMRetValue rv;
+        rv = value;
         UpdateAttr(attr_name, rv, plevel);
         return *this;
     }
