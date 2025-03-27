@@ -3,14 +3,16 @@
 //
 
 #include "tir/expr.h"
-#include "tir/var.h"
 #include "runtime/registry.h"
 #include "support/str_escape.h"
+#include "tir/var.h"
 
 #include <optional>
 
 namespace litetvm {
 namespace tir {
+
+using runtime::make_object;
 
 /* \brief Convert an object to a PrimExpr
  *
@@ -53,6 +55,24 @@ TVM_REGISTER_GLOBAL("tir.convert").set_body_typed([](Variant<PrimExpr, Array<Pri
         node->b = std::move(b);                                                                     \
         data_ = std::move(node);                                                                    \
     }
+
+
+// Call
+Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {
+    for (size_t i = 0; i < args.size(); ++i) {
+        CHECK(args[i].defined()) << "arg " << i << " is not defined()";
+    }
+
+    ObjectPtr<CallNode> node = make_object<CallNode>();
+    node->dtype = dtype;
+    node->op = std::move(op);
+    node->args = std::move(args);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_NODE_TYPE(CallNode);
+
 
 }// namespace tir
 }// namespace litetvm
