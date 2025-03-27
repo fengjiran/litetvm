@@ -546,7 +546,7 @@ public:
    *        // This is an add node
    *      }
    *
-   * \tparam ObjectType the target type, must be a subtype of Object
+   * \tparam ObjectType the target type must be a subtype of Object
    */
     template<typename ObjectType,
              typename = std::enable_if_t<std::is_base_of_v<Object, ObjectType>>>
@@ -695,7 +695,7 @@ bool Object::IsInstance() const {
         return self->type_index_ == TargetType::RuntimeTypeIndex();
     }
 
-    // if target type is a non-leaf type
+    // if the target type is a non-leaf type
     // Check if type index falls into the range of reserved slots.
     uint32_t begin = TargetType::RuntimeTypeIndex();
 
