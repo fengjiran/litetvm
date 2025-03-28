@@ -158,8 +158,37 @@ TVM_REGISTER_GLOBAL("tir.IterVar")
         .set_body_typed([](Range dom, Var var, int iter_type, String thread_tag) {
             return IterVar(dom, var, static_cast<IterVarType>(iter_type), thread_tag);
         });
-
 TVM_REGISTER_NODE_TYPE(IterVarNode);
+
+// StringImm
+StringImm::StringImm(String value) {
+    ObjectPtr<StringImmNode> node = make_object<StringImmNode>();
+    node->dtype = DataType::Handle();
+    node->value = std::move(value);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.StringImm").set_body_typed([](String value) {
+    return StringImm(value);
+});
+TVM_REGISTER_NODE_TYPE(StringImmNode);
+
+// Cast
+Cast::Cast(DataType t, PrimExpr value) {
+    CHECK(value.defined());
+    CHECK_EQ(t.get_lanes_or_vscale_factor(), value.dtype().get_lanes_or_vscale_factor());
+    CHECK(t.is_scalable_vector() == value.dtype().is_scalable_vector());
+    ObjectPtr<CastNode> node = make_object<CastNode>();
+    node->dtype = t;
+    node->value = std::move(value);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.Cast").set_body_typed([](DataType dtype, PrimExpr value) {
+    return Cast(dtype, value);
+});
+TVM_REGISTER_NODE_TYPE(CastNode);
 
 
 // Call

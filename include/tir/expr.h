@@ -10,6 +10,81 @@
 namespace litetvm {
 namespace tir {
 
+/*! \brief String constants, only used in asserts. */
+class StringImmNode : public PrimExprNode {
+public:
+    /*! \brief The constant value content. */
+    String value;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("value", &value);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const StringImmNode* other, SEqualReducer equal) const {
+        return equal(value, other->value);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const { hash_reduce(value); }
+
+    static constexpr const char* _type_key = "tir.StringImm";
+    TVM_DECLARE_FINAL_OBJECT_INFO(StringImmNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to StringImmNode.
+ * \sa StringImmNode
+ */
+class StringImm : public PrimExpr {
+public:
+    // TVM_DLL StringImm(String value, Span span = Span());
+    LITETVM_API StringImm(String value);
+    TVM_DEFINE_OBJECT_REF_METHODS(StringImm, PrimExpr, StringImmNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(StringImmNode);
+};
+
+/*!
+ * \brief Cast value from one data type to another.
+ * \note The lanes of value should keep fixed.
+ */
+class CastNode : public PrimExprNode {
+public:
+    /*! \brief Original data type. */
+    PrimExpr value;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("value", &value);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const CastNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(value, other->value);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(value);
+    }
+
+    static constexpr const char* _type_key = "tir.Cast";
+    TVM_DECLARE_FINAL_OBJECT_INFO(CastNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to CastNode
+ * \sa CastNode
+ */
+class Cast : public PrimExpr {
+public:
+    // TVM_DLL Cast(DataType dtype, PrimExpr value, Span span = Span());
+    LITETVM_API Cast(DataType dtype, PrimExpr value);
+    TVM_DEFINE_OBJECT_REF_METHODS(Cast, PrimExpr, CastNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(CastNode);
+};
+
+
 /*!
  * \brief Call node.
  */
