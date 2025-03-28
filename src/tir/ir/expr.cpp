@@ -8,6 +8,8 @@
 #include "tir/var.h"
 
 #include <optional>
+#include <tir/op.h>
+#include <utility>
 
 namespace litetvm {
 namespace tir {
@@ -56,6 +58,46 @@ TVM_REGISTER_GLOBAL("tir.convert").set_body_typed([](Variant<PrimExpr, Array<Pri
         data_ = std::move(node);                                                                    \
     }
 
+// Var
+Var::Var(String name_hint, DataType dtype) {
+    auto n = make_object<VarNode>();
+    n->name_hint = std::move(name_hint);
+    n->type_annotation = GetTypeFromRuntimeDataType(dtype);
+    n->dtype = dtype;
+    data_ = std::move(n);
+}
+
+Var::Var(String name_hint, Type type_annotation) {
+    auto n = make_object<VarNode>();
+    n->name_hint = std::move(name_hint);
+    n->dtype = GetRuntimeDataType(type_annotation);
+    n->type_annotation = std::move(type_annotation);
+    data_ = std::move(n);
+}
+
+TVM_REGISTER_NODE_TYPE(VarNode);
+
+// SizeVar
+SizeVar::SizeVar(String name_hint, DataType t) {
+    auto n = make_object<SizeVarNode>();
+    n->name_hint = std::move(name_hint);
+    n->type_annotation = GetTypeFromRuntimeDataType(t);
+    n->dtype = t;
+    data_ = std::move(n);
+}
+
+SizeVar::SizeVar(String name_hint, Type type_annotation) {
+    auto n = make_object<SizeVarNode>();
+    n->name_hint = std::move(name_hint);
+    n->dtype = GetRuntimeDataType(type_annotation);
+    n->type_annotation = std::move(type_annotation);
+    data_ = std::move(n);
+}
+
+TVM_REGISTER_NODE_TYPE(SizeVarNode);
+TVM_REGISTER_GLOBAL("tir.SizeVar").set_body_typed([](String s, DataType t) {
+    return SizeVar(s, t);
+});
 
 // Call
 Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {

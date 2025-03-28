@@ -36,4 +36,11 @@ runtime::DataType GetRuntimeDataType(const Type& type) {
     LOG(FATAL) << "Type " << type << " does not have a corresponding runtime::DataType";
 }
 
+Type GetTypeFromRuntimeDataType(const DataType& dtype) {
+    if (dtype.is_void()) {
+        return VoidType();
+    }
+    return PrimType(dtype);
+}
+
 }// namespace litetvm

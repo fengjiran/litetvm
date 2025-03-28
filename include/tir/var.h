@@ -125,6 +125,59 @@ public:
     using ContainerType = VarNode;
 };
 
+/*!
+ * \brief A variable node represent a tensor index size,
+ * whose value must be non-negative.
+ */
+class SizeVarNode : public VarNode {
+public:
+    static constexpr const char* _type_key = "tir.SizeVar";
+    TVM_DECLARE_FINAL_OBJECT_INFO(SizeVarNode, VarNode);
+};
+
+/*! \brief a named variable represents a tensor index size */
+class SizeVar : public Var {
+public:
+    explicit SizeVar(ObjectPtr<Object> n) : Var(n) {}
+    /*!
+     * \brief constructor
+     * \param name_hint variable name
+     * \param t data type
+     * \param span The location of this object in the source code.
+     */
+    // TVM_DLL explicit SizeVar(String name_hint = "s", DataType t = DataType::Int(32),
+    //                          Span span = Span());
+    LITETVM_API explicit SizeVar(String name_hint = "s", DataType t = DataType::Int(32));
+
+    /*!
+     * \brief Constructor which provides a more detailed type annotation.
+     * \param name_hint variable name.
+     * \param type_annotation The type annotation.
+     * \param span The location of this object in the source code.
+     */
+    // TVM_DLL explicit SizeVar(String name_hint, Type type_annotation, Span span = Span());
+    LITETVM_API explicit SizeVar(String name_hint, Type type_annotation);
+
+    /*!
+     * \brief Get pointer to the internal value.
+     * \return the corresponding Variable.
+     */
+    const SizeVarNode* operator->() const {
+        return get();
+    }
+
+    /*!
+     * \brief Get pointer to the internal value.
+     * \return the corresponding Variable.
+     */
+    const SizeVarNode* get() const {
+        return static_cast<const SizeVarNode*>(data_.get());
+    }
+
+    /*! \brief type indicate the container type */
+    using ContainerType = SizeVarNode;
+};
+
 }// namespace tir
 }// namespace litetvm
 
