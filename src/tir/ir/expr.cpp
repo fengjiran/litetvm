@@ -75,7 +75,42 @@ Var::Var(String name_hint, Type type_annotation) {
     data_ = std::move(n);
 }
 
+Var Var::copy_with_name(const String& name) const {
+    const VarNode* node = get();
+    ObjectPtr<VarNode> new_ptr;
+    if (auto* ptr = this->as<SizeVarNode>()) {
+        new_ptr = make_object<SizeVarNode>(*ptr);
+    } else {
+        new_ptr = make_object<VarNode>(*node);
+    }
+    new_ptr->name_hint = name;
+    return Var(new_ptr);
+}
+
+Var Var::copy_with_suffix(const String& suffix) const {
+    return this->copy_with_name(get()->name_hint + suffix);
+}
+
+Var Var::copy_with_dtype(DataType dtype) const {
+    const VarNode* node = get();
+    ObjectPtr<VarNode> new_ptr;
+    if (auto* ptr = this->as<SizeVarNode>()) {
+        new_ptr = make_object<SizeVarNode>(*ptr);
+    } else {
+        new_ptr = make_object<VarNode>(*node);
+    }
+    new_ptr->type_annotation = GetTypeFromRuntimeDataType(dtype);
+    new_ptr->dtype = dtype;
+    return Var(new_ptr);
+}
+
 TVM_REGISTER_NODE_TYPE(VarNode);
+TVM_REGISTER_GLOBAL("tir.Var").set_body_typed([](String name_hint, TVMArgValue type) {
+    if (type.IsObjectRef<Type>()) {
+        return Var(name_hint, type.operator Type());
+    }
+    return Var(name_hint, type.operator DataType());
+});
 
 // SizeVar
 SizeVar::SizeVar(String name_hint, DataType t) {
@@ -98,6 +133,34 @@ TVM_REGISTER_NODE_TYPE(SizeVarNode);
 TVM_REGISTER_GLOBAL("tir.SizeVar").set_body_typed([](String s, DataType t) {
     return SizeVar(s, t);
 });
+
+// IterVar
+IterVar::IterVar(Range dom, Var var, IterVarType t, String thread_tag) {
+    auto n = make_object<IterVarNode>();
+    if (dom.defined() && dom->extent.defined()) {
+        CHECK(dom->extent.dtype().is_int())
+                << "The dtype of the domain of an IterVar must be an integer type. However, the domain's "
+                   "dtype is "
+                << dom->extent.dtype();
+        CHECK_EQ(dom->extent.dtype(), var.dtype())
+                << "The dtype of the extent of an IterVar (" << dom->extent.dtype()
+                << ") must match its associated Var's dtype (" << var.dtype() << ")";
+    }
+
+    n->dom = dom;
+    n->var = var;
+    n->iter_type = t;
+    n->thread_tag = std::move(thread_tag);
+    data_ = std::move(n);
+}
+
+TVM_REGISTER_GLOBAL("tir.IterVar")
+        .set_body_typed([](Range dom, Var var, int iter_type, String thread_tag) {
+            return IterVar(dom, var, static_cast<IterVarType>(iter_type), thread_tag);
+        });
+
+TVM_REGISTER_NODE_TYPE(IterVarNode);
+
 
 // Call
 Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {

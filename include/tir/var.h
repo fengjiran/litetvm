@@ -94,12 +94,14 @@ public:
      * \return the new Var copy
      */
     LITETVM_API Var copy_with_name(const String& name) const;
+
     /*!
      * \brief Make a new copy of var with same type, append suffix
      * \param suffix The suffix to be appended.
      * \return the new Var copy
      */
     LITETVM_API Var copy_with_suffix(const String& suffix) const;
+
     /*!
      * \brief Make a new copy of the variable with specified dtype
      * \param dtype The specified dtype
@@ -178,7 +180,211 @@ public:
     using ContainerType = SizeVarNode;
 };
 
+using Region = Array<Range>;
+
+/*!
+ * \brief Type of iteration variable.
+ *  Each IterVar have a specific type.
+ *
+ *  The type of iter var can be overridden via
+ *  stage.iter_var_attrs given they are compatible.
+ */
+enum class IterVarType : int {
+    /*!
+     * \brief Data parallel iteration.
+     *  This normally corresponds to the axis of the Tensor.
+     *  Allow all IterVar manipulations.
+     *
+     * \note This does not mean the loop
+     *  has to be executed in parallel fashion.
+     */
+    kDataPar = 0,
+
+    /*!
+     * \brief The IterVar itself is a thread-index
+     *  of a fixed thread launching group.
+     *  Note that this is already assumed to be parallelized.
+     *
+     *  Disallow: split/fuse/vectorize/parallel
+     */
+    kThreadIndex = 1,
+
+    /*!
+     * \brief Communicative reduction.
+     *  Cannot be directly parallelized.
+     *
+     *  Disallow: parallel/vectorize
+     */
+    kCommReduce = 2,
+
+    /*!
+     * \brief Serial loops with loop carry dependency,
+     *  the iteration must execute in order.
+     *  Cannot be re-ordered.
+     *
+     *  Disallow: reorder/parallel/vectorize
+     */
+    kOrdered = 3,
+
+    /*!
+     * \brief IterVar is opaque,
+     *
+     *  May not corresponds to any generated loop
+     *  Disallow all IterVar manipulations and compute_at
+     *
+     * \note This is usually used to implement composite op
+     *  or external op, where the
+     */
+    kOpaque = 4,
+
+    // The following are possible additional
+    // types that are provided during schedule
+    /*!
+     * \brief The execution is unrolled.
+     */
+    kUnrolled = 5,
+
+    /*!
+     * \brief The loop is vectorized.
+     */
+    kVectorized = 6,
+
+    /*!
+     * \brief The loop is parallelized.
+     */
+    kParallelized = 7,
+
+    /*!
+     * \brief Marks boundary of tensorization intrinsic.
+     */
+    kTensorized = 8
+};
+
+/*!
+ * \brief An iteration variable representing an iteration
+ *  over a one dimensional interval.
+ *
+ *  The dtype of the extent of the `dom` of the IterVar must match the dtype of the internal Var.
+ */
+class IterVarNode : public Object {
+public:
+    /*!
+     * \brief the domain of iteration, if known, can be None
+     *  For the intermediate schedule node, before schedule.
+     */
+    Range dom;
+    /*! \brief The looping variable */
+    Var var;
+    /*! \brief The type of the IterVar */
+    IterVarType iter_type;
+    /*!
+     * \brief additional tag on the iteration variable,
+     *  set this if this is bound already to a known thread tag.
+     */
+    String thread_tag;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dom", &dom);
+        v->Visit("var", &var);
+        v->Visit("iter_type", &iter_type);
+        v->Visit("thread_tag", &thread_tag);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const IterVarNode* other, SEqualReducer equal) const {
+        return equal(dom, other->dom) && equal.DefEqual(var, other->var) &&
+               equal(iter_type, other->iter_type) && equal(thread_tag, other->thread_tag);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dom);
+        hash_reduce.DefHash(var);
+        hash_reduce(iter_type);
+        hash_reduce(thread_tag);
+    }
+
+    static constexpr const char* _type_key = "tir.IterVar";
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
+    TVM_DECLARE_FINAL_OBJECT_INFO(IterVarNode, Object);
+};
+
+/*!
+ * \brief Iteration Variable,
+ *  represents an iteration over an integer interval.
+ *
+ *  The dtype of the extent of the `dom` of the IterVar must match the dtype of the internal Var.
+ */
+class IterVar : public ObjectRef {
+public:
+    // TVM_DLL IterVar(Range dom, Var var, IterVarType iter_type, String thread_tag = "",
+    //                 Span span = Span());
+    LITETVM_API IterVar(Range dom, Var var, IterVarType iter_type, String thread_tag = "");
+
+    /*!
+     * \return the corresponding var in the IterVar.
+     */
+    operator PrimExpr() const {
+        return (*this)->var;
+    }
+
+    TVM_DEFINE_OBJECT_REF_METHODS(IterVar, ObjectRef, IterVarNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(IterVarNode);
+};
+
+inline const char* IterVarType2String(IterVarType t) {
+    switch (t) {
+        case IterVarType::kDataPar:
+            return "DataPar";
+        case IterVarType::kThreadIndex:
+            return "ThreadIndex";
+        case IterVarType::kCommReduce:
+            return "CommReduce";
+        case IterVarType::kOrdered:
+            return "Ordered";
+        case IterVarType::kOpaque:
+            return "Opaque";
+        case IterVarType::kUnrolled:
+            return "Unrolled";
+        case IterVarType::kVectorized:
+            return "Vectorized";
+        case IterVarType::kParallelized:
+            return "Parallelized";
+        case IterVarType::kTensorized:
+            return "Tensorized";
+    }
+    return "Unknown";
+}
+
 }// namespace tir
 }// namespace litetvm
+
+/* \brief Allow tir.Var as key in STL tables
+ *
+ * For most TIR expressions, it would be ambiguous whether the
+ * expression should follow reference equality or structural equality.
+ * This is not the case for variables, which do not contain nested
+ * internal structure, and are frequently used as keys in lookup
+ * tables.
+ *
+ * Providing `std::hash` and `std::equal_to` specializations for
+ * `tir::Var` allows it to be used as a key in STL tables.  For
+ * `PrimExpr`, the user must specify the type of equality used
+ * (e.g. `std::unordered_set<T, StructuralHash, StructuralEqual>` or
+ * `std::unordered_set<T, ObjectPtrHash, ObjectPtrEqual>`).
+ */
+template<>
+struct std::hash<litetvm::tir::Var> {
+    std::size_t operator()(const litetvm::tir::Var& var) const {
+        return litetvm::runtime::ObjectPtrHash()(var);
+    }
+};
+
+template<>
+struct std::equal_to<litetvm::tir::Var> {
+    bool operator()(const litetvm::tir::Var& var_a, const litetvm::tir::Var& var_b) const {
+        return litetvm::runtime::ObjectPtrEqual()(var_a, var_b);
+    }
+};
 
 #endif//LITETVM_TIR_VAR_H
