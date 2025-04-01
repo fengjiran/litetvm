@@ -67,7 +67,7 @@ enum class CallEffectKind : int {
     /*! \brief Function corresponds to an annotation(e.g. likely) and can translate to identity. */
     kExprAnnotation = 0,
     /*!
-   * \brief Pure function that do not interacts
+   * \brief Pure function that does not interact
    *        with any external state.
    */
     kPure = 1,
@@ -128,7 +128,6 @@ inline std::ostream& operator<<(std::ostream& os, CallEffectKind side_effect) {
 
 /*! \brief Use integer to record the kind. */
 using TCallEffectKind = Integer;
-
 
 }// namespace tir
 
