@@ -190,6 +190,157 @@ TVM_REGISTER_GLOBAL("tir.Cast").set_body_typed([](DataType dtype, PrimExpr value
 });
 TVM_REGISTER_NODE_TYPE(CastNode);
 
+// Add
+TVM_DEFINE_BINOP_CONSTRUCTOR(Add);
+TVM_REGISTER_NODE_TYPE(AddNode);
+TVM_REGISTER_GLOBAL("tir.Add").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Add(a, b);
+});
+
+// Sub
+TVM_DEFINE_BINOP_CONSTRUCTOR(Sub);
+TVM_REGISTER_NODE_TYPE(SubNode);
+TVM_REGISTER_GLOBAL("tir.Sub").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Sub(a, b);
+});
+
+// Mul
+TVM_DEFINE_BINOP_CONSTRUCTOR(Mul);
+TVM_REGISTER_NODE_TYPE(MulNode);
+TVM_REGISTER_GLOBAL("tir.Mul").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Mul(a, b);
+});
+
+// Div
+TVM_DEFINE_BINOP_CONSTRUCTOR(Div);
+TVM_REGISTER_NODE_TYPE(DivNode);
+TVM_REGISTER_GLOBAL("tir.Div").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Div(a, b);
+});
+
+// Mod
+TVM_DEFINE_BINOP_CONSTRUCTOR(Mod);
+TVM_REGISTER_NODE_TYPE(ModNode);
+TVM_REGISTER_GLOBAL("tir.Mod").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Mod(a, b);
+});
+
+// FloorDiv
+TVM_DEFINE_BINOP_CONSTRUCTOR(FloorDiv);
+TVM_REGISTER_NODE_TYPE(FloorDivNode);
+TVM_REGISTER_GLOBAL("tir.FloorDiv").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return FloorDiv(a, b);
+});
+
+// FloorMod
+TVM_DEFINE_BINOP_CONSTRUCTOR(FloorMod);
+TVM_REGISTER_NODE_TYPE(FloorModNode);
+TVM_REGISTER_GLOBAL("tir.FloorMod").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return FloorMod(a, b);
+});
+
+// Min
+TVM_DEFINE_BINOP_CONSTRUCTOR(Min);
+TVM_REGISTER_NODE_TYPE(MinNode);
+TVM_REGISTER_GLOBAL("tir.Min").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Min(a, b);
+});
+
+// Max
+TVM_DEFINE_BINOP_CONSTRUCTOR(Max);
+TVM_REGISTER_NODE_TYPE(MaxNode);
+TVM_REGISTER_GLOBAL("tir.Max").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Max(a, b);
+});
+
+// EQ
+TVM_DEFINE_CMPOP_CONSTRUCTOR(EQ);
+TVM_REGISTER_NODE_TYPE(EQNode);
+TVM_REGISTER_GLOBAL("tir.EQ").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return EQ(a, b);
+});
+
+// NE
+TVM_DEFINE_CMPOP_CONSTRUCTOR(NE);
+TVM_REGISTER_NODE_TYPE(NENode);
+TVM_REGISTER_GLOBAL("tir.NE").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return NE(a, b);
+});
+
+// LT
+TVM_DEFINE_CMPOP_CONSTRUCTOR(LT);
+TVM_REGISTER_NODE_TYPE(LTNode);
+TVM_REGISTER_GLOBAL("tir.LT").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return LT(a, b);
+});
+
+// LE
+TVM_DEFINE_CMPOP_CONSTRUCTOR(LE);
+TVM_REGISTER_NODE_TYPE(LENode);
+TVM_REGISTER_GLOBAL("tir.LE").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return LE(a, b);
+});
+
+// GT
+TVM_DEFINE_CMPOP_CONSTRUCTOR(GT);
+TVM_REGISTER_NODE_TYPE(GTNode);
+TVM_REGISTER_GLOBAL("tir.GT").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return GT(a, b);
+});
+
+// GE
+TVM_DEFINE_CMPOP_CONSTRUCTOR(GE);
+TVM_REGISTER_NODE_TYPE(GENode);
+TVM_REGISTER_GLOBAL("tir.GE").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return GE(a, b);
+});
+
+
+// And
+And::And(PrimExpr a, PrimExpr b) {
+    CHECK(a.defined()) << "ValueError: a is undefined";
+    CHECK(b.defined()) << "ValueError: b is undefined";
+    CHECK(a.dtype().is_bool());
+    CHECK(b.dtype().is_bool());
+    CHECK(a.dtype() == b.dtype()) << "TypeError: mismatched types";
+
+    ObjectPtr<AndNode> node = make_object<AndNode>();
+    node->dtype = DataType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector());
+    node->a = std::move(a);
+    node->b = std::move(b);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.And").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return And(a, b);
+});
+
+TVM_REGISTER_NODE_TYPE(AndNode);
+
+// Or
+Or::Or(PrimExpr a, PrimExpr b) {
+    CHECK(a.defined()) << "ValueError: a is undefined";
+    CHECK(b.defined()) << "ValueError: b is undefined";
+    CHECK(a.dtype().is_bool());
+    CHECK(b.dtype().is_bool());
+    CHECK(a.dtype() == b.dtype()) << "TypeError: mismatched types";
+
+    ObjectPtr<OrNode> node = make_object<OrNode>();
+    node->dtype =
+            DataType::Bool(a.dtype().get_lanes_or_vscale_factor(), a.dtype().is_scalable_vector());
+    node->a = std::move(a);
+    node->b = std::move(b);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.Or").set_body_typed([](PrimExpr a, PrimExpr b) {
+    return Or(a, b);
+});
+
+TVM_REGISTER_NODE_TYPE(OrNode);
+
 
 // Call
 Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {

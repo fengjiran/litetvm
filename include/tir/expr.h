@@ -84,6 +84,432 @@ public:
     TVM_DEFINE_OBJECT_REF_COW_METHOD(CastNode);
 };
 
+/*!
+ * \brief Base template to implement binary ops, using CRTP.
+ * \tparam T The type of the child class.
+ */
+template<typename T>
+class BinaryOpNode : public PrimExprNode {
+public:
+    /*! \brief The left operand. */
+    PrimExpr a;
+    /*! \brief The right operand. */
+    PrimExpr b;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &(this->dtype));
+        v->Visit("a", &a);
+        v->Visit("b", &b);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const T* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(a, other->a) && equal(b, other->b);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(a);
+        hash_reduce(b);
+    }
+
+    TVM_DECLARE_FINAL_OBJECT_INFO(T, PrimExprNode);
+};
+
+/*! \brief a + b */
+class AddNode : public BinaryOpNode<AddNode> {
+public:
+    static constexpr const char* _type_key = "tir.Add";
+};
+
+/*!
+ * \brief Managed reference to AddNode
+ * \sa AddNode
+ */
+class Add : public PrimExpr {
+public:
+    // TVM_DLL Add(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Add(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Add, PrimExpr, AddNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(AddNode);
+};
+
+/*! \brief a - b */
+class SubNode : public BinaryOpNode<SubNode> {
+public:
+    static constexpr const char* _type_key = "tir.Sub";
+};
+
+/*!
+ * \brief Managed reference to SubNode
+ * \sa SubNode
+ */
+class Sub : public PrimExpr {
+public:
+    // TVM_DLL Sub(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Sub(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Sub, PrimExpr, SubNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(SubNode);
+};
+
+
+/*! \brief a * b */
+class MulNode : public BinaryOpNode<MulNode> {
+public:
+    static constexpr const char* _type_key = "tir.Mul";
+};
+
+/*!
+ * \brief Managed reference to MulNode
+ * \sa MulNode
+ */
+class Mul : public PrimExpr {
+public:
+    // TVM_DLL Mul(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Mul(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Mul, PrimExpr, MulNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(MulNode);
+};
+
+/*!
+ * \brief a / b in the C semnatics.
+ * \note For integer division, C standard uses trunc div.
+ */
+class DivNode : public BinaryOpNode<DivNode> {
+public:
+    static constexpr const char* _type_key = "tir.Div";
+};
+
+/*!
+ * \brief Managed reference to DivNode
+ * \sa DivNode
+ */
+class Div : public PrimExpr {
+public:
+    // TVM_DLL Div(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Div(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Div, PrimExpr, DivNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(DivNode);
+};
+
+/*!
+ * \brief a % b in the C semnatics.
+ * \note For integer division, C standard uses trunc div.
+ */
+class ModNode : public BinaryOpNode<ModNode> {
+public:
+    static constexpr const char* _type_key = "tir.Mod";
+};
+
+/*!
+ * \brief Managed reference to ModNode
+ * \sa ModNode
+ */
+class Mod : public PrimExpr {
+public:
+    // TVM_DLL Mod(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Mod(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Mod, PrimExpr, ModNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(ModNode);
+};
+
+
+/*! \brief Floor division, floor(a/b) */
+class FloorDivNode : public BinaryOpNode<FloorDivNode> {
+public:
+    static constexpr const char* _type_key = "tir.FloorDiv";
+};
+
+/*!
+ * \brief Managed reference to FloorDivNode
+ * \sa FloorDivNode
+ */
+class FloorDiv : public PrimExpr {
+public:
+    // TVM_DLL FloorDiv(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API FloorDiv(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(FloorDiv, PrimExpr, FloorDivNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(FloorDivNode);
+};
+
+
+/*! \brief The remainder of the floordiv */
+class FloorModNode : public BinaryOpNode<FloorModNode> {
+public:
+    static constexpr const char* _type_key = "tir.FloorMod";
+};
+
+/*!
+ * \brief Managed reference to FloorModNode
+ * \sa FloorModNode
+ */
+class FloorMod : public PrimExpr {
+public:
+    // TVM_DLL FloorMod(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API FloorMod(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(FloorMod, PrimExpr, FloorModNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(FloorModNode);
+};
+
+/*! \brief min(a, b) */
+class MinNode : public BinaryOpNode<MinNode> {
+public:
+    static constexpr const char* _type_key = "tir.Min";
+};
+
+/*!
+ * \brief Managed reference to MinNode
+ * \sa MinNode
+ */
+class Min : public PrimExpr {
+public:
+    // TVM_DLL Min(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Min(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Min, PrimExpr, MinNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(MinNode);
+};
+
+/*! \brief max(a, b) */
+class MaxNode : public BinaryOpNode<MaxNode> {
+public:
+    static constexpr const char* _type_key = "tir.Max";
+};
+
+/*!
+ * \brief Managed reference to MaxNode
+ * \sa MaxNode
+ */
+class Max : public PrimExpr {
+public:
+    // TVM_DLL Max(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Max(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Max, PrimExpr, MaxNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(MaxNode);
+};
+
+/*!
+ * \brief Base template to implement comparison ops.
+ * \tparam T The type of the child class.
+ */
+template<typename T>
+class CmpOpNode : public PrimExprNode {
+public:
+    /*! \brief The left operand. */
+    PrimExpr a;
+    /*! \brief The right operand. */
+    PrimExpr b;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &(this->dtype));
+        v->Visit("a", &a);
+        v->Visit("b", &b);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const T* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(a, other->a) && equal(b, other->b);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(a);
+        hash_reduce(b);
+    }
+
+    TVM_DECLARE_FINAL_OBJECT_INFO(T, PrimExprNode);
+};
+
+/*! \brief a == b */
+class EQNode : public CmpOpNode<EQNode> {
+public:
+    static constexpr const char* _type_key = "tir.EQ";
+};
+
+/*!
+ * \brief Managed reference to EQNode
+ * \sa EQNode
+ */
+class EQ : public PrimExpr {
+public:
+    // TVM_DLL EQ(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API EQ(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(EQ, PrimExpr, EQNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(EQNode);
+};
+
+/*! \brief a != b */
+class NENode : public CmpOpNode<NENode> {
+public:
+    static constexpr const char* _type_key = "tir.NE";
+};
+
+/*!
+ * \brief Managed reference to NENode
+ * \sa NENode
+ */
+class NE : public PrimExpr {
+public:
+    // TVM_DLL NE(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API NE(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(NE, PrimExpr, NENode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(NENode);
+};
+
+/*! \brief a < b */
+class LTNode : public CmpOpNode<LTNode> {
+public:
+    static constexpr const char* _type_key = "tir.LT";
+};
+
+/*!
+ * \brief Managed reference to LTNode
+ * \sa LTNode
+ */
+class LT : public PrimExpr {
+public:
+    // TVM_DLL LT(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API LT(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(LT, PrimExpr, LTNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(LTNode);
+};
+
+
+/*! \brief a <= b */
+struct LENode : public CmpOpNode<LENode> {
+public:
+    static constexpr const char* _type_key = "tir.LE";
+};
+
+/*!
+ * \brief Managed reference to LENode
+ * \sa LENode
+ */
+class LE : public PrimExpr {
+public:
+    // TVM_DLL LE(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API LE(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(LE, PrimExpr, LENode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(LENode);
+};
+
+/*! \brief a > b */
+class GTNode : public CmpOpNode<GTNode> {
+public:
+    static constexpr const char* _type_key = "tir.GT";
+};
+
+/*!
+ * \brief Managed reference to GTNode
+ * \sa GTNode
+ */
+class GT : public PrimExpr {
+public:
+    // TVM_DLL GT(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API GT(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(GT, PrimExpr, GTNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(GTNode);
+};
+
+/*! \brief a >= b */
+class GENode : public CmpOpNode<GENode> {
+public:
+    static constexpr const char* _type_key = "tir.GE";
+};
+
+/*!
+ * \brief Managed reference to GENode
+ * \sa GENode
+ */
+class GE : public PrimExpr {
+public:
+    // TVM_DLL GE(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API GE(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(GE, PrimExpr, GENode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(GENode);
+};
+
+/*! \brief a && b */
+class AndNode : public PrimExprNode {
+public:
+    /*! \brief The left operand. */
+    PrimExpr a;
+    /*! \brief The right operand. */
+    PrimExpr b;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &(this->dtype));
+        v->Visit("a", &a);
+        v->Visit("b", &b);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const AndNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(a, other->a) && equal(b, other->b);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(a);
+        hash_reduce(b);
+    }
+
+    static constexpr const char* _type_key = "tir.And";
+    TVM_DECLARE_FINAL_OBJECT_INFO(AndNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to AndNode
+ * \sa AndNode
+ */
+class And : public PrimExpr {
+public:
+    // TVM_DLL And(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API And(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(And, PrimExpr, AndNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(AndNode);
+};
+
+/*! \brief a || b */
+class OrNode : public PrimExprNode {
+public:
+    /*! \brief The left operand. */
+    PrimExpr a;
+    /*! \brief The right operand. */
+    PrimExpr b;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("a", &a);
+        v->Visit("b", &b);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const OrNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(a, other->a) && equal(b, other->b);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(a);
+        hash_reduce(b);
+    }
+
+    static constexpr const char* _type_key = "tir.Or";
+    TVM_DECLARE_FINAL_OBJECT_INFO(OrNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to OrNode
+ * \sa OrNode
+ */
+class Or : public PrimExpr {
+public:
+    // TVM_DLL Or(PrimExpr a, PrimExpr b, Span span = Span());
+    LITETVM_API Or(PrimExpr a, PrimExpr b);
+    TVM_DEFINE_OBJECT_REF_METHODS(Or, PrimExpr, OrNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(OrNode);
+};
+
 
 /*!
  * \brief Call node.
