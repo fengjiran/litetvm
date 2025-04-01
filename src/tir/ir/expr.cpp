@@ -341,6 +341,23 @@ TVM_REGISTER_GLOBAL("tir.Or").set_body_typed([](PrimExpr a, PrimExpr b) {
 
 TVM_REGISTER_NODE_TYPE(OrNode);
 
+// Not
+Not::Not(PrimExpr a) {
+    CHECK(a.defined()) << "ValueError: a is undefined";
+    CHECK(a.dtype().is_bool());
+
+    ObjectPtr<NotNode> node = make_object<NotNode>();
+    DataType a_dtype = a.dtype();
+    node->dtype = DataType::Bool(a_dtype.get_lanes_or_vscale_factor(), a_dtype.is_scalable_vector());
+    node->a = std::move(a);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.Not").set_body_typed([](PrimExpr a) { return Not(a); });
+
+TVM_REGISTER_NODE_TYPE(NotNode);
+
 
 // Call
 Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {

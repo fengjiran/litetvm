@@ -510,6 +510,43 @@ public:
     TVM_DEFINE_OBJECT_REF_COW_METHOD(OrNode);
 };
 
+/*! \brief !a */
+class NotNode : public PrimExprNode {
+public:
+    /*! \brief The input operand. */
+    PrimExpr a;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("a", &a);
+        v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const NotNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(a, other->a);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(a);
+    }
+
+    static constexpr const char* _type_key = "tir.Not";
+    TVM_DECLARE_FINAL_OBJECT_INFO(NotNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to NotNode
+ * \sa NotNode
+ */
+class Not : public PrimExpr {
+public:
+    // TVM_DLL Not(PrimExpr a, Span span = Span());
+    LITETVM_API Not(PrimExpr a);
+    TVM_DEFINE_OBJECT_REF_METHODS(Not, PrimExpr, NotNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(NotNode);
+};
+
 
 /*!
  * \brief Call node.
