@@ -519,7 +519,7 @@ public:
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("dtype", &dtype);
         v->Visit("a", &a);
-        v->Visit("span", &span);
+        // v->Visit("span", &span);
     }
 
     bool SEqualReduce(const NotNode* other, SEqualReducer equal) const {
@@ -600,6 +600,61 @@ public:
     TVM_DEFINE_OBJECT_REF_COW_METHOD(SelectNode);
 };
 
+/*!
+ * \brief Construct a vector with lanes elements
+ *        where its i-th element equals base + i * stride.
+ *  This is useful to construct a index for a continuous vector load.
+ *
+ *  Examples:
+ *  - ramp(0, 1, 3) = [0, 1, 2]
+ *  - ramp(1, 2, 4) = [1, 3, 5, 7]
+ */
+class RampNode : public PrimExprNode {
+public:
+    /*! \brief The base value. */
+    PrimExpr base;
+    /*! \brief The stride of each step. */
+    PrimExpr stride;
+    /*! \brief Total number of lanes. */
+    PrimExpr lanes;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("base", &base);
+        v->Visit("stride", &stride);
+        v->Visit("lanes", &lanes);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const RampNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) &&
+               equal(base, other->base) &&
+               equal(stride, other->stride) &&
+               equal(lanes, other->lanes);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(base);
+        hash_reduce(stride);
+        hash_reduce(lanes);
+    }
+
+    static constexpr const char* _type_key = "tir.Ramp";
+    TVM_DECLARE_FINAL_OBJECT_INFO(RampNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to RampNode
+ * \sa RampNode
+ */
+class Ramp : public PrimExpr {
+public:
+    // TVM_DLL Ramp(PrimExpr base, PrimExpr stride, PrimExpr lanes, Span span = Span());
+    LITETVM_API Ramp(PrimExpr base, PrimExpr stride, PrimExpr lanes);
+    TVM_DEFINE_OBJECT_REF_METHODS(Ramp, PrimExpr, RampNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(RampNode);
+};
 
 /*!
  * \brief Call node.
