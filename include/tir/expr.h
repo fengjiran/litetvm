@@ -547,6 +547,59 @@ public:
     TVM_DEFINE_OBJECT_REF_COW_METHOD(NotNode);
 };
 
+/*!
+ * \brief return true_value if condition is true, otherwise return false_value.
+ * \note Both true_value and false_value could be evaluated
+ *       regardless of the condition value.
+ *       Do not use it to guard against outbound access,
+ *       please use if_then_else instead.
+ */
+class SelectNode : public PrimExprNode {
+public:
+    /*! \brief The condition */
+    PrimExpr condition;
+    /*! \brief value to be returned when condition is true. */
+    PrimExpr true_value;
+    /*! \brief value to be returned when condition is false. */
+    PrimExpr false_value;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("condition", &condition);
+        v->Visit("true_value", &true_value);
+        v->Visit("false_value", &false_value);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const SelectNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(condition, other->condition) &&
+               equal(true_value, other->true_value) && equal(false_value, other->false_value);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(condition);
+        hash_reduce(true_value);
+        hash_reduce(false_value);
+    }
+
+    static constexpr const char* _type_key = "tir.Select";
+    TVM_DECLARE_FINAL_OBJECT_INFO(SelectNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to SelectNode
+ * \sa SelectNode
+ */
+class Select : public PrimExpr {
+public:
+    // TVM_DLL Select(PrimExpr condition, PrimExpr true_value, PrimExpr false_value, Span span = Span());
+    LITETVM_API Select(PrimExpr condition, PrimExpr true_value, PrimExpr false_value);
+
+    TVM_DEFINE_OBJECT_REF_METHODS(Select, PrimExpr, SelectNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(SelectNode);
+};
+
 
 /*!
  * \brief Call node.

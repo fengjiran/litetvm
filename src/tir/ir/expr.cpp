@@ -358,6 +358,34 @@ TVM_REGISTER_GLOBAL("tir.Not").set_body_typed([](PrimExpr a) { return Not(a); })
 
 TVM_REGISTER_NODE_TYPE(NotNode);
 
+// Select
+Select::Select(PrimExpr condition, PrimExpr true_value, PrimExpr false_value) {
+    CHECK(condition.defined()) << "ValueError: condition is undefined";
+    CHECK(true_value.defined()) << "ValueError: true_value is undefined";
+    CHECK(false_value.defined()) << "ValueError: true_value is undefined";
+    CHECK(condition.dtype().is_bool());
+    CHECK(condition.dtype().get_lanes_or_vscale_factor() == true_value.dtype().get_lanes_or_vscale_factor() ||
+          condition.dtype().is_scalar());
+    CHECK(false_value.dtype() == true_value.dtype())
+            << "TypeError: mismatched types. "
+            << "False type: " << false_value.dtype() << "; True type: " << true_value.dtype();
+
+    ObjectPtr<SelectNode> node = make_object<SelectNode>();
+    node->dtype = true_value.dtype();
+    node->condition = std::move(condition);
+    node->true_value = std::move(true_value);
+    node->false_value = std::move(false_value);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.Select")
+        .set_body_typed([](PrimExpr condition, PrimExpr true_value, PrimExpr false_value) {
+            return Select(condition, true_value, false_value);
+        });
+
+TVM_REGISTER_NODE_TYPE(SelectNode);
+
 
 // Call
 Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {
