@@ -3,12 +3,13 @@
 //
 
 #include "tir/expr.h"
+#include "tir/op.h"
 #include "runtime/registry.h"
 #include "support/str_escape.h"
 #include "tir/var.h"
+#include "arith/const_fold.h"
 
 #include <optional>
-#include <tir/op.h>
 #include <utility>
 
 namespace litetvm {

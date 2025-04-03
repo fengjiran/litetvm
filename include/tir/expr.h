@@ -5,10 +5,14 @@
 #ifndef LITETVM_TIR_EXPR_H
 #define LITETVM_TIR_EXPR_H
 
+#include "ir/expr.h"
 #include "tir/var.h"
 
 namespace litetvm {
 namespace tir {
+
+using IntImmNode = litetvm::IntImmNode;
+using FloatImmNode = litetvm::FloatImmNode;
 
 /*! \brief String constants, only used in asserts. */
 class StringImmNode : public PrimExprNode {
