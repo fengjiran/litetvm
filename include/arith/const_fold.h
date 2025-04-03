@@ -140,8 +140,7 @@ inline Optional<PrimExpr> TryConstFold<tir::Add>(PrimExpr a, PrimExpr b) {
 template<>
 inline Optional<PrimExpr> TryConstFold<tir::Sub>(PrimExpr a, PrimExpr b) {
     TVM_ARITH_CONST_PROPAGATION({
-        CHECK(!((pa && pa->dtype.is_uint() && pa->value == 0U) &&
-                (pb && pb->dtype.is_uint() && pb->value > 0U)))
+        CHECK(!((pa && pa->dtype.is_uint() && pa->value == 0U) && (pb && pb->dtype.is_uint() && pb->value > 0U)))
                 << "Checked failed. Minuend 's value is 0U and it's dtype is uint "
                 << "while Subtrahend's dtype is uint; which will cause a negative uint";
         const DataType& rtype = a.dtype();
@@ -164,6 +163,317 @@ inline Optional<PrimExpr> TryConstFold<tir::Sub>(PrimExpr a, PrimExpr b) {
     });
     return NullOpt;
 }
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::Mul>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        const DataType& rtype = a.dtype();
+        if (pa && pb) {
+            int64_t res = pa->value * pb->value;
+            return IntImm(rtype, GetFoldResultInt64Repr(res, rtype));
+        }
+        if (pa) {
+            if (pa->value == 1) return b;
+            if (pa->value == 0) return a;
+        }
+        if (pb) {
+            if (pb->value == 1) return a;
+            if (pb->value == 0) return b;
+        }
+        if (fa && fb) {
+            if (rtype.bits() == 32) {
+                return FloatImm(rtype, GetFoldResultDoubleRepr(static_cast<float>(fa->value) *
+                                                               static_cast<float>(fb->value)));
+            }
+            if (rtype.bits() == 64) {
+                return FloatImm(rtype, fa->value * fb->value);
+            }
+        }
+        if (fa) {
+            if (fa->value == 1) return b;
+            if (fa->value == 0) return a;
+        }
+        if (fb) {
+            if (fb->value == 1) return a;
+            if (fb->value == 0) return b;
+        }
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::Div>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        const DataType& rtype = a.dtype();
+        if (pa && pb) {
+            // due to division and mod can have different modes
+            // NOTE: this will assumes truc div.
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+            int64_t res = pa->value / pb->value;
+            return IntImm(rtype, GetFoldResultInt64Repr(res, rtype));
+        }
+        if (pa) {
+            if (pa->value == 0) return a;
+        }
+        if (pb) {
+            if (pb->value == 1) return a;
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+        }
+        if (fa && fb) {
+            CHECK_NE(fb->value, 0) << "Divide by zero";
+            if (rtype.bits() == 32) {
+                return FloatImm(rtype, GetFoldResultDoubleRepr(static_cast<float>(fa->value) /
+                                                               static_cast<float>(fb->value)));
+            }
+
+            if (rtype.bits() == 64) {
+                return FloatImm(rtype, fa->value / fb->value);
+            }
+        }
+        if (fa && fa->value == 0) return a;
+        if (fb) {
+            if (fb->value == 1) return a;
+            CHECK_NE(fb->value, 0) << "Divide by zero";
+        }
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::Mod>(PrimExpr a, PrimExpr b) {
+    TVM_INDEX_CONST_PROPAGATION({
+        const DataType& rtype = a.dtype();
+        if (pa && pb) {
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+            int64_t res = pa->value % pb->value;
+            return IntImm(rtype, GetFoldResultInt64Repr(res, rtype));
+        }
+        if (pa) {
+            if (pa->value == 0) return a;
+        }
+        if (pb) {
+            if (pb->value == 1) return tir::make_zero(rtype);
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+        }
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::FloorDiv>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        const DataType& rtype = a.dtype();
+        if (pa && pb) {
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+            int64_t res = arith::floordiv(pa->value, pb->value);
+            return IntImm(rtype, GetFoldResultInt64Repr(res, rtype));
+        }
+        if (pa) {
+            if (pa->value == 0) return a;
+        }
+        if (pb) {
+            if (pb->value == 1) return a;
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+        }
+        if (fa && fb && fb->value != 0) {
+            if (rtype.bits() == 32) {
+                return FloatImm(rtype, GetFoldResultDoubleRepr(std::floor(static_cast<float>(fa->value) /
+                                                                          static_cast<float>(fb->value))));
+            } else if (rtype.bits() == 64) {
+                return FloatImm(rtype, std::floor(fa->value / fb->value));
+            } else {
+                return NullOpt;
+            }
+        }
+        if (fa && fa->value == 0) return a;
+        if (fb) {
+            if (fb->value == 1) return a;
+            CHECK_NE(fb->value, 0) << "Divide by zero";
+        }
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::FloorMod>(PrimExpr a, PrimExpr b) {
+    TVM_INDEX_CONST_PROPAGATION({
+        const DataType& rtype = a.dtype();
+        if (pa && pb) {
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+            int64_t res = arith::floormod(pa->value, pb->value);
+            return IntImm(rtype, GetFoldResultInt64Repr(res, rtype));
+        }
+        if (pa) {
+            if (pa->value == 0) return a;
+        }
+        if (pb) {
+            if (pb->value == 1) return tir::make_zero(rtype);
+            CHECK_NE(pb->value, 0) << "Divide by zero";
+        }
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::Min>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        const DataType& rtype = a.dtype();
+        if (pa && pb) return IntImm(rtype, std::min(pa->value, pb->value));
+        if (fa && fb) return FloatImm(rtype, std::min(fa->value, fb->value));
+    });
+    if (a.same_as(b)) return a;
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::Max>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        const DataType& rtype = a.dtype();
+        if (pa && pb) return IntImm(rtype, std::max(pa->value, pb->value));
+        if (fa && fb) return FloatImm(rtype, std::max(fa->value, fb->value));
+    });
+    if (a.same_as(b)) return a;
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::GT>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        if (pa && pb) return IntImm(DataType::UInt(1), pa->value > pb->value);
+        if (fa && fb) return IntImm(DataType::UInt(1), fa->value > fb->value);
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::GE>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        if (pa && pb) return IntImm(DataType::UInt(1), pa->value >= pb->value);
+        if (fa && fb) return IntImm(DataType::UInt(1), fa->value >= fb->value);
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::LT>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        if (pa && pb) return IntImm(DataType::UInt(1), pa->value < pb->value);
+        if (fa && fb) return IntImm(DataType::UInt(1), fa->value < fb->value);
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::LE>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        if (pa && pb) return IntImm(DataType::UInt(1), pa->value <= pb->value);
+        if (fa && fb) return IntImm(DataType::UInt(1), fa->value <= fb->value);
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::EQ>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        if (pa && pb) return IntImm(DataType::UInt(1), pa->value == pb->value);
+        if (fa && fb) return IntImm(DataType::UInt(1), fa->value == fb->value);
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::NE>(PrimExpr a, PrimExpr b) {
+    TVM_ARITH_CONST_PROPAGATION({
+        if (pa && pb) return IntImm(DataType::UInt(1), pa->value != pb->value);
+        if (fa && fb) return IntImm(DataType::UInt(1), fa->value != fb->value);
+    });
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::And>(PrimExpr a, PrimExpr b) {
+    const IntImmNode* pa = a.as<IntImmNode>();
+    const IntImmNode* pb = b.as<IntImmNode>();
+    if (pa && pa->value) return b;
+    if (pa && !pa->value) return a;
+    if (pb && pb->value) return a;
+    if (pb && !pb->value) return b;
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::Or>(PrimExpr a, PrimExpr b) {
+    const IntImmNode* pa = a.as<IntImmNode>();
+    const IntImmNode* pb = b.as<IntImmNode>();
+    if (pa && pa->value) return a;
+    if (pa && !pa->value) return b;
+    if (pb && pb->value) return b;
+    if (pb && !pb->value) return a;
+    return NullOpt;
+}
+
+template<>
+inline Optional<PrimExpr> TryConstFold<tir::Not>(PrimExpr a) {
+    const IntImmNode* pa = a.as<IntImmNode>();
+    if (pa) {
+        return IntImm(DataType::UInt(1), !(pa->value));
+    }
+    return NullOpt;
+}
+
+
+/*! \brief Helper namespace for symbolic value limits */
+struct SymbolicLimits {
+    /*! \brief positive infinity */
+    static PrimExpr pos_inf_;
+    /*! \brief negative infinity */
+    static PrimExpr neg_inf_;
+};
+
+/*!
+ * \brief Opaque expression representing positive infinity.
+ *
+ *  It can only be used as parameter of by min/max
+ *  for integer analysis and cannot be used in normal expressions.
+ *
+ * \return positive infinity.
+ */
+inline PrimExpr pos_inf() {
+    return SymbolicLimits::pos_inf_;
+}
+
+/*!
+ * \brief Check if value is positive infinity.
+ * \param value The value to be checked.
+ *
+ * \return The check result.
+ */
+inline bool is_pos_inf(const PrimExpr& value) {
+    return value.same_as(SymbolicLimits::pos_inf_);
+}
+
+/*!
+ * \brief Opaque expression representing negative infinity.
+ *
+ *  It can only be used as parameter of by min/max
+ *  for integer analysis and cannot be used in normal expressions.
+ *
+ * \return negative infinity.
+ */
+inline PrimExpr neg_inf() {
+    return SymbolicLimits::neg_inf_;
+}
+
+/*!
+ * \brief Check if value is negative infinity.
+ * \param value The value to be checked.
+ *
+ * \return The check result.
+ */
+inline bool is_neg_inf(const PrimExpr& value) {
+    return value.same_as(SymbolicLimits::neg_inf_);
+}
+
 
 }// namespace arith
 }// namespace litetvm
