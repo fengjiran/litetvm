@@ -605,6 +605,77 @@ public:
 };
 
 /*!
+ * \brief Load value from the high dimension buffer.
+ *
+ * \code
+ *
+ *  value = buffer[i, j];
+ *
+ * \endcode
+ * \sa BufferStore
+ */
+class BufferLoadNode : public PrimExprNode {
+ public:
+  /*! \brief The buffer variable. */
+  Buffer buffer;
+  /*! \brief The indices location to be loaded. */
+  Array<PrimExpr> indices;
+  /*! \brief The predicate mask for loading values. */
+  Optional<PrimExpr> predicate;
+
+  void VisitAttrs(AttrVisitor* v) {
+    v->Visit("dtype", &(this->dtype));
+    v->Visit("buffer", &buffer);
+    v->Visit("indices", &indices);
+    v->Visit("predicate", &predicate);
+    // v->Visit("span", &span);
+  }
+
+  bool SEqualReduce(const BufferLoadNode* other, SEqualReducer equal) const {
+    return equal(dtype, other->dtype) && equal(buffer, other->buffer) &&
+           equal(indices, other->indices);
+  }
+
+  void SHashReduce(SHashReducer hash_reduce) const {
+    hash_reduce(dtype);
+    hash_reduce(buffer);
+    hash_reduce(indices);
+    hash_reduce(predicate);
+  }
+
+  static constexpr const char* _type_key = "tir.BufferLoad";
+  TVM_DECLARE_FINAL_OBJECT_INFO(BufferLoadNode, PrimExprNode);
+
+ private:
+  /*! \brief Set the dtype based on the buffer/indices
+   *
+   * Usually, the BufferLoad's dtype will be the same dtype as the
+   * buffer.  This may have a different number of lanes than the
+   * buffer's dtype if index values have more than 1 lane.
+   *
+   * This function should only be called during construction and after
+   * CopyOnWrite.  Friend class used here to restrict usage.
+   */
+  void LegalizeDType();
+  friend class BufferLoad;
+  friend class CustomDatatypesLowerer;
+  friend class VectorTypeRewriter;
+  friend class Vectorizer;
+};
+
+/*!
+ * \brief Managed reference to BufferLoadNode.
+ * \sa BufferLoadNode
+ */
+class BufferLoad : public PrimExpr {
+ public:
+  TVM_DLL explicit BufferLoad(Buffer buffer, Array<PrimExpr> indices,
+                              Optional<PrimExpr> predicate = NullOpt, Span span = Span());
+  TVM_DEFINE_OBJECT_REF_METHODS(BufferLoad, PrimExpr, BufferLoadNode);
+  TVM_DEFINE_OBJECT_REF_COW_METHOD(BufferLoadNode);
+};
+
+/*!
  * \brief Construct a vector with lanes elements
  *        where its i-th element equals base + i * stride.
  *  This is useful to construct a index for a continuous vector load.
@@ -658,6 +729,47 @@ public:
     LITETVM_API Ramp(PrimExpr base, PrimExpr stride, PrimExpr lanes);
     TVM_DEFINE_OBJECT_REF_METHODS(Ramp, PrimExpr, RampNode);
     TVM_DEFINE_OBJECT_REF_COW_METHOD(RampNode);
+};
+
+/*! \brief Create a vector where all the elements are value. */
+class BroadcastNode : public PrimExprNode {
+public:
+    /*! \brief The base value. */
+    PrimExpr value;
+    /*! \brief The number of lanes. */
+    PrimExpr lanes;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("value", &value);
+        v->Visit("lanes", &lanes);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const BroadcastNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(value, other->value) && equal(lanes, other->lanes);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(value);
+        hash_reduce(lanes);
+    }
+
+    static constexpr const char* _type_key = "tir.Broadcast";
+    TVM_DECLARE_FINAL_OBJECT_INFO(BroadcastNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to BroadcastNode
+ * \sa BroadcastNode
+ */
+class Broadcast : public PrimExpr {
+public:
+    // TVM_DLL Broadcast(PrimExpr value, PrimExpr lanes, Span span = Span());
+    LITETVM_API Broadcast(PrimExpr value, PrimExpr lanes);
+    TVM_DEFINE_OBJECT_REF_METHODS(Broadcast, PrimExpr, BroadcastNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(BroadcastNode);
 };
 
 /*!

@@ -4,6 +4,7 @@
 
 #include "tir/op.h"
 #include "runtime/registry.h"
+#include "tir/builtin.h"
 #include "tir/expr.h"
 
 namespace litetvm {
@@ -41,6 +42,47 @@ Type GetTypeFromRuntimeDataType(const DataType& dtype) {
         return VoidType();
     }
     return PrimType(dtype);
+}
+
+Type GetType(const PrimExpr& expr) {
+    // TODO(tqchen): add recursive type inference for Call here
+    // once we introduced the corresponding fields to the IR.
+    if (auto* ptr = expr.as<tir::VarNode>()) {
+        // If Var has a more refined type annotation,
+        // return the type anotation
+        if (ptr->type_annotation.defined()) {
+            return ptr->type_annotation;
+        }
+    }
+
+    if (auto* access = expr.as<tir::CallNode>()) {
+        if (access->op.same_as(builtin::tvm_access_ptr())) {
+            CHECK(access->args.size()) << "Builtin tvm_access_ptr() may not have empty arguments";
+            auto type_annotation = Downcast<Call>(access->args[0]);
+            static auto builtin_op = Op::Get("tir.type_annotation");
+            CHECK(type_annotation->op.same_as(builtin_op))
+                    << "Expected the first argument of builtin tvm_access_ptr() "
+                    << "to be a type annotation, but found " << type_annotation->op;
+            return PointerType(PrimType(type_annotation->dtype));
+        }
+    }
+
+    if (auto* address_of = expr.as<tir::CallNode>()) {
+        if (address_of->op.same_as(builtin::address_of())) {
+            CHECK_EQ(address_of->args.size(), 1)
+                    << "Builtin address_of() expects a single argument, but received arguments "
+                    << address_of->args;
+            auto* address = address_of->args[0].as<BufferLoadNode>();
+            CHECK(address)
+                    << "Builtin address_of() expects the argument to be a BufferLoad, but received argument "
+                    << address_of->args[0];
+
+            return PointerType(PrimType(address->dtype));
+        }
+    }
+    // Default: return the type indicated by the dtype.
+    runtime::DataType dtype = expr.dtype();
+    return GetTypeFromRuntimeDataType(dtype);
 }
 
 }// namespace litetvm

@@ -3,11 +3,12 @@
 //
 
 #include "tir/expr.h"
-#include "tir/op.h"
+#include "arith/const_fold.h"
 #include "runtime/registry.h"
 #include "support/str_escape.h"
+#include "tir/builtin.h"
+#include "tir/op.h"
 #include "tir/var.h"
-#include "arith/const_fold.h"
 
 #include <optional>
 #include <utility>
@@ -387,7 +388,39 @@ TVM_REGISTER_GLOBAL("tir.Select")
 
 TVM_REGISTER_NODE_TYPE(SelectNode);
 
+// Ramp
 
+// Broadcast
+Broadcast::Broadcast(PrimExpr value, PrimExpr lanes) {
+    CHECK(value.defined());
+    CHECK(value.dtype().is_scalar());
+
+    ObjectPtr<BroadcastNode> node = make_object<BroadcastNode>();
+    auto* lanes_int = lanes.as<IntImmNode>();
+    if (lanes_int) {
+        int lanes = static_cast<int>(lanes_int->value);
+        CHECK_GT(lanes, 1);
+        node->dtype = value.dtype().with_lanes(lanes);
+        // Stick to int32 lanes for fixed length vectors
+        node->lanes = lanes;
+    } else { /* scalable vector */
+        std::optional<int> vscale_factor = arith::ExtractVscaleFactor(lanes);
+        CHECK(vscale_factor) << "Invalid expression for scalable lanes " << lanes;
+
+        node->dtype = value.dtype().with_scalable_vscale_factor(vscale_factor.value());
+        lanes = Mul(Call(DataType::Int(32), builtin::vscale(), {}), vscale_factor.value());
+        node->lanes = lanes;
+    }
+    node->value = std::move(value);
+    // node->span = std::move(span);
+    data_ = node;
+}
+
+TVM_REGISTER_GLOBAL("tir.Broadcast").set_body_typed([](PrimExpr value, PrimExpr lanes) {
+    return Broadcast(value, lanes);
+});
+
+TVM_REGISTER_NODE_TYPE(BroadcastNode);
 
 
 // Call
