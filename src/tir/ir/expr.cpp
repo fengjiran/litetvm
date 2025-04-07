@@ -525,6 +525,18 @@ TVM_REGISTER_GLOBAL("tir.ProducerLoad")
 
 TVM_REGISTER_NODE_TYPE(ProducerLoadNode);
 
+// Any
+Any::Any() {
+    auto n = make_object<AnyNode>();
+    n->dtype = DataType::Int(32);
+    // n->span = std::move(span);
+    data_ = std::move(n);
+}
+
+TVM_REGISTER_GLOBAL("tir.Any").set_body_typed([]() { return Any(); });
+
+TVM_REGISTER_NODE_TYPE(AnyNode);
+
 
 }// namespace tir
 }// namespace litetvm

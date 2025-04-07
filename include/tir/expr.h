@@ -6,6 +6,7 @@
 #define LITETVM_TIR_EXPR_H
 
 #include "ir/expr.h"
+#include "runtime/optional.h"
 #include "tir/buffer.h"
 #include "tir/var.h"
 
@@ -1035,7 +1036,113 @@ public:
     TVM_DEFINE_OBJECT_REF_METHODS(CommReducer, ObjectRef, CommReducerNode);
 };
 
+/*! \brief Any shape. */
+class AnyNode : public PrimExprNode {
+public:
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const AnyNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {}
+
+    /*! \brief Convert to var. */
+    Var ToVar() const {
+        return Var("any_dim", DataType::Int(32));
+    }
+
+    /*! \brief Convert to SizeVar. */
+    SizeVar ToSizeVar() const {
+        return SizeVar("any_dim", DataType::Int(32));
+    }
+
+    static constexpr const char* _type_key = "tir.Any";
+    TVM_DECLARE_FINAL_OBJECT_INFO(AnyNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to AnyNode
+ * \sa AnyNode
+ */
+class Any : public PrimExpr {
+public:
+    LITETVM_API Any();
+
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(Any, PrimExpr, AnyNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(AnyNode);
+};
+
 }// namespace tir
 }// namespace litetvm
+
+namespace litetvm {
+namespace runtime {
+
+// Automatic conversion into PrimExpr, when called through the FFI.
+// Automatic conversions into IntImm, Integer, and Bool are registered
+// in "tvm/ir/expr.h", as they are currently in use outside of TIR.
+
+template<>
+struct PackedFuncValueConverter<tir::StringImm> {
+    template<typename PODSubclass>
+    static Optional<tir::StringImm> TryFrom(const PODSubclass& val) {
+        auto type_code = val.type_code();
+        bool can_convert = type_code == static_cast<int>(TVMArgTypeCode::kTVMDataType) ||
+                           type_code == static_cast<int>(TVMArgTypeCode::kTVMBytes) ||
+                           type_code == static_cast<int>(TVMArgTypeCode::kTVMStr) ||
+                           val.template IsObjectRef<String>();
+        if (can_convert) {
+            return tir::StringImm(PackedFuncValueConverter<String>::From(val));
+        }
+        return NullOpt;
+    }
+
+    template<typename PODSubclass>
+    static tir::StringImm From(const PODSubclass& val) {
+        if (auto opt = TryFrom(val)) {
+            return opt.value();
+        }
+        return val.template AsObjectRef<tir::StringImm>();
+    }
+};
+
+template<>
+struct PackedFuncValueConverter<PrimExpr> {
+    // Common rule for RetValue and ArgValue.  Templated to ensure
+    // correct delegation to `operator std::string()` for either
+    // TVMArgValue or TVMRetValue.
+    template<typename PODSubclass>
+    static PrimExpr From(const PODSubclass& val) {
+        if (auto opt = val.TryAsBool()) {
+            // Check against val.TryAsBool directly, to avoid the
+            // bounds-checking in PackedFuncValueConverter<Bool>::TryFrom.
+            return litetvm::Bool(opt.value());
+        }
+        if (auto opt = PackedFuncValueConverter<IntImm>::TryFrom(val)) {
+            return opt.value();
+        }
+        if (auto opt = PackedFuncValueConverter<FloatImm>::TryFrom(val)) {
+            return opt.value();
+        }
+        if (auto opt = PackedFuncValueConverter<tir::StringImm>::TryFrom(val)) {
+            return opt.value();
+        } else {
+            return PrimExpr::FromObject_(val.template AsObjectRef<ObjectRef>());
+        }
+    }
+};
+
+}// namespace runtime
+}// namespace litetvm
+
+namespace std {
+template<>
+struct hash<::litetvm::tir::IterVar> : ::litetvm::runtime::ObjectPtrHash {};
+}// namespace std
+
 
 #endif//LITETVM_TIR_EXPR_H
