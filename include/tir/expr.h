@@ -1130,9 +1130,8 @@ struct PackedFuncValueConverter<PrimExpr> {
         }
         if (auto opt = PackedFuncValueConverter<tir::StringImm>::TryFrom(val)) {
             return opt.value();
-        } else {
-            return PrimExpr::FromObject_(val.template AsObjectRef<ObjectRef>());
         }
+        return PrimExpr::FromObject_(val.template AsObjectRef<ObjectRef>());
     }
 };
 
