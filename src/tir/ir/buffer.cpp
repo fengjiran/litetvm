@@ -18,7 +18,12 @@ namespace tir {
 using IndexMod = tir::FloorModNode;
 using IndexDiv = tir::FloorDivNode;
 
-
-
+Buffer decl_buffer(Array<PrimExpr> shape, DataType dtype, String name, String storage_scope,
+                   Array<IntImm> axis_separators) {
+    DataType storage_dtype = (dtype == DataType::Bool() ? DataType::Int(8) : dtype);
+    return Buffer(Var(name, PointerType(PrimType(storage_dtype), storage_scope)), dtype, shape,
+                  Array<PrimExpr>(), PrimExpr(), name, 0, 0, BufferType::kDefault, axis_separators);
 }
+
+}// namespace tir
 }// namespace litetvm

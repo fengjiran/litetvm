@@ -422,6 +422,27 @@ TVM_REGISTER_GLOBAL("tir.Broadcast").set_body_typed([](PrimExpr value, PrimExpr 
 
 TVM_REGISTER_NODE_TYPE(BroadcastNode);
 
+// Let
+Let::Let(Var var, PrimExpr value, PrimExpr body) {
+    CHECK(value.defined());
+    CHECK(body.defined());
+    CHECK_EQ(value.dtype(), var.dtype());
+
+    ObjectPtr<LetNode> node = make_object<LetNode>();
+    node->dtype = body.dtype();
+    node->var = std::move(var);
+    node->value = std::move(value);
+    node->body = std::move(body);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.Let").set_body_typed([](Var var, PrimExpr value, PrimExpr body) {
+    return Let(var, value, body);
+});
+
+TVM_REGISTER_NODE_TYPE(LetNode);
+
 
 // Call
 Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {
@@ -438,6 +459,71 @@ Call::Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args) {
 }
 
 TVM_REGISTER_NODE_TYPE(CallNode);
+
+// shuffle
+Shuffle::Shuffle(Array<PrimExpr> vectors, Array<PrimExpr> indices) {
+    CHECK_NE(vectors.size(), 0U);
+    CHECK_NE(indices.size(), 0U);
+
+    DataType base_type = vectors[0].dtype().element_of();
+    int total_lanes = 0;
+
+    for (PrimExpr val: vectors) {
+        CHECK(val.dtype().element_of() == base_type);
+        total_lanes += val.dtype().lanes();
+    }
+    CHECK_LE(indices.size(), static_cast<size_t>(total_lanes));
+
+    ObjectPtr<ShuffleNode> node = make_object<ShuffleNode>();
+    node->dtype = base_type.with_lanes(static_cast<int>(indices.size()));
+    node->vectors = std::move(vectors);
+    node->indices = std::move(indices);
+    // node->span = std::move(span);
+    data_ = node;
+}
+
+PrimExpr Shuffle::Concat(Array<PrimExpr> vectors) {
+    CHECK_NE(vectors.size(), 0);
+    if (vectors.size() == 1) {
+        return vectors[0];
+    }
+    Array<PrimExpr> indices;
+    int index = 0;
+    for (const PrimExpr& e: vectors) {
+        for (int i = 0; i < e.dtype().lanes(); ++i) {
+            indices.push_back(IntImm(DataType::Int(32), index++));
+        }
+    }
+    return Shuffle(vectors, indices);
+}
+
+PrimExpr Shuffle::ExtractElement(PrimExpr vector, int index) {
+    return Shuffle({vector}, {Integer(index)});
+}
+
+TVM_REGISTER_GLOBAL("tir.Shuffle")
+        .set_body_typed([](Array<PrimExpr> vectors, Array<PrimExpr> indices) {
+            return Shuffle(vectors, indices);
+        });
+
+TVM_REGISTER_NODE_TYPE(ShuffleNode);
+
+// ProducerLoad
+ProducerLoad::ProducerLoad(DataProducer producer, Array<PrimExpr> indices) {
+    ObjectPtr<ProducerLoadNode> node = make_object<ProducerLoadNode>();
+    node->dtype = producer->GetDataType();
+    node->producer = std::move(producer);
+    node->indices = std::move(indices);
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.ProducerLoad")
+        .set_body_typed([](DataProducer producer, Array<PrimExpr> indices) {
+            return ProducerLoad(producer, indices);
+        });
+
+TVM_REGISTER_NODE_TYPE(ProducerLoadNode);
 
 
 }// namespace tir

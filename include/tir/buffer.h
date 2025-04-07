@@ -149,12 +149,178 @@ public:
     Array<PrimExpr> ElemOffset(Array<PrimExpr> index) const;
 
     static constexpr const char* _type_key = "tir.Buffer";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_FINAL_OBJECT_INFO(BufferNode, Object);
     TVM_OBJECT_ENABLE_SCRIPT_PRINTER();
 };
 
+/*!
+ * \brief Buffer is a symbolic n-darray structure.
+ *  It is a composition of primitive symbolic types,
+ *  used to specify the memory layout of the Tensor used in program input.
+ */
+class Buffer : public ObjectRef {
+public:
+    // User can specify data_alignment and offset_factor to be 0
+    // A default value will be picked.
+    LITETVM_API Buffer(Var data, DataType dtype, Array<PrimExpr> shape, Array<PrimExpr> strides,
+                       PrimExpr elem_offset, String name, int data_alignment, int offset_factor,
+                       BufferType buffer_type, Array<IntImm> axis_separators = {});
+
+    /*!
+   * \brief Return a new buffer that is equivalent with current one
+   *  but always add stride field.
+   * \return The strided version of the buffer.
+   */
+    LITETVM_API Buffer MakeStrideView() const;
+    /*!
+   * \brief Make a new symbolic buffer representing a slice of the buffer.
+   * \param begins The beginning position of each dimension.
+   * \param extents The extent of each dimension.
+   * \note This function will make target buffer as compact as possible.
+   *  If stride is not needed in the slice, it won't be presented
+   * \return the result buffer.
+   */
+    LITETVM_API Buffer MakeSlice(Array<PrimExpr> begins, Array<PrimExpr> extents) const;
+    /*!
+   * \brief Get access ptr to the entire buffer.
+   * \param access_mask The access mask
+   * \param ptr_type The type of the pointer.
+   * \param content_lanes The number of lanes for the (data) type.
+   * \param offset The offset of ptr.
+   * \param input_extent The extent of ptr.
+   */
+    LITETVM_API PrimExpr access_ptr(int access_mask, DataType ptr_type = DataType::Handle(),
+                                    int content_lanes = 1, PrimExpr offset = IntImm(DataType::Int(32), 0),
+                                    Optional<PrimExpr> input_extent = NullOpt) const;
+    /*!
+   * \brief Create an Expr that does a vector load at begin index.
+   * \param begin The beginning index
+   * \param dtype The data type to be loaded.
+   * \param predicate A vector mask of boolean values indicating which lanes of a vector are to be
+   * loaded. The number lanes of the mask must be equal to the number of lanes in being loaded.
+   */
+    LITETVM_API PrimExpr vload(Array<PrimExpr> begin, DataType dtype,
+                               Optional<PrimExpr> predicate = NullOpt) const;
+    /*!
+   * \brief Create a Stmt that does a vector store at begin index.
+   * \param begin The beginning index
+   * \param value The value to be stored.
+   * \param predicate A vector mask of boolean values indicating which lanes of a vector are to be
+   * stored. The number lanes of the mask must be equal to the number of lanes in value.
+   */
+    LITETVM_API Stmt vstore(Array<PrimExpr> begin, PrimExpr value,
+                            Optional<PrimExpr> predicate = NullOpt) const;
+
+    /*!
+   * \brief Get a flattened version of the buffer
+   */
+    Buffer GetFlattenedBuffer() const;
+
+    /*! \brief Determine the offset in the buffer of the given index.
+   *
+   * Returns the buffer offset, in number of elements of type dtype,
+   * without adjusting for number of lanes.  (e.g. The number of
+   * float16x4 elements in a buffer of type float16x4.)
+   */
+    Array<PrimExpr> OffsetOf(Array<PrimExpr> index) const;
+
+    /*!
+   * \brief Return the storage scope associated with this buffer.
+   */
+    LITETVM_API String scope() const;
+
+    TVM_DEFINE_OBJECT_REF_METHODS(Buffer, ObjectRef, BufferNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(BufferNode);
+};
+
+/*!
+ * \brief Construct a new buffer given shape, and dtype.
+ * \param shape The shape of the buffer,
+ * \param dtype The content data type.
+ * \param name The name of the buffer
+ * \param storage_scope The storage scope associated with this buffer
+ * \param axis_separators Divisions defining the groups of axes that will be flattened together.
+ * \param span The location of this object in the source code.
+ * \return The created buffer.
+ * \sa Buffer for complete constructor.
+ */
+LITETVM_API Buffer decl_buffer(Array<PrimExpr> shape, DataType dtype = DataType::Float(32),
+                               String name = "buffer", String storage_scope = "",
+                               Array<IntImm> axis_separators = {});
+
+/*!
+ * \brief Base node for data producers.
+ *
+ *  A DataProducer stores necessary information(e.g. a tensor expression) to produce
+ *  a multi-dimensional array. The stored information is opaque to the TIR.
+ *  DataProducer can appear in high-level DSLs that are built on top of the TIR.
+ *
+ *  A valid TIR PrimFunc should not contain any DataProducer, high level DSLs should lower
+ *  all DataProducers to Buffers before TIR transformations.
+ *
+ * \sa tvm::te::Tensor
+ */
+class DataProducerNode : public Object {
+public:
+    /*! \brief destructor. */
+    virtual ~DataProducerNode() {}
+    /*!
+  * \brief Get the shape of the result.
+  * \return The shape.
+  */
+    virtual Array<PrimExpr> GetShape() const = 0;
+    /*!
+  * \brief Get the data type of the result.
+  * \return The data type.
+  */
+    virtual DataType GetDataType() const = 0;
+    /*!
+  * \brief Get the name hint of the data producer.
+  * \return The data type.
+  */
+    virtual String GetNameHint() const = 0;
+
+    bool SEqualReduce(const DataProducerNode* other, SEqualReducer equal) const {
+        // because buffer producer is opaque, we just do pointer equality.
+        return this == other;
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {}
+
+    static constexpr const char* _type_key = "tir.DataProducer";
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
+    TVM_DECLARE_BASE_OBJECT_INFO(DataProducerNode, Object);
+};
+
+/*!
+ * \brief Managed reference to DataProducerNode.
+ * \sa DataProducerNode
+ */
+class DataProducer : public ObjectRef {
+public:
+    TVM_DEFINE_OBJECT_REF_METHODS(DataProducer, ObjectRef, DataProducerNode);
+};
+
+/*!
+ * \brief Creates TIR Buffer for provided parameters
+ * \param shape shape of the buffer
+ * \param dtype data type
+ * \param name buffer name
+ * \param data_alignment alignment requirement of data pointer in bytes
+ * \param offset_factor Factor of elem_offset field, elem_offset is guaranteed to be
+ *                      multiple of offset_factor
+                        User can specify data_alignment and offset_factor to be 0
+ *                      A default value will be picked.
+ * \param compact If the statement has already bound to a compact buffer.
+ * \param memory_scope memory scope of the buffer
+ */
+LITETVM_API Buffer BufferWithOffsetAlignment(Array<PrimExpr> shape, DataType dtype,
+                                             std::string name, int data_alignment,
+                                             int offset_factor, bool compact,
+                                             std::string memory_scope = "");
 
 }// namespace tir
 }// namespace litetvm

@@ -6,6 +6,7 @@
 #define LITETVM_TIR_EXPR_H
 
 #include "ir/expr.h"
+#include "tir/buffer.h"
 #include "tir/var.h"
 
 namespace litetvm {
@@ -615,39 +616,39 @@ public:
  * \sa BufferStore
  */
 class BufferLoadNode : public PrimExprNode {
- public:
-  /*! \brief The buffer variable. */
-  Buffer buffer;
-  /*! \brief The indices location to be loaded. */
-  Array<PrimExpr> indices;
-  /*! \brief The predicate mask for loading values. */
-  Optional<PrimExpr> predicate;
+public:
+    /*! \brief The buffer variable. */
+    Buffer buffer;
+    /*! \brief The indices location to be loaded. */
+    Array<PrimExpr> indices;
+    /*! \brief The predicate mask for loading values. */
+    Optional<PrimExpr> predicate;
 
-  void VisitAttrs(AttrVisitor* v) {
-    v->Visit("dtype", &(this->dtype));
-    v->Visit("buffer", &buffer);
-    v->Visit("indices", &indices);
-    v->Visit("predicate", &predicate);
-    // v->Visit("span", &span);
-  }
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &(this->dtype));
+        v->Visit("buffer", &buffer);
+        v->Visit("indices", &indices);
+        v->Visit("predicate", &predicate);
+        // v->Visit("span", &span);
+    }
 
-  bool SEqualReduce(const BufferLoadNode* other, SEqualReducer equal) const {
-    return equal(dtype, other->dtype) && equal(buffer, other->buffer) &&
-           equal(indices, other->indices);
-  }
+    bool SEqualReduce(const BufferLoadNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(buffer, other->buffer) &&
+               equal(indices, other->indices);
+    }
 
-  void SHashReduce(SHashReducer hash_reduce) const {
-    hash_reduce(dtype);
-    hash_reduce(buffer);
-    hash_reduce(indices);
-    hash_reduce(predicate);
-  }
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(buffer);
+        hash_reduce(indices);
+        hash_reduce(predicate);
+    }
 
-  static constexpr const char* _type_key = "tir.BufferLoad";
-  TVM_DECLARE_FINAL_OBJECT_INFO(BufferLoadNode, PrimExprNode);
+    static constexpr const char* _type_key = "tir.BufferLoad";
+    TVM_DECLARE_FINAL_OBJECT_INFO(BufferLoadNode, PrimExprNode);
 
- private:
-  /*! \brief Set the dtype based on the buffer/indices
+private:
+    /*! \brief Set the dtype based on the buffer/indices
    *
    * Usually, the BufferLoad's dtype will be the same dtype as the
    * buffer.  This may have a different number of lanes than the
@@ -656,11 +657,11 @@ class BufferLoadNode : public PrimExprNode {
    * This function should only be called during construction and after
    * CopyOnWrite.  Friend class used here to restrict usage.
    */
-  void LegalizeDType();
-  friend class BufferLoad;
-  friend class CustomDatatypesLowerer;
-  friend class VectorTypeRewriter;
-  friend class Vectorizer;
+    void LegalizeDType();
+    friend class BufferLoad;
+    friend class CustomDatatypesLowerer;
+    friend class VectorTypeRewriter;
+    friend class Vectorizer;
 };
 
 /*!
@@ -668,11 +669,61 @@ class BufferLoadNode : public PrimExprNode {
  * \sa BufferLoadNode
  */
 class BufferLoad : public PrimExpr {
- public:
-  TVM_DLL explicit BufferLoad(Buffer buffer, Array<PrimExpr> indices,
-                              Optional<PrimExpr> predicate = NullOpt, Span span = Span());
-  TVM_DEFINE_OBJECT_REF_METHODS(BufferLoad, PrimExpr, BufferLoadNode);
-  TVM_DEFINE_OBJECT_REF_COW_METHOD(BufferLoadNode);
+public:
+    LITETVM_API explicit BufferLoad(Buffer buffer, Array<PrimExpr> indices,
+                                    Optional<PrimExpr> predicate = NullOpt);
+    TVM_DEFINE_OBJECT_REF_METHODS(BufferLoad, PrimExpr, BufferLoadNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(BufferLoadNode);
+};
+
+/*!
+ * \brief Load value from the result produced by the producer.
+ *
+ * \note This node only appears in high-level DSLs that are built on top of the TIR.
+ *       It should not appear in a valid TIR PrimFunc. A high-level DSL needs to lower
+ *       this node before TIR transformations.
+ *
+ * \sa ProducerLoad, DataProducerNode
+ */
+class ProducerLoadNode : public PrimExprNode {
+public:
+    /*! \brief The buffer producer. */
+    DataProducer producer;
+    /*! \brief The location arguments. */
+    Array<PrimExpr> indices;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &(this->dtype));
+        v->Visit("producer", &producer);
+        v->Visit("indices", &indices);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const ProducerLoadNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(producer, other->producer) &&
+               equal(indices, other->indices);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(producer);
+        hash_reduce(indices);
+    }
+
+    static constexpr const char* _type_key = "tir.ProducerLoad";
+    TVM_DECLARE_FINAL_OBJECT_INFO(ProducerLoadNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to ProducerLoadNode.
+ * \sa ProducerLoadNode
+ */
+class ProducerLoad : public PrimExpr {
+public:
+    LITETVM_API explicit ProducerLoad(DataProducer producer, Array<PrimExpr> indices);
+
+    TVM_DEFINE_OBJECT_REF_METHODS(ProducerLoad, PrimExpr, ProducerLoadNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(ProducerLoadNode);
 };
 
 /*!
@@ -773,6 +824,53 @@ public:
 };
 
 /*!
+ * \brief Let binding. Bind var to value then evaluate body.
+ */
+class LetNode : public PrimExprNode {
+public:
+    /*! \brief The variable. */
+    Var var;
+    /*! \brief The value to be binded. */
+    PrimExpr value;
+    /*! \brief The result expression. */
+    PrimExpr body;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("var", &var);
+        v->Visit("value", &value);
+        v->Visit("body", &body);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const LetNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal.DefEqual(var, other->var) &&
+               equal(value, other->value) && equal(body, other->body);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce.DefHash(var);
+        hash_reduce(value);
+        hash_reduce(body);
+    }
+
+    static constexpr const char* _type_key = "tir.Let";
+    TVM_DECLARE_FINAL_OBJECT_INFO(LetNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to LetNode
+ * \sa LetNode
+ */
+class Let : public PrimExpr {
+public:
+    LITETVM_API Let(Var var, PrimExpr value, PrimExpr body);
+    TVM_DEFINE_OBJECT_REF_METHODS(Let, PrimExpr, LetNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(LetNode);
+};
+
+/*!
  * \brief Call node.
  */
 class CallNode : public PrimExprNode {
@@ -818,6 +916,123 @@ public:
     LITETVM_API Call(DataType dtype, RelaxExpr op, Array<PrimExpr> args);
     TVM_DEFINE_OBJECT_REF_METHODS(Call, PrimExpr, CallNode);
     TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);
+};
+
+/*!
+ * \brief Shuffle instruction.
+ *  vec = concat(vectors)
+ *  result = (vec[indices[0]], vec[indices[1]] ...)
+ */
+class ShuffleNode : public PrimExprNode {
+public:
+    /*! \brief the input vectors. */
+    Array<PrimExpr> vectors;
+    /*! \brief The indices of each element. */
+    Array<PrimExpr> indices;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("vectors", &vectors);
+        v->Visit("indices", &indices);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const ShuffleNode* other, SEqualReducer equal) const {
+        return equal(dtype, other->dtype) && equal(vectors, other->vectors) &&
+               equal(indices, other->indices);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(vectors);
+        hash_reduce(indices);
+    }
+
+    static constexpr const char* _type_key = "tir.Shuffle";
+    TVM_DECLARE_FINAL_OBJECT_INFO(ShuffleNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to ShuffleNode
+ * \sa ShuffleNode
+ */
+class Shuffle : public PrimExpr {
+public:
+    // TVM_DLL Shuffle(Array<PrimExpr> vectors, Array<PrimExpr> indices, Span span = Span());
+    // TVM_DLL static PrimExpr Concat(Array<PrimExpr> vectors, Span span = Span());
+    // TVM_DLL static PrimExpr ExtractElement(PrimExpr vector, int index, Span span = Span());
+
+    LITETVM_API Shuffle(Array<PrimExpr> vectors, Array<PrimExpr> indices);
+    LITETVM_API static PrimExpr Concat(Array<PrimExpr> vectors);
+    LITETVM_API static PrimExpr ExtractElement(PrimExpr vector, int index);
+
+    TVM_DEFINE_OBJECT_REF_METHODS(Shuffle, PrimExpr, ShuffleNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(ShuffleNode);
+};
+
+// Reduce operator
+/*!
+ * \brief A commutative reducer node to represent a commutative
+ *  binary operator with identity element
+ */
+class CommReducerNode : public Object {
+public:
+    /*! \brief The left argument of reducer */
+    Array<Var> lhs;
+    /*! \brief The right argument of reducer */
+    Array<Var> rhs;
+    /*! \brief The result of reducer */
+    Array<PrimExpr> result;
+    /*!
+     * \brief The identity element of reducer, which leaves other
+     *  elements unchanged when combined with it, with respect to
+     *  the binary operation of this reducer uses.
+     */
+    Array<PrimExpr> identity_element;
+    /*! \brief Function call operator to combine a and b */
+    Array<PrimExpr> operator()(Array<PrimExpr> a, Array<PrimExpr> b) const;
+    /*!
+     * \brief Span that points to the original source code.
+     *        Reserved debug information.
+     */
+    // mutable Span span;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("lhs", &lhs);
+        v->Visit("rhs", &rhs);
+        v->Visit("result", &result);
+        v->Visit("identity_element", &identity_element);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const CommReducerNode* other, SEqualReducer equal) const {
+        return equal.DefEqual(lhs, other->lhs) && equal.DefEqual(rhs, other->rhs) &&
+               equal(result, other->result) && equal(identity_element, other->identity_element);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce.DefHash(lhs);
+        hash_reduce.DefHash(rhs);
+        hash_reduce(result);
+        hash_reduce(identity_element);
+    }
+
+    static constexpr const char* _type_key = "tir.CommReducer";
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
+    TVM_DECLARE_FINAL_OBJECT_INFO(CommReducerNode, Object);
+};
+
+/*!
+ * \brief Managed reference to CommReducerNode
+ * \sa CommReducerNode
+ */
+class CommReducer : public ObjectRef {
+public:
+    LITETVM_API CommReducer(Array<Var> lhs, Array<Var> rhs, Array<PrimExpr> result,
+                            Array<PrimExpr> identity_element);
+
+    TVM_DEFINE_OBJECT_REF_METHODS(CommReducer, ObjectRef, CommReducerNode);
 };
 
 }// namespace tir
