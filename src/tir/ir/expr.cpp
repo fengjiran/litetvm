@@ -388,8 +388,6 @@ TVM_REGISTER_GLOBAL("tir.Select")
 
 TVM_REGISTER_NODE_TYPE(SelectNode);
 
-// Ramp
-
 // Broadcast
 Broadcast::Broadcast(PrimExpr value, PrimExpr lanes) {
     CHECK(value.defined());
@@ -508,6 +506,79 @@ TVM_REGISTER_GLOBAL("tir.Shuffle")
 
 TVM_REGISTER_NODE_TYPE(ShuffleNode);
 
+// BufferLoad
+void BufferLoadNode::LegalizeDType() {
+    for (int i = 0; i < static_cast<int>(indices.size()) - 1; i++) {
+        CHECK(indices[i].dtype().is_scalar())
+                << "Only the last index of a buffer access may be a vector type.";
+    }
+
+    if (indices.empty()) {
+        this->dtype = buffer->dtype;
+    } else {
+        auto index_dtype = indices.back().dtype();
+        bool is_buffer_dtype_scalable = buffer->dtype.is_scalable_vector();
+        bool is_index_scalable = index_dtype.is_scalable_vector();
+
+        CHECK(!(is_index_scalable && is_buffer_dtype_scalable))
+                << "Index dtype and buffer dtype can't both be scalable.";
+
+        if (is_index_scalable) {
+            this->dtype = buffer->dtype.with_scalable_vscale_factor(index_dtype.vscale_factor() *
+                                                                    buffer->dtype.lanes());
+        } else if (is_buffer_dtype_scalable) {
+            this->dtype = buffer->dtype.with_scalable_vscale_factor(buffer->dtype.vscale_factor() *
+                                                                    index_dtype.lanes());
+        } else {
+            this->dtype = buffer->dtype.with_lanes(index_dtype.lanes() * buffer->dtype.lanes());
+        }
+    }
+}
+
+BufferLoad::BufferLoad(Buffer buffer, Array<PrimExpr> indices, Optional<PrimExpr> predicate) {
+    CHECK_EQ(buffer->shape.size(), indices.size())
+            << "Buffer " << buffer->name << " is " << buffer->shape.size()
+            << "-dimensional, cannot be indexed with the " << indices.size()
+            << "-dimensional indices provided.";
+
+    if (predicate.defined()) {
+        DataType predicate_dtype = predicate.value().dtype();
+
+        bool is_index_scalable = indices.empty() ? false : indices.back().dtype().is_scalable_vector();
+        bool is_predicate_scalable = predicate_dtype.is_scalable_vector();
+        CHECK_EQ(is_index_scalable, is_predicate_scalable)
+                << "Predicate mask dtype and load indices must both be scalable.";
+
+        int buffer_lanes = buffer->dtype.get_lanes_or_vscale_factor();
+        int index_lanes = indices.empty() ? 1 : indices.back().dtype().get_lanes_or_vscale_factor();
+        int predicate_lanes = predicate_dtype.get_lanes_or_vscale_factor();
+        CHECK_EQ(index_lanes * buffer_lanes, predicate_lanes)
+                << "Got a predicate mask with " << predicate_lanes
+                << " lanes, but trying to load a vector with " << index_lanes
+                << " lanes. The number of lanes must match.";
+
+        DataType predicate_element_dtype = predicate_dtype.element_of();
+        CHECK(predicate_element_dtype.is_bool())
+                << "Predicate mask elements must be boolean values, but got " << predicate_element_dtype
+                << ".";
+    }
+
+    ObjectPtr<BufferLoadNode> node = make_object<BufferLoadNode>();
+    node->buffer = std::move(buffer);
+    node->indices = std::move(indices);
+    node->predicate = std::move(predicate);
+    // node->span = std::move(span);
+    node->LegalizeDType();
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.BufferLoad")
+        .set_body_typed([](Buffer buffer, Array<PrimExpr> indices, Optional<PrimExpr> predicate) {
+            return BufferLoad(buffer, indices, predicate);
+        });
+
+TVM_REGISTER_NODE_TYPE(BufferLoadNode);
+
 // ProducerLoad
 ProducerLoad::ProducerLoad(DataProducer producer, Array<PrimExpr> indices) {
     ObjectPtr<ProducerLoadNode> node = make_object<ProducerLoadNode>();
@@ -524,6 +595,153 @@ TVM_REGISTER_GLOBAL("tir.ProducerLoad")
         });
 
 TVM_REGISTER_NODE_TYPE(ProducerLoadNode);
+
+// Ramp
+Ramp::Ramp(PrimExpr base, PrimExpr stride, PrimExpr lanes) {
+    CHECK(base.defined());
+    CHECK(stride.defined());
+    CHECK(base.dtype().is_scalar());
+    CHECK(stride.dtype().is_scalar());
+    if (stride.dtype() != base.dtype()) {
+        stride = cast(base.dtype(), stride);
+    }
+
+    ObjectPtr<RampNode> node = make_object<RampNode>();
+    auto* lanes_as_int = lanes.as<IntImmNode>();
+    if (lanes_as_int) {
+        int lanes = static_cast<int>(lanes_as_int->value);
+        CHECK_GT(lanes, 1);
+        node->dtype = base.dtype().with_lanes(lanes);
+        // Stick to int32 lanes for fixed length vectors
+        node->lanes = lanes;
+    } else { /* scalable vector */
+        std::optional<int> vscale_factor = arith::ExtractVscaleFactor(lanes);
+        CHECK(vscale_factor) << "Invalid expression for scalable lanes " << lanes;
+
+        node->dtype = base.dtype().with_scalable_vscale_factor(vscale_factor.value());
+        lanes = Mul(Call(DataType::Int(32), tir::builtin::vscale(), {}), vscale_factor.value());
+        node->lanes = lanes;
+    }
+    node->base = base;
+    node->stride = stride;
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+TVM_REGISTER_GLOBAL("tir.Ramp")
+        .set_body_typed([](PrimExpr base, PrimExpr stride, PrimExpr lanes) {
+            return Ramp(base, stride, lanes);
+        });
+
+TVM_REGISTER_NODE_TYPE(RampNode);
+
+// CommReducer
+CommReducer::CommReducer(Array<Var> lhs, Array<Var> rhs, Array<PrimExpr> result,
+                         Array<PrimExpr> identity_element) {
+    size_t n_group = result.size();
+    CHECK_EQ(lhs.size(), n_group) << "ValueError: The number of vars in `lhs` must equal to the "
+                                     "number of elements in `results`";
+    CHECK_EQ(rhs.size(), n_group) << "ValueError: The number of vars in `rhs` must equal to the "
+                                     "number of elements in `results`";
+    CHECK_EQ(identity_element.size(), n_group)
+            << "ValueError: The number of identities must equal to the number of elements in `results`";
+
+    // Change the dtype of input vars to adapt to the dtype of identities
+    ArrayNode* p_lhs = lhs.CopyOnWrite();
+    ArrayNode* p_rhs = rhs.CopyOnWrite();
+    std::unordered_map<const VarNode*, PrimExpr> var_map;
+    var_map.reserve(n_group * 2);
+    for (int i = 0; i < static_cast<int>(n_group); ++i) {
+        DataType dtype = identity_element[i].dtype();
+        Var l = lhs[i].copy_with_dtype(dtype);
+        Var r = rhs[i].copy_with_dtype(dtype);
+        var_map[lhs[i].get()] = l;
+        var_map[rhs[i].get()] = r;
+
+        p_lhs->SetItem(i, l);
+        p_rhs->SetItem(i, r);
+    }
+
+    ArrayNode* p_result = result.CopyOnWrite();
+    for (int i = 0; i < static_cast<int>(n_group); ++i) {
+        p_result->SetItem(i, Substitute(result[i], var_map));
+    }
+
+    auto node = make_object<CommReducerNode>();
+    node->lhs = lhs;
+    node->rhs = rhs;
+    node->result = result;
+    node->identity_element = identity_element;
+    // node->span = std::move(span);
+    data_ = std::move(node);
+}
+
+Array<PrimExpr> CommReducerNode::operator()(Array<PrimExpr> a, Array<PrimExpr> b) const {
+    CHECK_EQ(a.size(), b.size());
+    CHECK_EQ(lhs.size(), a.size());
+    CHECK_EQ(rhs.size(), b.size());
+    Map<Var, PrimExpr> value_map;
+    for (size_t i = 0; i < a.size(); ++i) {
+        value_map.Set(lhs[i], a[i]);
+        value_map.Set(rhs[i], b[i]);
+    }
+    return Substitute(this->result, value_map);
+}
+
+TVM_REGISTER_GLOBAL("tir.CommReducer")
+        .set_body_typed([](Array<Var> lhs, Array<Var> rhs, Array<PrimExpr> result,
+                           Array<PrimExpr> identity_element) {
+            return CommReducer(lhs, rhs, result, identity_element);
+        });
+
+TVM_REGISTER_GLOBAL("tir.CommReducerCombine")
+        .set_body_method<CommReducer>(&CommReducerNode::operator());
+
+TVM_REGISTER_NODE_TYPE(CommReducerNode);
+
+// Reduce
+Reduce::Reduce(CommReducer combiner, Array<PrimExpr> source, Array<IterVar> axis,
+               PrimExpr condition, int value_index, Array<PrimExpr> init) {
+    for (size_t i = 0; i < axis.size(); ++i) {
+        CHECK_EQ(static_cast<int>(axis[i]->iter_type), static_cast<int>(IterVarType::kCommReduce))
+                << "Can only take axis created by reduce_axis";
+    }
+    if (!condition.defined()) {
+        condition = const_true();
+    }
+    auto n = make_object<ReduceNode>();
+    CHECK(source.defined());
+    for (size_t i = 0; i < axis.size(); ++i) {
+        CHECK(axis[i].defined());
+    }
+    if (!init.empty()) {
+        CHECK_EQ(init.size(), source.size()) << "Number of inits should match number of exprs";
+        for (size_t i = 0; i < init.size(); i++) {
+            CHECK(init[i].defined()) << "Init value must be defined";
+            CHECK(init[i]->IsInstance<ProducerLoadNode>() || init[i]->IsInstance<IntImmNode>() ||
+                  init[i]->IsInstance<FloatImmNode>())
+                    << "init can only be a IntImm, FloatImm or ProducerLoad, "
+                    << "but received " << init[i] << " of type " << init[i]->GetTypeKey();
+        }
+    }
+    n->dtype = source[value_index].dtype();
+    n->combiner = std::move(combiner);
+    n->source = std::move(source);
+    n->init = std::move(init);
+    n->axis = std::move(axis);
+    n->condition = condition;
+    n->value_index = value_index;
+    // n->span = std::move(span);
+    data_ = std::move(n);
+}
+
+TVM_REGISTER_GLOBAL("tir.Reduce")
+        .set_body_typed([](CommReducer combiner, Array<PrimExpr> source, Array<IterVar> axis,
+                           PrimExpr condition, int value_index, Array<PrimExpr> init) {
+            return Reduce(combiner, source, axis, condition, value_index, init);
+        });
+
+TVM_REGISTER_NODE_TYPE(ReduceNode);
 
 // Any
 Any::Any() {
