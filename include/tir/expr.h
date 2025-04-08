@@ -1036,6 +1036,71 @@ public:
     TVM_DEFINE_OBJECT_REF_METHODS(CommReducer, ObjectRef, CommReducerNode);
 };
 
+/*! \brief Reduction operator */
+class ReduceNode : public PrimExprNode {
+public:
+    /*! \brief The commutative combiner */
+    CommReducer combiner;
+    /*! \brief The source operand */
+    Array<PrimExpr> source;
+    /*! \brief The init operand */
+    Array<PrimExpr> init;
+    /*! \brief The reduction axis */
+    Array<IterVar> axis;
+    /*!
+   * \brief Predicate on the reduction
+   *  Only add the body to reduction if condition is true.
+   */
+    PrimExpr condition;
+    /*! \brief the index of this reduce node */
+    int value_index;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dtype", &dtype);
+        v->Visit("combiner", &combiner);
+        v->Visit("source", &source);
+        v->Visit("init", &init);
+        v->Visit("axis", &axis);
+        v->Visit("condition", &condition);
+        v->Visit("value_index", &value_index);
+        // v->Visit("span", &span);
+    }
+
+    bool SEqualReduce(const ReduceNode* other, SEqualReducer equal) const {
+        // check axis first so IterVars can define the necessary variables.
+        return equal(dtype, other->dtype) && equal(axis, other->axis) &&
+               equal(combiner, other->combiner) && equal(source, other->source) &&
+               equal(init, other->init) && equal(condition, other->condition) &&
+               equal(value_index, other->value_index);
+    }
+
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dtype);
+        hash_reduce(axis);
+        hash_reduce(combiner);
+        hash_reduce(source);
+        hash_reduce(init);
+        hash_reduce(condition);
+        hash_reduce(value_index);
+    }
+
+    static constexpr const char* _type_key = "tir.Reduce";
+    TVM_DECLARE_FINAL_OBJECT_INFO(ReduceNode, PrimExprNode);
+};
+
+/*!
+ * \brief Managed reference to ReduceNode
+ * \sa ReduceNode
+ */
+class Reduce : public PrimExpr {
+public:
+    LITETVM_API Reduce(CommReducer combiner, Array<PrimExpr> src, Array<IterVar> rdom, PrimExpr condition,
+                       int value_index, Array<PrimExpr> init);
+
+    TVM_DEFINE_OBJECT_REF_METHODS(Reduce, PrimExpr, ReduceNode);
+    TVM_DEFINE_OBJECT_REF_COW_METHOD(ReduceNode);
+};
+
 /*! \brief Any shape. */
 class AnyNode : public PrimExprNode {
 public:

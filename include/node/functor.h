@@ -115,6 +115,7 @@ public:
         func_[tindex] = nullptr;
         return *this;
     }
+
     /*!
    * \brief Finalize the functor after calling sequence of set_dispatch
    * This function will attempt to find the min type index that is not null
@@ -122,14 +123,13 @@ public:
    */
     void Finalize() {
         CHECK_EQ(begin_type_index_, 0) << "Can only call Finalize once";
-        while (begin_type_index_ < func_.size() && func_[begin_type_index_] == nullptr) {
+        while (begin_type_index_ < func_.size() && !func_[begin_type_index_]) {
             ++begin_type_index_;
         }
         // shift up the function value
         size_t new_ftable_size = func_.size() - begin_type_index_;
         if (begin_type_index_ != 0) {
-            std::memmove(func_.data(), func_.data() + begin_type_index_,
-                         new_ftable_size * sizeof(FPointer));
+            std::memmove(func_.data(), func_.data() + begin_type_index_, new_ftable_size * sizeof(FPointer));
         }
         func_.resize(new_ftable_size);
         func_.shrink_to_fit();
