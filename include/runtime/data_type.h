@@ -34,8 +34,12 @@ public:
         kFloat = static_cast<uint8_t>(DLDataTypeCode::kDLFloat),
         kHandle = static_cast<uint8_t>(TVMArgTypeCode::kTVMOpaqueHandle),
         kBFloat = static_cast<uint8_t>(DLDataTypeCode::kDLBfloat),
-        kE4M3Float = 6U,
-        kE5M2Float = 7U,
+        // kE4M3Float = 6U,
+        // kE5M2Float = 7U,
+        // kCustomBegin = 129
+        kFloat8_e4m3fn = 6U,
+        kFloat8_e5m2 = 7U,
+        kFloat4_e2m1fn = 8U,
         kCustomBegin = 129
     };
 
@@ -67,7 +71,7 @@ public:
             CHECK_EQ(bits, 16);
         }
 
-        if (code == static_cast<int>(TypeCode::kE4M3Float) || code == static_cast<int>(TypeCode::kE5M2Float)) {
+        if (code == static_cast<int>(TypeCode::kFloat8_e4m3fn) || code == static_cast<int>(TypeCode::kFloat8_e5m2)) {
             CHECK_EQ(bits, 8);
         }
     }
@@ -125,18 +129,27 @@ public:
     /*! \return whether type is a float8 type. */
     NODISCARD bool is_float8() const {
         return (code() == static_cast<int>(TypeCode::kFloat) ||
-                code() == static_cast<int>(TypeCode::kE4M3Float) ||
-                code() == static_cast<int>(TypeCode::kE5M2Float)) &&
+                code() == static_cast<int>(TypeCode::kFloat8_e4m3fn) ||
+                code() == static_cast<int>(TypeCode::kFloat8_e5m2)) &&
                bits() == 8;
     }
 
     NODISCARD bool is_e4m3_float8() const {
-        return code() == static_cast<int>(TypeCode::kE4M3Float) && bits() == 8;
+        return code() == static_cast<int>(TypeCode::kFloat8_e4m3fn) && bits() == 8;
     }
 
     NODISCARD bool is_e5m2_float8() const {
-        return code() == static_cast<int>(TypeCode::kE5M2Float) && bits() == 8;
+        return code() == static_cast<int>(TypeCode::kFloat8_e5m2) && bits() == 8;
     }
+
+    /*! \return whether type is a float4 type. */
+    bool is_float4() const { return code() == static_cast<int>(TypeCode::kFloat4_e2m1fn) && bits() == 4; }
+    bool is_float8_e4m3fn() const { return code() == static_cast<int>(TypeCode::kFloat8_e4m3fn) && bits() == 8; }
+    bool is_float8_e5m2() const { return code() == static_cast<int>(TypeCode::kFloat8_e5m2) && bits() == 8; }
+    bool is_float4_e2m1fn() const { return code() == static_cast<int>(TypeCode::kFloat4_e2m1fn) && bits() == 4; }
+
+    /*! \return whether type is a bfloat type. */
+    bool is_bfloat() const { return code() == static_cast<int>(TypeCode::kBFloat); }
 
     /*! \return whether type is a float16 type. */
     NODISCARD bool is_float16() const {
@@ -317,7 +330,7 @@ public:
    * \return The constructed data type.
    */
     static DataType NVFloat8E4M3(int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kE4M3Float), 8, lanes};
+        return {static_cast<uint8_t>(TypeCode::kFloat8_e4m3fn), 8, lanes};
     }
 
     /*!
@@ -326,7 +339,7 @@ public:
    * \return The constructed data type.
    */
     static DataType NVFloat8E5M2(int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kE5M2Float), 8, lanes};
+        return {static_cast<uint8_t>(TypeCode::kFloat8_e5m2), 8, lanes};
     }
 
     /*!
@@ -459,9 +472,9 @@ inline const char* DLDataTypeCode2Str(DLDataTypeCode type_code) {
             return "handle";
         case static_cast<int>(DLDataTypeCode::kDLBfloat):
             return "bfloat";
-        case static_cast<int>(DataType::TypeCode::kE4M3Float):
+        case static_cast<int>(DataType::TypeCode::kFloat8_e4m3fn):
             return "e4m3_float";
-        case static_cast<int>(DataType::TypeCode::kE5M2Float):
+        case static_cast<int>(DataType::TypeCode::kFloat8_e5m2):
             return "e5m2_float";
         default:
             LOG(FATAL) << "unknown type_code=" << static_cast<int>(type_code);
@@ -469,7 +482,7 @@ inline const char* DLDataTypeCode2Str(DLDataTypeCode type_code) {
     throw;
 }
 
-inline std::ostream& operator<<(std::ostream& os, DLDataType t) {  // NOLINT(*)
+inline std::ostream& operator<<(std::ostream& os, DLDataType t) {// NOLINT(*)
     if (t.bits == 1 && t.lanes == 1 && t.code == static_cast<int>(DLDataTypeCode::kDLUInt)) {
         os << "bool";
         return os;
@@ -496,7 +509,7 @@ inline std::ostream& operator<<(std::ostream& os, DLDataType t) {  // NOLINT(*)
     return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const DataType& dtype) {  // NOLINT(*)
+inline std::ostream& operator<<(std::ostream& os, const DataType& dtype) {// NOLINT(*)
     return os << dtype.operator DLDataType();
 }
 
@@ -528,7 +541,7 @@ inline DLDataType String2DLDataType(const std::string& s) {
         scan = s.c_str() + 5;
     } else if (s.substr(0, 6) == "handle") {
         t.code = static_cast<uint8_t>(TVMArgTypeCode::kTVMOpaqueHandle);
-        t.bits = 64;  // handle uses 64 bit by default.
+        t.bits = 64;// handle uses 64 bit by default.
         scan = s.c_str() + 6;
     } else if (s == "bool") {
         t.code = static_cast<uint8_t>(DLDataTypeCode::kDLUInt);
@@ -540,11 +553,11 @@ inline DLDataType String2DLDataType(const std::string& s) {
         t.bits = 16;
         scan = s.c_str() + 6;
     } else if (s.substr(0, 10) == "e4m3_float") {
-        t.code = static_cast<uint8_t>(DataType::TypeCode::kE4M3Float);
+        t.code = static_cast<uint8_t>(DataType::TypeCode::kFloat8_e4m3fn);
         t.bits = 8;
         scan = s.c_str() + 10;
     } else if (s.substr(0, 10) == "e5m2_float") {
-        t.code = static_cast<uint8_t>(DataType::TypeCode::kE5M2Float);
+        t.code = static_cast<uint8_t>(DataType::TypeCode::kFloat8_e5m2);
         t.bits = 8;
         scan = s.c_str() + 10;
     } else if (s.substr(0, 6) == "custom") {
@@ -553,7 +566,7 @@ inline DLDataType String2DLDataType(const std::string& s) {
         scan = s.c_str();
         LOG(FATAL) << "unknown type " << s;
     }
-    char* xdelim;  // emulate sscanf("%ux%u", bits, lanes)
+    char* xdelim;// emulate sscanf("%ux%u", bits, lanes)
     uint8_t bits = static_cast<uint8_t>(strtoul(scan, &xdelim, 10));
     if (bits != 0) t.bits = bits;
     int scalable_multiplier = 1;
