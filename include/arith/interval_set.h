@@ -75,13 +75,19 @@ public:
      * \param value The value to be represented.
      * \return The result set.
      */
-    static IntervalSet SinglePoint(PrimExpr value) { return IntervalSet(value, value); }
+    static IntervalSet SinglePoint(PrimExpr value) {
+        return {value, value};
+    }
+
     /*!
      * \brief Create an IntervalSet that represents everything.
      * \param value The value to be represented.
      * \return The result set.
      */
-    static IntervalSet Everything() { return IntervalSet(neg_inf(), pos_inf()); }
+    static IntervalSet Everything() {
+        return {neg_inf(), pos_inf()};
+    }
+
     /*!
      * \brief Create an empty eet.
      * \return The result set.
