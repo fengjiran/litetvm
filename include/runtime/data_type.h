@@ -181,6 +181,11 @@ public:
         return encoded_lanes < -1 || 1 < encoded_lanes;
     }
 
+    /*! \return Whether the type is a fixed length vector. */
+    NODISCARD bool is_fixed_length_vector() const {
+        return static_cast<int16_t>(dtype_.lanes) > 1;
+    }
+
     /*! \return Whether the type is a scalable vector. */
     NODISCARD bool is_scalable_vector() const {
         return static_cast<int16_t>(dtype_.lanes) < -1;
