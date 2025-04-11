@@ -106,7 +106,61 @@ public:
     TVM_DEFINE_OBJECT_REF_METHODS(ConstIntBound, ObjectRef, ConstIntBoundNode);
 };
 
+/*!
+ * \brief Analyzer to get constant integer bound over expression.
+ */
+class ConstIntBoundAnalyzer {
+public:
+    using BoundMapType = std::unordered_map<PrimExpr, ConstIntBound, ObjectPtrHash, ObjectPtrEqual>;
+    /*!
+     * \brief analyze the expr
+     * \param expr The expression of interest.
+     * \return the result of the analysis.
+     */
+     LITETVM_API ConstIntBound operator()(const PrimExpr& expr) const;
 
+    /*!
+     * \brief analyze the expr with the intermediate memorized to avoid redundant computation
+     * \param expr The expression of interest.
+     * \param bound The lookup table to store the intermediate results
+     * \return the result of the analysis.
+     */
+     LITETVM_API ConstIntBound operator()(const PrimExpr& expr, BoundMapType* bound);
+
+    /*!
+     * \brief Update constant int bound information of var.
+     *
+     * \param var The variable of interest.
+     * \param info The bound information.
+     * \param allow_override whether we allow override of existing information.
+     */
+     LITETVM_API void Update(const Var& var, const ConstIntBound& info, bool allow_override = false);
+    /*!
+     * \brief Bind variable to a range.
+     *
+     * \param var The variable.
+     * \param range The range we bind to.
+     * \param allow_override Whether we allow overriding an existing var's range.
+     */
+     LITETVM_API void Bind(const Var& var, const Range& range, bool allow_override = false);
+
+private:
+    friend class Analyzer;
+    friend class ConstraintContext;
+    explicit ConstIntBoundAnalyzer(Analyzer* parent);
+     LITETVM_API ~ConstIntBoundAnalyzer();
+    /*!
+     * \brief Update the internal state to enter constraint.
+     * \param constraint A constraint expression.
+     *
+     * \return an exit function that must be called to cleanup the constraint can be nullptr.
+     */
+    std::function<void()> EnterConstraint(const PrimExpr& constraint);
+    struct Entry;
+    class Impl;
+    /*! \brief Internal impl */
+    Impl* impl_;
+};
 
 }// namespace arith
 }// namespace litetvm
