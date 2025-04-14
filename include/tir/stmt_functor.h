@@ -9,6 +9,7 @@
 #include "tir/expr.h"
 #include "tir/expr_functor.h"
 #include "tir/stmt.h"
+#include "tir/function.h"
 
 #include <unordered_map>
 

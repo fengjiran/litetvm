@@ -620,7 +620,7 @@ public:
         return value;
     }
 
-    explicit operator bool() const {
+    operator bool() const {
         if (auto opt = TryAsBool()) {
             return opt.value();
         }

@@ -410,34 +410,31 @@ public:
     // The following fields are used in polymorphic(template) functions
     // For normal functions, the following two fields will be empty.
     /*! \brief The type parameters of the function */
-    Array<TypeVar> type_params;
+    // Array<TypeVar> type_params;
     /*!
      * \brief potential constraint the type need to obey
      * \note this field is reserved for further purposes.
      */
-    Array<TypeConstraint> type_constraints;
+    // Array<TypeConstraint> type_constraints;
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("arg_types", &arg_types);
         v->Visit("ret_type", &ret_type);
-        v->Visit("type_params", &type_params);
-        v->Visit("type_constraints", &type_constraints);
+        // v->Visit("type_params", &type_params);
+        // v->Visit("type_constraints", &type_constraints);
         // v->Visit("span", &span);
     }
 
     bool SEqualReduce(const FuncTypeNode* other, SEqualReducer equal) const {
         // type params first as they define type vars.
-        return equal.DefEqual(type_params, other->type_params) &&
-               equal(arg_types, other->arg_types) &&
-               equal(ret_type, other->ret_type) &&
-               equal(type_constraints, other->type_constraints);
+        return equal(arg_types, other->arg_types) && equal(ret_type, other->ret_type);
     }
 
     void SHashReduce(SHashReducer hash_reduce) const {
-        hash_reduce.DefHash(type_params);
+        // hash_reduce.DefHash(type_params);
         hash_reduce(arg_types);
         hash_reduce(ret_type);
-        hash_reduce(type_constraints);
+        // hash_reduce(type_constraints);
     }
 
     static constexpr const char* _type_key = "FuncType";
@@ -459,8 +456,7 @@ public:
      * \param span The span information.
      * \sa FuncTypeNode for more docs about these fields.
      */
-    LITETVM_API FuncType(Array<Type> arg_types, Type ret_type, Array<TypeVar> type_params,
-                         Array<TypeConstraint> type_constraints);
+    LITETVM_API FuncType(Array<Type> arg_types, Type ret_type);
 
     TVM_DEFINE_OBJECT_REF_METHODS(FuncType, Type, FuncTypeNode);
 };

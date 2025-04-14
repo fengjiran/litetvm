@@ -77,12 +77,12 @@ TVM_REGISTER_GLOBAL("ir.TupleType").set_body_typed([](Array<Type> fields) {
     return TupleType(fields);
 });
 
-FuncType::FuncType(Array<Type> arg_types, Type ret_type, Array<TypeVar> type_params, Array<TypeConstraint> type_constraints) {
+FuncType::FuncType(Array<Type> arg_types, Type ret_type) {
     auto n = runtime::make_object<FuncTypeNode>();
     n->arg_types = std::move(arg_types);
     n->ret_type = std::move(ret_type);
-    n->type_params = std::move(type_params);
-    n->type_constraints = std::move(type_constraints);
+    // n->type_params = std::move(type_params);
+    // n->type_constraints = std::move(type_constraints);
     data_ = std::move(n);
 }
 

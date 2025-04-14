@@ -6,6 +6,7 @@
 #define LITETVM_TIR_DATA_TYPE_REWRITER_H
 
 #include "tir/stmt_functor.h"
+#include "tir/function.h"
 
 #include <unordered_map>
 
