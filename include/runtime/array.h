@@ -52,7 +52,7 @@ public:
     static ObjectPtr<ArrayNode> CopyFrom(int64_t cap, ArrayNode* from) {
         int64_t size = from->size_;
         CHECK_GE(cap, size) << "ValueError: not enough capacity";
-        ObjectPtr<ArrayNode> p = ArrayNode::Empty(cap);
+        ObjectPtr<ArrayNode> p = Empty(cap);
         ObjectRef* write = p->MutableBegin();
         ObjectRef* read = from->MutableBegin();
         // To ensure exception safety, size is only incremented after the initialization succeeds
@@ -71,7 +71,7 @@ public:
     static ObjectPtr<ArrayNode> MoveFrom(int64_t cap, ArrayNode* from) {
         int64_t size = from->size_;
         CHECK_GE(cap, size) << "ValueError: not enough capacity";
-        ObjectPtr<ArrayNode> p = ArrayNode::Empty(cap);
+        ObjectPtr<ArrayNode> p = Empty(cap);
         ObjectRef* write = p->MutableBegin();
         ObjectRef* read = from->MutableBegin();
         // To ensure exception safety, size is only incremented after the initialization succeeds
@@ -107,7 +107,7 @@ private:
 
     /*! \return begin mutable iterator */
     ObjectRef* MutableBegin() const {
-        return static_cast<ObjectRef*>(InplaceArrayBase::AddressOf(0));
+        return static_cast<ObjectRef*>(AddressOf(0));
     }
 
     /*! \return end mutable iterator */
@@ -271,7 +271,9 @@ public:
     /*!
    * \brief default constructor
    */
-    Array() { data_ = ArrayNode::Empty(); }
+    Array() {
+        data_ = ArrayNode::Empty();
+    }
 
     /*!
    * \brief move constructor
@@ -329,7 +331,9 @@ public:
    * \param n The size of the container
    * \param val The init value
    */
-    explicit Array(const size_t n, const T& val) { data_ = ArrayNode::CreateRepeated(n, val); }
+    explicit Array(const size_t n, const T& val) {
+        data_ = ArrayNode::CreateRepeated(n, val);
+    }
 
     /*!
    * \brief move assign operator
@@ -351,21 +355,26 @@ public:
         return *this;
     }
 
-public:
     // iterators
     struct ValueConverter {
         using ResultType = T;
-        static T convert(const ObjectRef& n) { return DowncastNoCheck<T>(n); }
+        static T convert(const ObjectRef& n) {
+            return DowncastNoCheck<T>(n);
+        }
     };
 
     using iterator = IterAdapter<ValueConverter, const ObjectRef*>;
     using reverse_iterator = ReverseIterAdapter<ValueConverter, const ObjectRef*>;
 
     /*! \return begin iterator */
-    iterator begin() const { return iterator(GetArrayNode()->begin()); }
+    iterator begin() const {
+        return iterator(GetArrayNode()->begin());
+    }
 
     /*! \return end iterator */
-    iterator end() const { return iterator(GetArrayNode()->end()); }
+    iterator end() const {
+        return iterator(GetArrayNode()->end());
+    }
 
     /*! \return rbegin iterator */
     reverse_iterator rbegin() const {
@@ -379,7 +388,6 @@ public:
         return reverse_iterator(GetArrayNode()->begin() - 1);
     }
 
-public:
     // const methods in std::vector
     /*!
    * \brief Immutably read i-th element from array.
@@ -407,7 +415,9 @@ public:
     }
 
     /*! \return Whether array is empty */
-    bool empty() const { return size() == 0; }
+    bool empty() const {
+        return size() == 0;
+    }
 
     /*! \return The first element of the array */
     const T front() const {
@@ -425,9 +435,7 @@ public:
         return DowncastNoCheck<T>(*(p->end() - 1));
     }
 
-public:
     // mutation in std::vector, implements copy-on-write
-
     /*!
    * \brief push a new item to the back of the list
    * \param item The item to be pushed.
@@ -495,9 +503,7 @@ public:
         int64_t size = GetArrayNode()->size_;
         CHECK(0 <= st && st < size) << "ValueError: cannot erase at index " << st
                                     << ", because Array size is " << size;
-        CopyOnWrite()                               //
-                ->MoveElementsLeft(st, st + 1, size)//
-                ->ShrinkBy(1);
+        CopyOnWrite()->MoveElementsLeft(st, st + 1, size)->ShrinkBy(1);
     }
 
     /*!
@@ -517,9 +523,7 @@ public:
         CHECK(0 <= st && st <= size && 0 <= ed && ed <= size)
                 << "ValueError: cannot erase array in range [" << st << ", " << ed << ")"
                 << ", because array size is " << size;
-        CopyOnWrite()                           //
-                ->MoveElementsLeft(st, ed, size)//
-                ->ShrinkBy(ed - st);
+        CopyOnWrite()->MoveElementsLeft(st, ed, size)->ShrinkBy(ed - st);
     }
 
     /*!
@@ -588,9 +592,7 @@ public:
         AgregateImpl(dest, args...);
     }
 
-public:
     // Array's own methods
-
     /*!
    * \brief set i-th element of the array.
    * \param i The index
@@ -604,7 +606,9 @@ public:
     }
 
     /*! \return The underlying ArrayNode */
-    ArrayNode* GetArrayNode() const { return static_cast<ArrayNode*>(data_.get()); }
+    ArrayNode* GetArrayNode() const {
+        return static_cast<ArrayNode*>(data_.get());
+    }
 
     /*!
    * \brief Helper function to apply a map function onto the array.
@@ -625,7 +629,8 @@ public:
    *
    * \return The transformed array.
    */
-    template<typename F, typename U = std::invoke_result_t<F, T>>
+    template<typename F,
+             typename U = std::invoke_result_t<F, T>>
     Array<U> Map(F fmap) const {
         return Array<U>(MapHelper(data_, fmap));
     }
@@ -674,12 +679,13 @@ public:
    *  Otherwise make a new copy of the array to ensure the current handle
    *  hold a unique copy.
    *
-   * \return Handle to the internal node container(which ganrantees to be unique)
+   * \return Handle to the internal node container (which ganrantees to be unique)
    */
     ArrayNode* CopyOnWrite() {
         if (data_ == nullptr) {
             return SwitchContainer(ArrayNode::kInitSize);
         }
+
         if (!data_.unique()) {
             return SwitchContainer(capacity());
         }
@@ -754,13 +760,14 @@ private:
    * \tparam F The type of the mutation function.
    *
    * \tparam U The output type of the mutation function.  Inferred
-   * from the callable type given.  Must inherit from ObjectRef.
+   * from the callable type given. Must inherit from ObjectRef.
    *
    * \return The mapped array.  Depending on whether mutate-in-place
    * or copy-on-write optimizations were applicable, may be the same
    * underlying array as the `data` parameter.
    */
-    template<typename F, typename U = std::invoke_result_t<F, T>>
+    template<typename F,
+             typename U = std::invoke_result_t<F, T>>
     static ObjectPtr<Object> MapHelper(ObjectPtr<Object> data, F fmap) {
         if (data == nullptr) {
             return nullptr;
