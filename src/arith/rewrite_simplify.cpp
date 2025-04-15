@@ -5,6 +5,7 @@
 #include "arith/rewrite_simplify.h"
 #include "arith/constraint_extract.h"
 #include "arith/scalable_expression.h"
+#include "arith/conjunctive_normal_form.h"
 #include "target/registry.h"
 #include "tir/op.h"
 
