@@ -52,7 +52,7 @@
 
 #include "tir/builtin.h"
 #include "tir/expr.h"
-// #include "tir/analysis.h"
+#include "tir/analysis.h"
 #include "arith/const_fold.h"
 
 #include <cmath>

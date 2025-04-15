@@ -7,6 +7,7 @@
 
 #include "arith/analyzer.h"
 #include "ir/module.h"
+#include "ir/transform.h"
 #include "target/target.h"
 #include "tir/function.h"
 #include "tir/op_attr_types.h"
@@ -362,8 +363,8 @@ const tir::BlockNode* FindAnchorBlock(const IRModule& mod);
 // directly throws RuntimeError when verification fails.
 namespace transform {
 
-using tvm::transform::Pass;
-using tvm::transform::PassContext;
+using litetvm::transform::Pass;
+using litetvm::transform::PassContext;
 
 /*!
  * \brief Pass variant of VerifySSA.

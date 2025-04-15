@@ -9,6 +9,7 @@
 #include "tir/builtin.h"
 #include "tir/op.h"
 #include "tir/var.h"
+#include "tir/stmt_functor.h"
 
 #include <optional>
 #include <utility>

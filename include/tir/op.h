@@ -774,7 +774,7 @@ inline bool IsPointerType(const Type& type, const DataType& element_type) {
  * \param span The location of this operation in the source.
  */
 template<typename ValueType,
-         typename = std::enable_if_t<std::is_pod_v<ValueType>>>
+         typename = std::enable_if_t<std::is_trivial_v<ValueType> && std::is_standard_layout_v<ValueType>>>
 PrimExpr make_const(DataType t, ValueType value);
 
 /*!

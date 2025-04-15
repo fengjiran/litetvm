@@ -89,9 +89,8 @@ FuncType::FuncType(Array<Type> arg_types, Type ret_type) {
 TVM_REGISTER_NODE_TYPE(FuncTypeNode);
 
 TVM_REGISTER_GLOBAL("ir.FuncType")
-        .set_body_typed([](Array<Type> arg_types, Type ret_type, Array<TypeVar> type_params,
-                           Array<TypeConstraint> type_constraints) {
-            return FuncType(arg_types, ret_type, type_params, type_constraints);
+        .set_body_typed([](Array<Type> arg_types, Type ret_type) {
+            return FuncType(arg_types, ret_type);
         });
 
 IncompleteType::IncompleteType(TypeKind kind) {

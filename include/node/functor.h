@@ -8,6 +8,7 @@
 #include "runtime/object.h"
 
 #include <vector>
+#include <cstring>
 
 namespace litetvm {
 
