@@ -506,7 +506,6 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-
 /*!
  * \brief Constraint context.
  *
@@ -524,7 +523,6 @@ private:
  * \endcode
  */
 class ConstraintContext {
-private:
     // declare friend to enable with.
     friend class With<ConstraintContext>;
     /*!
