@@ -41,8 +41,8 @@
 #ifndef LITETVM_IR_TRANSFORM_H
 #define LITETVM_IR_TRANSFORM_H
 
-#include "ir/module.h"
 #include "ir/instrument.h"
+#include "ir/module.h"
 #include "runtime/array.h"
 #include "runtime/string.h"
 #include "support/with.h"
@@ -131,12 +131,12 @@ public:
     Array<ObjectRef> GetTraceStack() { return trace_stack; }
     void PushTrace(ObjectRef new_trace) { trace_stack.push_back(new_trace); }
     void PopTrace() {
-        ICHECK(GetTraceStackSize()) << "Trace stack is currently empty. Please double check.";
+        CHECK(GetTraceStackSize()) << "Trace stack is currently empty. Please double check.";
         trace_stack.pop_back();
     }
     int GetTraceStackSize() { return trace_stack.size(); }
     ObjectRef GetCurrentTrace() {
-        ICHECK(GetTraceStackSize()) << "Trace stack is currently empty. Please double check.";
+        CHECK(GetTraceStackSize()) << "Trace stack is currently empty. Please double check.";
         return trace_stack.back();
     }
     void SetNumEvals(int _num_evals) { num_evals = _num_evals; }
@@ -171,7 +171,7 @@ public:
    * \return const access pointer.
    */
     const PassContextNode* operator->() const {
-        ICHECK(get() != nullptr);
+        CHECK(get() != nullptr);
         return static_cast<const PassContextNode*>(get());
     }
     /*!
@@ -179,7 +179,7 @@ public:
    * \return mutable access pointer.
    */
     PassContextNode* operator->() {
-        ICHECK(get() != nullptr);
+        CHECK(get() != nullptr);
         return static_cast<PassContextNode*>(get_mutable());
     }
 
@@ -187,32 +187,32 @@ public:
    * \brief Construct a PassContext containing the default configurations.
    * \return The new PassContext.
    */
-    TVM_DLL static PassContext Create();
+    LITETVM_API static PassContext Create();
     /*!
    * \brief Get the default pass context in the current scope.
    * \return The pass context.
    */
-    TVM_DLL static PassContext Current();
+    LITETVM_API static PassContext Current();
 
     /*!
    * \brief Get all supported configuration names and metadata, registered within the PassContext.
    * \return Map indexed by the config name, pointing to the metadata map as key-value
    */
-    TVM_DLL static Map<String, Map<String, String>> ListConfigs();
+    LITETVM_API static Map<String, Map<String, String>> ListConfigs();
 
     /*!
    * \brief Call instrument implementations' callbacks when entering PassContext.
    *        The callbacks are called in order, and if one raises an exception, the rest will not be
    *        called.
    */
-    TVM_DLL void InstrumentEnterPassContext();
+    LITETVM_API void InstrumentEnterPassContext();
 
     /*!
    * \brief Call instrument implementations' callbacks when exiting PassContext.
    *        The callbacks are called in order, and if one raises an exception, the rest will not be
    *        called.
    */
-    TVM_DLL void InstrumentExitPassContext();
+    LITETVM_API void InstrumentExitPassContext();
 
     /*!
    * \brief Call instrument implementations' callbacks before a pass run.
@@ -224,7 +224,7 @@ public:
    *
    * \return false: the pass is skipped; true: the pass runs.
    */
-    TVM_DLL bool InstrumentBeforePass(const IRModule& mod, const PassInfo& info) const;
+    LITETVM_API bool InstrumentBeforePass(const IRModule& mod, const PassInfo& info) const;
 
     /*!
    * \brief Call instrument implementations callbacks after a pass run.
@@ -234,14 +234,14 @@ public:
    * \param mod The module that an optimization pass runs on.
    * \param info The pass information.
    */
-    TVM_DLL void InstrumentAfterPass(const IRModule& mod, const PassInfo& info) const;
+    LITETVM_API void InstrumentAfterPass(const IRModule& mod, const PassInfo& info) const;
 
     /*!
    * \brief Check whether a pass is enabled.
    * \param info The pass information.
    * \return true if the pass is enabled. Otherwise, false.
    */
-    TVM_DLL bool PassEnabled(const PassInfo& info) const;
+    LITETVM_API bool PassEnabled(const PassInfo& info) const;
 
     /*!
    * \brief Register a valid configuration option and its ValueType for validation.
@@ -293,21 +293,288 @@ public:
 
 private:
     // The entry of a pass context scope.
-    TVM_DLL void EnterWithScope();
+    LITETVM_API void EnterWithScope();
     // The exit of a pass context scope.
-    TVM_DLL void ExitWithScope();
+    LITETVM_API void ExitWithScope();
     // Register configuration key value type.
-    TVM_DLL static void RegisterConfigOption(const char* key, uint32_t value_type_index,
-                                             std::function<ObjectRef(ObjectRef)> legalization);
+    LITETVM_API static void RegisterConfigOption(const char* key, uint32_t value_type_index,
+                                                 std::function<ObjectRef(ObjectRef)> legalization);
 
     // Classes to get the Python `with` like syntax.
     friend class Internal;
     friend class With<PassContext>;
 };
 
+#define TVM_PASS_CTX_CONFIG_VAR_DEF static TVM_ATTRIBUTE_UNUSED uint32_t __make_PassContext_tid
+
+/*!
+ * \brief Helper macro to register the object type to runtime.
+ *  Makes sure that the runtime type table is correctly populated.
+ *
+ *  Use this macro in the cc file for each terminal class.
+ */
+#define TVM_REGISTER_PASS_CONFIG_OPTION(Key, ValueType)        \
+    TVM_STR_CONCAT(TVM_PASS_CTX_CONFIG_VAR_DEF, __COUNTER__) = \
+            ::litetvm::transform::PassContext::RegisterConfigOption<ValueType>(Key)
+
+
+/*!
+ * \brief Meta data that will be used to help optimization and analysis.
+ * \sa PassInfo
+ */
+class PassInfoNode : public Object {
+public:
+    /*! \brief The minimal optimization level that this pass will be enabled. */
+    int opt_level;
+
+    /*! \brief The name of an optimization/analysis pass. */
+    String name;
+
+    /*! \brief Boolean that tells whether this pass will be traced or not. */
+    bool traceable;
+
+    /*! \brief The passes that are required to perform the current pass. */
+    Array<String> required;
+
+    PassInfoNode() = default;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("opt_level", &opt_level);
+        v->Visit("name", &name);
+        v->Visit("required", &required);
+        v->Visit("traceable", &traceable);
+    }
+
+    static constexpr const char* _type_key = "transform.PassInfo";
+    static constexpr bool _type_has_method_sequal_reduce = false;
+    TVM_DECLARE_FINAL_OBJECT_INFO(PassInfoNode, Object);
+};
+
+/*!
+ * \brief Managed reference class for PassInfoNode
+ * \sa PassInfoNode
+ */
+class PassInfo : public ObjectRef {
+public:
+    /*!
+   * \brief Constructor
+   * \param opt_level The optimization level
+   * \param name Name of the pass.
+   * \param required  The passes that are required to perform the current pass.
+   * \param traceable Boolean that tells whether the pass is traceable.
+   */
+    LITETVM_API PassInfo(int opt_level, String name, Array<String> required, bool traceable);
+
+    TVM_DEFINE_OBJECT_REF_METHODS(PassInfo, ObjectRef, PassInfoNode);
+};
+
+/*!
+ * \brief PassNode is the base type of differnt types of optimization passes.
+ * It is designed as a pure class and implemented by different pass subclasses
+ * at different granularity of Relax nodes.
+ */
+class PassNode : public Object {
+public:
+    virtual ~PassNode() {}
+    /*!
+   * \brief Get the pass information/meta data. */
+    virtual PassInfo Info() const = 0;
+
+    /*!
+   * \brief Transform mod using the default PassContext in the current scope.
+   *
+   * \param mod The module that an optimization pass runs on.
+   *
+   * \return The transformed module.
+   */
+    IRModule operator()(IRModule mod) const {
+        return this->operator()(std::move(mod), PassContext::Current());
+    }
+
+    /*!
+   * \brief Transform mod using a functor under a given pass context.
+   *
+   * \param mod The module that an optimization pass runs on.
+   * \param pass_ctx The pass context that can provide information for the optimization.
+   *
+   * \return The transformed module.
+   */
+    virtual IRModule operator()(IRModule mod, const PassContext& pass_ctx) const = 0;
+
+    void VisitAttrs(AttrVisitor* v) {}
+
+    static constexpr const char* _type_key = "transform.Pass";
+    TVM_DECLARE_BASE_OBJECT_INFO(PassNode, Object);
+};
+
+class Pass : public ObjectRef {
+public:
+    /*!
+   * \brief Transform mod using the default PassContext in the current scope.
+   *
+   * \code
+   *
+   * // If you do no longer need the input module
+   * // it is recommended to use std::move to move your input module.
+   * mod = pass(std::move(mod));
+   *
+   * \endcode
+   *
+   * \param mod The module that an optimization pass runs on.
+   *
+   * \return The transformed module.
+   */
+    IRModule operator()(IRModule mod) const;
+
+    /*!
+   * \brief Transform mod using a functor under a given pass context.
+   *
+   * \param mod The module that an optimization pass runs on.
+   * \param pass_ctx The pass context that can provide information for the optimization.
+   *
+   * \return The transformed module.
+   */
+    IRModule operator()(IRModule mod, const PassContext& pass_ctx) const;
+
+    TVM_DEFINE_OBJECT_REF_METHODS(Pass, ObjectRef, PassNode);
+
+private:
+    IRModule static AssertImmutableModule(const IRModule& mod, const PassNode* node,
+                                          const PassContext& pass_ctx);
+};
+
+/*!
+ * \brief The SequentialNode contains a set of passes that transform Relax
+ * programs from one AST to another semantically equivalent one.
+ *
+ * One example of this level of pass is that the pass manager needs to correctly
+ * perform a host of optimizations with a given optimization level and disabled
+ * passes.
+ */
+class SequentialNode : public PassNode {
+public:
+    /* \brief The pass meta data.*/
+    PassInfo pass_info;
+
+    /*! \brief A list of passes that used to compose a sequential pass. */
+    Array<Pass> passes;
+
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("pass_info", &pass_info);
+        v->Visit("passes", &passes);
+    }
+
+    /*!
+   * \brief Get the pass information/meta data.
+   */
+    PassInfo Info() const override { return pass_info; }
+
+    /*!
+   * \brief Resolve the pass dependency. It globs all required passes by
+   *        a given pass and executes them.
+   *
+   * \param mod The module that an optimization pass runs on.
+   *
+   * TODO(zhiics) Build a dependency graph among the passes using provided
+   * metadata, i.e. required_passes. Likely, we can have a data structure, i.e.
+   * PassInfo, to store the relevant information including the parent passes.
+   */
+    void ResolveDependency(const IRModule& mod);
+
+    /*!
+   * \brief Perform optimizations on a series of passes. The aforementioned
+   *        typical pass manager jobs could be done by it. This function could
+   *        be overloaded to focus on different metrics, i.e. performance,
+   *        memory footprint, etc.
+   *
+   * \param mod The module that these passes are applied on.
+   * \param pass_ctx The context that these passes execute on.
+   *
+   * \return Return the updated module.
+   */
+    IRModule operator()(IRModule mod, const PassContext& pass_ctx) const final;
+
+    static constexpr const char* _type_key = "transform.Sequential";
+    TVM_DECLARE_FINAL_OBJECT_INFO(SequentialNode, PassNode);
+};
+
+class Sequential : public Pass {
+public:
+    /*!
+   * \brief The constructor of `Sequential`.
+   *
+   * \param passes The passes to apply.
+   * \param pass_info The pass metadata.
+   */
+    LITETVM_API Sequential(Array<Pass> passes, PassInfo pass_info);
+
+    /*!
+   * \brief The constructor of `Sequential`.
+   *
+   * \param passes The passes to apply.
+   * \param name The name of a sequential pass. It's defaulted to "sequential".
+   *        This allows users to only provide a list of passes and execute them
+   *        under a given context.
+   */
+    LITETVM_API Sequential(Array<Pass> passes, String name = "sequential");
+
+    Sequential() = default;
+    explicit Sequential(ObjectPtr<Object> n) : Pass(n) {}
+
+    const SequentialNode* operator->() const;
+    using ContainerType = SequentialNode;
+};
+
+
+/*
+ * \brief Create a module pass.
+ *
+ * \param pass_func The packed function that contains the optimization.
+ * \param opt_level The optimization level of the module pass.
+ * \param name The name of the module pass.
+ * \param required The list of the passes that the module pass is dependent on.
+ *
+ * \return The created module pass.
+ */
+LITETVM_API Pass CreateModulePass(
+        const runtime::TypedPackedFunc<IRModule(IRModule, PassContext)>& pass_func, int opt_level,
+        String name, Array<runtime::String> required, bool traceable = false);
+
+/*
+ * \brief Utility to apply a pass to specific functions in an IRModule
+ *
+ * TVM uses IRModule to IRModule transformations at all stages of
+ * lowering.  These transformations may be useful when hand-writing an
+ * optimized model, or to perform optimizations on specific kernels
+ * within an IRModule.  This utility allows a pass to be applied to a
+ * specified function, without altering other functions in the module.
+ *
+ * \param pass The IRModule to IRModule pass to be applied.
+ *
+ * \param func_name_regex A regex used to select the functions to be
+ * updated.  The pass will be applied to all functions whose name
+ * matches the regex.
+ *
+ * \param error_if_no_function_matches_regex Specifies the behavior if
+ *     an IRModule does not contain any function matching the provided
+ *     regex.  If true, an error will be raised.  If false (default),
+ *     the IRModule will be returned unmodified.
+ *
+ * \return The modified IRModule to IRModule pass.
+ */
+LITETVM_API Pass ApplyPassToFunction(Pass pass, String func_name_regex,
+                                     bool error_if_no_function_matches_regex = false);
+
+/*!
+ * \brief A special trace pass that prints the header and IR to LOG(INFO).
+ * \param header The header to be attached to the output.
+ * \param show_meta_data Whether should we show meta data.
+ * \return The pass.
+ */
+LITETVM_API Pass PrintIR(String header = "", bool show_meta_data = false);
+
+
 }// namespace transform
-
-
 }// namespace litetvm
 
 #endif//LITETVM_IR_TRANSFORM_H
