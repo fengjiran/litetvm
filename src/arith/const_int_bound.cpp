@@ -7,9 +7,9 @@
 #include "arith/pattern_match.h"
 #include "arith/scalable_expression.h"
 #include "runtime/registry.h"
+#include "target/target.h"
 #include "tir/builtin.h"
 #include "tir/expr_functor.h"
-#include "target/target.h"
 
 namespace litetvm {
 namespace arith {
@@ -76,8 +76,7 @@ struct ConstIntBoundAnalyzer::Entry {
     }
 };
 
-class ConstIntBoundAnalyzer::Impl
-    : public ExprFunctor<ConstIntBoundAnalyzer::Entry(const PrimExpr&)> {
+class ConstIntBoundAnalyzer::Impl : public ExprFunctor<ConstIntBoundAnalyzer::Entry(const PrimExpr&)> {
 public:
     /*! \brief additional bound info about expr in bound */
     struct BoundInfo {
@@ -103,11 +102,10 @@ public:
         if (!allow_override) {
             auto it = var_map_.find(var);
             if (it != var_map_.end()) {
-                CHECK(it->second == info)
-                        << "Trying to update var \'" << var << "\'"
-                        << " with a different const bound: "
-                        << "original=" << ConstIntBound(it->second.min_value, it->second.max_value)
-                        << ", new=" << ConstIntBound(info.min_value, info.max_value);
+                CHECK(it->second == info) << "Trying to update var \'" << var << "\'"
+                                          << " with a different const bound: "
+                                          << "original=" << ConstIntBound(it->second.min_value, it->second.max_value)
+                                          << ", new=" << ConstIntBound(info.min_value, info.max_value);
             }
         }
         var_map_[var] = info;
@@ -121,9 +119,8 @@ public:
             Entry ret = VisitExpr(op->body);
             var_map_.erase(op->var);
             return ret;
-        } else {
-            return VisitExpr(op->body);
         }
+        return VisitExpr(op->body);
     }
 
     void Update(const Var& var, const ConstIntBound& info, bool allow_override) {
@@ -149,10 +146,9 @@ public:
             auto val = bound_->find(expr);
             if (val != bound_->end()) {
                 auto everything = Everything(expr->dtype);
-                CHECK(
-                        (val->second->min_value == res.min_value && val->second->max_value == res.max_value) ||
-                        (val->second->min_value == everything.min_value &&
-                         val->second->max_value == everything.max_value))
+                CHECK((val->second->min_value == res.min_value && val->second->max_value == res.max_value) ||
+                      (val->second->min_value == everything.min_value &&
+                       val->second->max_value == everything.max_value))
                         << "Detected bound for " << expr << "conflicts with memorization";
             }
             (*bound_)[expr] = ConstIntBound(res.min_value, res.max_value);

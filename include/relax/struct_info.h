@@ -6,6 +6,7 @@
 #define LITETVM_RELAX_STRUCT_INFO_H
 
 #include "ir/env_func.h"
+#include "ir/global_info.h"
 #include "relax/expr.h"
 #include "relax/type.h"
 
