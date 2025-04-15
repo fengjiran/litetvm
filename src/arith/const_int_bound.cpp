@@ -6,10 +6,12 @@
 #include "arith/int_operator.h"
 #include "arith/pattern_match.h"
 #include "arith/scalable_expression.h"
+#include "arith/constraint_extract.h"
 #include "runtime/registry.h"
 #include "target/target.h"
 #include "tir/builtin.h"
 #include "tir/expr_functor.h"
+#include "tir/analysis.h"
 
 namespace litetvm {
 namespace arith {
@@ -134,7 +136,7 @@ public:
 
     Entry VisitExpr(const PrimExpr& expr) final {
         Entry res = ExprFunctor::VisitExpr(expr);
-        tir::ExprDeepEqual equal;
+        ExprDeepEqual equal;
         // a linear search over additional info
         // assume we won't have a lot of conditions
         for (const BoundInfo& info: additional_info_) {

@@ -3,6 +3,7 @@
 //
 
 #include "ir/module.h"
+#include "ir/global_var_supply.h"
 #include "node/structural_equal.h"
 #include "runtime/registry.h"
 
