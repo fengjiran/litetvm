@@ -5,12 +5,12 @@
 #ifndef LITETVM_TIR_ANALYSIS_H
 #define LITETVM_TIR_ANALYSIS_H
 
+#include "arith/analyzer.h"
 #include "ir/module.h"
 #include "target/target.h"
 #include "tir/function.h"
 #include "tir/op_attr_types.h"
 #include "tir/stmt.h"
-// #include "arith/analyzer.h"
 
 #include <optional>
 #include <string>

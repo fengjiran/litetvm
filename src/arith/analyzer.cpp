@@ -263,14 +263,20 @@ TVM_REGISTER_GLOBAL("arith.CreateAnalyzer").set_body([](TVMArgs args, TVMRetValu
         if (name == "const_int_bound") {
             return PackedFunc(
                     [self](TVMArgs args, TVMRetValue* ret) { *ret = self->const_int_bound(args[0]); });
-        } else if (name == "modular_set") {
+        }
+
+        if (name == "modular_set") {
             return PackedFunc(
                     [self](TVMArgs args, TVMRetValue* ret) { *ret = self->modular_set(args[0]); });
-        } else if (name == "const_int_bound_update") {
+        }
+
+        if (name == "const_int_bound_update") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 self->const_int_bound.Update(args[0], args[1], args[2]);
             });
-        } else if (name == "Simplify") {
+        }
+
+        if (name == "Simplify") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 if (args.size() == 1) {
                     *ret = self->Simplify(args[0]);
@@ -280,23 +286,35 @@ TVM_REGISTER_GLOBAL("arith.CreateAnalyzer").set_body([](TVMArgs args, TVMRetValu
                     LOG(FATAL) << "Invalid size of argument (" << args.size() << ")";
                 }
             });
-        } else if (name == "rewrite_simplify") {
+        }
+
+        if (name == "rewrite_simplify") {
             return PackedFunc(
                     [self](TVMArgs args, TVMRetValue* ret) { *ret = self->rewrite_simplify(args[0]); });
-        } else if (name == "get_rewrite_simplify_stats") {
+        }
+
+        if (name == "get_rewrite_simplify_stats") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 *ret = self->rewrite_simplify.GetStatsCounters();
             });
-        } else if (name == "reset_rewrite_simplify_stats") {
+        }
+
+        if (name == "reset_rewrite_simplify_stats") {
             return PackedFunc(
                     [self](TVMArgs args, TVMRetValue* ret) { self->rewrite_simplify.ResetStatsCounters(); });
-        } else if (name == "canonical_simplify") {
+        }
+
+        if (name == "canonical_simplify") {
             return PackedFunc(
                     [self](TVMArgs args, TVMRetValue* ret) { *ret = self->canonical_simplify(args[0]); });
-        } else if (name == "int_set") {
+        }
+
+        if (name == "int_set") {
             return PackedFunc(
                     [self](TVMArgs args, TVMRetValue* ret) { *ret = self->int_set(args[0], args[1]); });
-        } else if (name == "bind") {
+        }
+
+        if (name == "bind") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 if (args[1].IsObjectRef<Range>()) {
                     self->Bind(args[0], args[1].operator Range());
@@ -304,12 +322,16 @@ TVM_REGISTER_GLOBAL("arith.CreateAnalyzer").set_body([](TVMArgs args, TVMRetValu
                     self->Bind(args[0], args[1].operator PrimExpr());
                 }
             });
-        } else if (name == "can_prove") {
+        }
+
+        if (name == "can_prove") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 int strength = args[1];
                 *ret = self->CanProve(args[0], static_cast<ProofStrength>(strength));
             });
-        } else if (name == "enter_constraint_context") {
+        }
+
+        if (name == "enter_constraint_context") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 // can't use make_shared due to noexcept(false) decl in destructor,
                 // see https://stackoverflow.com/a/43907314
@@ -318,14 +340,20 @@ TVM_REGISTER_GLOBAL("arith.CreateAnalyzer").set_body([](TVMArgs args, TVMRetValu
                 auto fexit = [ctx](TVMArgs, TVMRetValue*) mutable { ctx.reset(); };
                 *ret = PackedFunc(fexit);
             });
-        } else if (name == "can_prove_equal") {
+        }
+
+        if (name == "can_prove_equal") {
             return PackedFunc(
                     [self](TVMArgs args, TVMRetValue* ret) { *ret = self->CanProveEqual(args[0], args[1]); });
-        } else if (name == "get_enabled_extensions") {
+        }
+
+        if (name == "get_enabled_extensions") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 *ret = static_cast<std::int64_t>(self->rewrite_simplify.GetEnabledExtensions());
             });
-        } else if (name == "set_enabled_extensions") {
+        }
+
+        if (name == "set_enabled_extensions") {
             return PackedFunc([self](TVMArgs args, TVMRetValue* ret) {
                 std::int64_t flags = args[0];
                 self->rewrite_simplify.SetEnabledExtensions(
