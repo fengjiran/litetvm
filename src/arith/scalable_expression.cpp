@@ -6,6 +6,8 @@
 #include "arith/pattern_match.h"
 #include "tir/expr.h"
 #include "tir/op.h"
+#include "tir/check_contains.h"
+#include "tir/replace_selected_expr.h"
 
 #include <vector>
 

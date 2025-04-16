@@ -47,11 +47,13 @@ template<typename R, typename... Args>
 class NodeFunctor<R(const ObjectRef& n, Args...)> {
     /*! \brief internal function pointer type */
     using FPointer = R (*)(const ObjectRef& n, Args...);
+    // using func_type = std::function<R(const ObjectRef& n, Args...)>;
 
     /*! \brief refer to itself. */
     using TSelf = NodeFunctor;
 
     /*! \brief internal function table */
+    // std::vector<func_type> func_;
     std::vector<FPointer> func_;
 
     /*! \brief start range of func index */

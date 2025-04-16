@@ -83,6 +83,54 @@ public:
     using ContainerType = EnvFuncNode;
 };
 
+/*!
+ * \brief Please refer to \ref TypedEnvFuncAnchor "TypedEnvFunc<R(Args..)>"
+ */
+template<typename FType>
+class TypedEnvFunc;
+
+/*!
+ * \anchor TypedEnvFuncAnchor
+ * \brief A typed version of EnvFunc.
+ * It is backed by a GlobalFuncNode internally.
+ *
+ * \tparam R The return value of the function.
+ * \tparam Args The argument signature of the function.
+ * \sa EnvFunc
+ */
+template<typename R, typename... Args>
+class TypedEnvFunc<R(Args...)> : public ObjectRef {
+public:
+    /*! \brief short hand for this function type */
+    using TSelf = TypedEnvFunc<R(Args...)>;
+    TypedEnvFunc() {}
+    explicit TypedEnvFunc(ObjectPtr<Object> n) : ObjectRef(n) {}
+    /*!
+     * \brief Assign global function to a TypedEnvFunc
+     * \param other Another global function.
+     * \return reference to self.
+     */
+    TSelf& operator=(const EnvFunc& other) {
+        ObjectRef::operator=(other);
+        return *this;
+    }
+    /*! \return The internal global function pointer */
+    const EnvFuncNode* operator->() const { return static_cast<const EnvFuncNode*>(get()); }
+    /*!
+     * \brief Invoke the function.
+     * \param args The arguments
+     * \returns The return value.
+     */
+    R operator()(Args... args) const {
+        const EnvFuncNode* n = operator->();
+        CHECK(n != nullptr);
+        return runtime::detail::typed_packed_call_dispatcher<R>::run(n->func,
+                                                                     std::forward<Args>(args)...);
+    }
+    /*! \brief specify container node */
+    using ContainerType = EnvFuncNode;
+};
+
 }// namespace litetvm
 
 #endif//LITETVM_IR_ENV_FUNC_H

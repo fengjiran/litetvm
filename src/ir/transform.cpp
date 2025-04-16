@@ -412,14 +412,14 @@ IRModule ModulePassNode::operator()(IRModule mod, const PassContext& pass_ctx) c
     return mod;
 }
 
-Sequential::Sequential(tvm::Array<Pass> passes, PassInfo pass_info) {
+Sequential::Sequential(Array<Pass> passes, PassInfo pass_info) {
     auto n = make_object<SequentialNode>();
     n->passes = std::move(passes);
     n->pass_info = std::move(pass_info);
     data_ = std::move(n);
 }
 
-Sequential::Sequential(tvm::Array<Pass> passes, String name) {
+Sequential::Sequential(Array<Pass> passes, String name) {
     auto n = make_object<SequentialNode>();
     n->passes = std::move(passes);
     PassInfo pass_info = PassInfo(0, std::move(name), {}, /* traceable */ false);
@@ -457,7 +457,7 @@ Pass GetPass(const String& pass_name) {
 IRModule SequentialNode::operator()(IRModule mod, const PassContext& pass_ctx) const {
     for (const Pass& pass: passes) {
         VLOG(0) << "Running pass " << pass->Info()->name;
-        ICHECK(pass.defined()) << "Found undefined pass for optimization.";
+        CHECK(pass.defined()) << "Found undefined pass for optimization.";
         const PassInfo& pass_info = pass->Info();
         if (!pass_ctx.PassEnabled(pass_info)) {
             VLOG(0) << "skipping disabled pass '" << pass_info->name << "'";

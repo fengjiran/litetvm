@@ -272,6 +272,14 @@ public:
     TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TupleStructInfo, StructInfo, TupleStructInfoNode);
 };
 
+/*!
+ * \brief custom-defined StructInfo derivation function.
+ * \param call The call expression to be derived.
+ * \param ctx The builder context.
+ * \return The derived struct info of the call.
+ */
+using StructInfoDeriveFunc = TypedEnvFunc<StructInfo(const Call& call, const BlockBuilder& ctx)>;
+
 
 /*!
  * \brief Structure information about function.
