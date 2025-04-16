@@ -6,9 +6,11 @@
 #include "node/repr_printer.h"
 #include "node/structural_hash.h"
 #include "relax/expr.h"
+#include "relax/tuning_api.h"
 #include "runtime/device_api.h"
 #include "runtime/object_internal.h"
 #include "runtime/registry.h"
+#include "support/random_engine.h"
 
 #include <chrono>
 #include <dmlc/thread_local.h>

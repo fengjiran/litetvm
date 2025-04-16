@@ -2,8 +2,8 @@
 // Created by richard on 2/12/25.
 //
 
-#ifndef META_DATA_H
-#define META_DATA_H
+#ifndef LITETVM_RUNTIME_META_DATA_H
+#define LITETVM_RUNTIME_META_DATA_H
 
 #include "runtime/array.h"
 #include "runtime/c_runtime_api.h"
@@ -431,4 +431,4 @@ namespace dmlc {
 DMLC_DECLARE_TRAITS(has_saveload, ::litetvm::runtime::FunctionInfo, true);
 }  // namespace dmlc
 
-#endif//META_DATA_H
+#endif//LITETVM_RUNTIME_META_DATA_H
