@@ -16,9 +16,12 @@
 #include "tir/schedule/error.h"
 #include "tir/schedule/primitive.h"
 #include "tir/schedule/instruction_traits.h"
+#include "tir/schedule/state.h"
+#include "tir/schedule/trace.h"
 #include "tir/stmt_functor.h"
 #include "tir/utils.h"
 #include "runtime/thread_storage_scope.h"
+#include "node/serialization.h"
 
 #include <string>
 #include <unordered_map>

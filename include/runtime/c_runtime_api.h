@@ -21,6 +21,9 @@
 #endif
 #endif
 
+// TVM version
+#define TVM_VERSION "0.20.dev0"
+
 using tvm_index_t = int64_t;
 
 enum class TVMDeviceExtType : int32_t {
