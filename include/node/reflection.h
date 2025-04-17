@@ -2,8 +2,8 @@
 // Created by 赵丹 on 25-2-28.
 //
 
-#ifndef REFLECTION_H
-#define REFLECTION_H
+#ifndef LITETVM_NODE_REFLECTION_H
+#define LITETVM_NODE_REFLECTION_H
 
 #include "node/structural_equal.h"
 #include "node/structural_hash.h"
@@ -49,8 +49,7 @@ public:
     template<typename ENum,
              typename = std::enable_if_t<std::is_enum_v<ENum>>>
     void Visit(const char* key, ENum* ptr) {
-        static_assert(std::is_same_v<int, std::underlying_type_t<ENum>>,
-                      "declare enum to be enum int to use visitor");
+        static_assert(std::is_same_v<int, std::underlying_type_t<ENum>>, "declare enum to be enum int to use visitor");
         this->Visit(key, reinterpret_cast<int*>(ptr));
     }
     //! \endcond
@@ -419,4 +418,4 @@ Optional<String> GetAttrKeyByAddress(const Object* object, const void* attr_addr
 
 }// namespace litetvm
 
-#endif//REFLECTION_H
+#endif//LITETVM_NODE_REFLECTION_H

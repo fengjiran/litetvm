@@ -396,7 +396,7 @@ inline TargetKindRegEntry& TargetKindRegEntry::set_name() {
 }
 
 #define TVM_TARGET_KIND_REGISTER_VAR_DEF \
-    static DMLC_ATTRIBUTE_UNUSED ::litetvm::TargetKindRegEntry& __make_##TargetKind
+    static TVM_ATTRIBUTE_UNUSED ::litetvm::TargetKindRegEntry& __make_##TargetKind
 
 namespace attr {
 //

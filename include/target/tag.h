@@ -128,7 +128,7 @@ inline TargetTagRegEntry& TargetTagRegEntry::set_name() {
 }
 
 #define TVM_TARGET_TAG_REGISTER_VAR_DEF \
-    static DMLC_ATTRIBUTE_UNUSED ::litetvm::TargetTagRegEntry& __make_##TargetTag
+    static TVM_ATTRIBUTE_UNUSED ::litetvm::TargetTagRegEntry& __make_##TargetTag
 
 /*!
  * \def TVM_REGISTER_TARGET_TAG

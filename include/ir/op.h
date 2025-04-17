@@ -340,7 +340,7 @@ private:
 };
 
 // internal macros to make
-#define TVM_OP_REGISTER_VAR_DEF static DMLC_ATTRIBUTE_UNUSED ::litetvm::OpRegEntry& __make_##Op
+#define TVM_OP_REGISTER_VAR_DEF static TVM_ATTRIBUTE_UNUSED ::litetvm::OpRegEntry& __make_##Op
 
 /*!
  * \def TVM_REGISTER_OP

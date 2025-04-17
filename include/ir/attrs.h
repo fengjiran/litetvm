@@ -476,23 +476,29 @@ TFunc WithoutAttr(TFunc input, const std::string& attr_key) {
 
 // Namespace containing detail implementations
 namespace detail {
+
 using runtime::TVMArgValue;
 
 // helper entry that does nothing in set_default/bound/describe calls.
 struct AttrNopEntry {
     using TSelf = AttrNopEntry;
 
-    TSelf& describe(DMLC_ATTRIBUTE_UNUSED const char* str) { return *this; }
-    template<typename T>
-    TSelf& set_default(DMLC_ATTRIBUTE_UNUSED const T& value) {
+    TSelf& describe(TVM_ATTRIBUTE_UNUSED const char* str) {
         return *this;
     }
+
     template<typename T>
-    TSelf& set_lower_bound(DMLC_ATTRIBUTE_UNUSED const T& begin) {
+    TSelf& set_default(TVM_ATTRIBUTE_UNUSED const T& value) {
         return *this;
     }
+
     template<typename T>
-    TSelf& set_upper_bound(DMLC_ATTRIBUTE_UNUSED const T& end) {
+    TSelf& set_lower_bound(TVM_ATTRIBUTE_UNUSED const T& begin) {
+        return *this;
+    }
+
+    template<typename T>
+    TSelf& set_upper_bound(TVM_ATTRIBUTE_UNUSED const T& end) {
         return *this;
     }
 };
@@ -501,10 +507,11 @@ struct AttrNopEntry {
 class AttrNormalVisitor {
 public:
     explicit AttrNormalVisitor(AttrVisitor* visitor) : visitor_(visitor) {}
+
     template<typename T>
     AttrNopEntry operator()(const char* key, T* value) {
         visitor_->Visit(key, value);
-        return AttrNopEntry();
+        return {};
     }
 
 private:
@@ -517,16 +524,17 @@ public:
     // constructor
     AttrsSEqualVisitor(const Object* lhs, const Object* rhs, const SEqualReducer& equal)
         : lhs_(lhs), rhs_(rhs), equal_(equal) {}
+
     template<typename T>
     AttrNopEntry operator()(const char* key, T* lhs_value) {
-        if (!result_) return AttrNopEntry();
-        const T* rhs_value = reinterpret_cast<const T*>(
-                reinterpret_cast<const char*>(rhs_) +
-                (reinterpret_cast<const char*>(lhs_value) - reinterpret_cast<const char*>(lhs_)));
+        if (!result_) return {};
+        const T* rhs_value = reinterpret_cast<const T*>(reinterpret_cast<const char*>(rhs_) +
+                                                        (reinterpret_cast<const char*>(lhs_value) -
+                                                         reinterpret_cast<const char*>(lhs_)));
         if (!equal_(*lhs_value, *rhs_value)) {
             result_ = false;
         }
-        return AttrNopEntry();
+        return {};
     }
 
 private:
@@ -553,7 +561,7 @@ private:
 template<typename T>
 struct AttrInitEntry {
     // The attributes
-    using TSelf = AttrInitEntry<T>;
+    using TSelf = AttrInitEntry;
     // The type key
     const char* type_key_;
     // field name
@@ -568,7 +576,7 @@ struct AttrInitEntry {
 
     AttrInitEntry() = default;
 
-    AttrInitEntry(AttrInitEntry&& other) {
+    AttrInitEntry(AttrInitEntry&& other)  noexcept {
         type_key_ = other.type_key_;
         key_ = other.key_;
         value_ = other.value_;
@@ -586,6 +594,7 @@ struct AttrInitEntry {
             throw AttrError(os.str());
         }
     }
+
     // override fields.
     // This function sets the lower bound of the attribute
     TSelf& set_lower_bound(const T& begin) {
@@ -599,6 +608,7 @@ struct AttrInitEntry {
         }
         return *this;
     }
+
     // This function sets the upper bound of the attribute
     TSelf& set_upper_bound(const T& end) {
         if (this->value_missing_) return *this;
@@ -611,6 +621,7 @@ struct AttrInitEntry {
         }
         return *this;
     }
+
     // set default when
     TSelf& set_default(const T& value) {
         if (!value_missing_) return *this;
@@ -618,7 +629,10 @@ struct AttrInitEntry {
         value_missing_ = false;
         return *this;
     }
-    TSelf& describe(DMLC_ATTRIBUTE_UNUSED const char* str) { return *this; }
+
+    TSelf& describe(TVM_ATTRIBUTE_UNUSED const char* str) {
+        return *this;
+    }
 };
 
 // Template function to allow smart conversion
@@ -661,9 +675,9 @@ inline void SetValue<double>(double* ptr, const TVMArgValue& val) {
     } else {
         ObjectRef expr(val);
         CHECK(expr.defined());
-        if (const IntImmNode* op = expr.as<IntImmNode>()) {
+        if (const auto* op = expr.as<IntImmNode>()) {
             *ptr = static_cast<double>(op->value);
-        } else if (const FloatImmNode* op = expr.as<FloatImmNode>()) {
+        } else if (const auto* op = expr.as<FloatImmNode>()) {
             *ptr = static_cast<double>(op->value);
         } else {
             LOG(FATAL) << "Expect float value, but get " << expr->GetTypeKey();
@@ -795,11 +809,11 @@ public:
         return *this;
     }
     template<typename T>
-    TSelf& set_lower_bound(DMLC_ATTRIBUTE_UNUSED T begin) {
+    TSelf& set_lower_bound(TVM_ATTRIBUTE_UNUSED T begin) {
         return *this;
     }
     template<typename T>
-    TSelf& set_upper_bound(DMLC_ATTRIBUTE_UNUSED T end) {
+    TSelf& set_upper_bound(TVM_ATTRIBUTE_UNUSED T end) {
         return *this;
     }
 
@@ -828,9 +842,9 @@ public:
 
     template<typename T>
     AttrNopEntry operator()(const char* key, T* v) {
-        if (exist_) return AttrNopEntry();
+        if (exist_) return {};
         if (key == key_) exist_ = true;
-        return AttrNopEntry();
+        return {};
     }
 };
 
@@ -846,15 +860,15 @@ struct AttrTriggerNonDefaultEntry {
             visitor_->Visit(key_, data_);
         }
     }
-    TSelf& describe(DMLC_ATTRIBUTE_UNUSED const char* str) { return *this; }
+    TSelf& describe(TVM_ATTRIBUTE_UNUSED const char* str) { return *this; }
     TSelf& set_default(const T& value) {
         if (StructuralEqual()(value, *data_)) {
             trigger_ = false;
         }
         return *this;
     }
-    TSelf& set_lower_bound(DMLC_ATTRIBUTE_UNUSED const T& begin) { return *this; }
-    TSelf& set_upper_bound(DMLC_ATTRIBUTE_UNUSED const T& end) { return *this; }
+    TSelf& set_lower_bound(TVM_ATTRIBUTE_UNUSED const T& begin) { return *this; }
+    TSelf& set_upper_bound(TVM_ATTRIBUTE_UNUSED const T& end) { return *this; }
 
 private:
     AttrVisitor* visitor_;
@@ -866,6 +880,7 @@ private:
 class AttrNonDefaultVisitor {
 public:
     explicit AttrNonDefaultVisitor(AttrVisitor* visitor) : visitor_(visitor) {}
+
     template<typename T>
     AttrTriggerNonDefaultEntry<T> operator()(const char* key, T* value) {
         return AttrTriggerNonDefaultEntry<T>(visitor_, key, value);

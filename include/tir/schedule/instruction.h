@@ -196,7 +196,7 @@ public:
  * \sa TVM_REGISTER_INST_KIND
  */
 #define TVM_INST_KIND_REGISTER_VAR_DEF \
-    static DMLC_ATTRIBUTE_UNUSED ::litetvm::tir::InstructionKindRegEntry& __make_##InstructionKind
+    static TVM_ATTRIBUTE_UNUSED ::litetvm::tir::InstructionKindRegEntry& __make_##InstructionKind
 
 /*!
  * \brief Register an InstructionKind
