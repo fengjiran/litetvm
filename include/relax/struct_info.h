@@ -9,6 +9,7 @@
 #include "ir/global_info.h"
 #include "relax/expr.h"
 #include "relax/type.h"
+#include "relax/block_builder.h"
 
 namespace litetvm {
 namespace relax {

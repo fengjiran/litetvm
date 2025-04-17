@@ -6,6 +6,7 @@
 #define LITETVM_RELAX_TUNING_API_H
 
 #include "ir/module.h"
+#include "meta_schedule/database.h"
 #include <vector>
 
 namespace litetvm {
