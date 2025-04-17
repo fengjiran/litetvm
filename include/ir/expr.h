@@ -11,8 +11,8 @@
 #include "runtime/object.h"
 #include "runtime/string.h"
 
-#include <algorithm>
-#include <functional>
+// #include <algorithm>
+// #include <functional>
 #include <limits>
 #include <string>
 #include <type_traits>

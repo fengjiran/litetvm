@@ -36,7 +36,6 @@
 #include "node/structural_hash.h"
 #include "runtime/packed_func.h"
 
-#include <dmlc/common.h>
 #include <functional>
 #include <string>
 #include <type_traits>
@@ -49,9 +48,9 @@ namespace litetvm {
 using runtime::Downcast;
 using runtime::make_object;
 using runtime::PackedFunc;
-using runtime::TVMRetValue;
-using runtime::TVMArgValue;
 using runtime::TVMArgs;
+using runtime::TVMArgValue;
+using runtime::TVMRetValue;
 
 /*!
  * \brief Declare an attribute function.
@@ -84,7 +83,7 @@ TObjectRef NullValue() {
 
 template<>
 inline DataType NullValue<DataType>() {
-    return DataType(static_cast<int>(DataType::TypeCode::kHandle), 0, 0);
+    return {static_cast<int>(DataType::TypeCode::kHandle), 0, 0};
 }
 
 /*! \brief Error thrown during attribute checking. */
@@ -726,7 +725,7 @@ private:
 };
 
 template<typename FFind>
-inline AttrInitVisitor<FFind> CreateInitVisitor(const char* type_key, FFind ffind) {
+AttrInitVisitor<FFind> CreateInitVisitor(const char* type_key, FFind ffind) {
     return AttrInitVisitor<FFind>(type_key, ffind);
 }
 
@@ -886,24 +885,24 @@ private:
 template<typename DerivedType>
 class AttrsNode : public BaseAttrsNode {
 public:
-    void VisitAttrs(AttrVisitor* v) {
+    void VisitAttrs(AttrVisitor* v) override {
         detail::AttrNormalVisitor vis(v);
         self()->_tvm_VisitAttrs(vis);
     }
 
-    void VisitNonDefaultAttrs(AttrVisitor* v) {
+    void VisitNonDefaultAttrs(AttrVisitor* v) override {
         detail::AttrNonDefaultVisitor vis(v);
         self()->_tvm_VisitAttrs(vis);
     }
 
-    void InitByPackedArgs(const runtime::TVMArgs& args, bool allow_unknown) final {
+    void InitByPackedArgs(const TVMArgs& args, bool allow_unknown) final {
         CHECK_EQ(args.size() % 2, 0);
         const int kLinearSearchBound = 16;
         int hit_count = 0;
         // applies two strategies to lookup
         if (args.size() < kLinearSearchBound) {
             // linear search.
-            auto ffind = [&args](const char* key, runtime::TVMArgValue* val) {
+            auto ffind = [&args](const char* key, TVMArgValue* val) {
                 for (int i = 0; i < args.size(); i += 2) {
                     CHECK_EQ(args.type_codes[i], static_cast<int>(TVMArgTypeCode::kTVMStr));
                     if (!std::strcmp(key, args.values[i].v_str)) {
@@ -918,12 +917,12 @@ public:
             hit_count = vis.hit_count_;
         } else {
             // construct a map then do lookup.
-            std::unordered_map<std::string, runtime::TVMArgValue> kwargs;
+            std::unordered_map<std::string, TVMArgValue> kwargs;
             for (int i = 0; i < args.size(); i += 2) {
                 CHECK_EQ(args.type_codes[i], static_cast<int>(TVMArgTypeCode::kTVMStr));
                 kwargs[args[i].operator std::string()] = args[i + 1];
             }
-            auto ffind = [&kwargs](const char* key, runtime::TVMArgValue* val) {
+            auto ffind = [&kwargs](const char* key, TVMArgValue* val) {
                 auto it = kwargs.find(key);
                 if (it != kwargs.end()) {
                     *val = it->second;

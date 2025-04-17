@@ -37,12 +37,16 @@ class IRModuleNode : public Object {
 public:
     /*! \brief A map from ids to all global functions. */
     Map<GlobalVar, BaseFunc> functions;
+
     /*! \brief The source map for the module. */
     // SourceMap source_map;
+
     /* \brief Additional attributes storing meta-data about the module. */
     DictAttrs attrs;
+
     /*! \brief Globally static object that are referred by the IR itself */
     Map<String, Array<GlobalInfo>> global_infos;
+
     /*!
    * \brief A map from string names to global variables that
    * ensures global uniqueness.
@@ -74,6 +78,7 @@ public:
             Optional<TObjectRef> default_value = Optional<TObjectRef>(nullptr)) const {
         return attrs.GetAttr(attr_key, default_value);
     }
+
     // variant that uses TObjectRef to enable implicit conversion to default value.
     template<typename TObjectRef>
     Optional<TObjectRef> GetAttr(const std::string& attr_key, TObjectRef default_value) const {

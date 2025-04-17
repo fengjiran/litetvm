@@ -110,8 +110,8 @@ constexpr const char* kGlobalSymbol = "global_symbol";
  * \brief Base node of all functions.
  *
  * We support several variants of functions throughout the stack.
- * All of the functions share the same type system(via checked_type)
- * to support cross variant calls.
+ * All the functions share the same type system (via checked_type)
+ * to support cross-variant calls.
  *
  * \sa BaseFunc
  */
