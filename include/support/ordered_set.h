@@ -18,15 +18,15 @@ namespace detail {
  *
  * \tparam T The type held by the OrderedSet
  */
-template<typename T, typename = void>
+template<typename T,
+         typename = void>
 struct OrderedSetLookupType {
     using MapType = std::unordered_map<T, typename std::list<T>::iterator>;
 };
 
 template<typename T>
 struct OrderedSetLookupType<T, std::enable_if_t<std::is_base_of_v<runtime::ObjectRef, T>>> {
-    using MapType = std::unordered_map<T, typename std::list<T>::iterator, runtime::ObjectPtrHash,
-                                       runtime::ObjectPtrEqual>;
+    using MapType = std::unordered_map<T, typename std::list<T>::iterator, runtime::ObjectPtrHash, runtime::ObjectPtrEqual>;
 };
 }// namespace detail
 
@@ -42,14 +42,20 @@ public:
    * `elements_`, the copy of `elem_to_iter_` would contain references
    * to the original's `element_`, rather than to its own
    */
-    OrderedSet(const OrderedSet& other) : elements_(other.elements_) { InitElementToIter(); }
+    OrderedSet(const OrderedSet& other) : elements_(other.elements_) {
+        InitElementToIter();
+    }
 
     /* \brief Explicit copy assignment
    *
    * Implemented in terms of the copy constructor, and the default
    * move assignment.
    */
-    OrderedSet& operator=(const OrderedSet& other) { return *this = OrderedSet(other); }
+    OrderedSet& operator=(const OrderedSet& other) {
+        OrderedSet tmp(other);
+        swap(*this, tmp);
+        return *this;
+    }
 
     OrderedSet(OrderedSet&&) = default;
     OrderedSet& operator=(OrderedSet&&) = default;
@@ -66,7 +72,9 @@ public:
         }
     }
 
-    void insert(const T& t) { push_back(t); }
+    void insert(const T& t) {
+        push_back(t);
+    }
 
     void erase(const T& t) {
         if (auto it = elem_to_iter_.find(t); it != elem_to_iter_.end()) {
@@ -89,9 +97,15 @@ public:
 
 private:
     void InitElementToIter() {
-        for (auto it = elements_.begin(); it != elements_.end(); it++) {
+        for (auto it = elements_.begin(); it != elements_.end(); ++it) {
             elem_to_iter_[*it] = it;
         }
+    }
+
+    friend void swap(OrderedSet& lhs, OrderedSet& rhs) noexcept {
+        using std::swap;
+        swap(lhs.elements_, rhs.elements_);
+        swap(lhs.elem_to_iter_, rhs.elem_to_iter_);
     }
 
     std::list<T> elements_;
