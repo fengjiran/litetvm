@@ -10,7 +10,7 @@
 #include "runtime/string.h"
 
 #include <string>
-#include <type_traits>
+// #include <type_traits>
 
 namespace litetvm {
 

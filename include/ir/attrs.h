@@ -134,9 +134,11 @@ public:
 class BaseAttrsNode : public Object {
 public:
     /*! \brief virtual destructor */
-    virtual ~BaseAttrsNode() {}
+    virtual ~BaseAttrsNode() = default;
+
     // visit function
     virtual void VisitAttrs(AttrVisitor* v) {}
+
     /*!
      * \brief Initialize the attributes by sequence of arguments
      * \param args The positional arguments in the form
@@ -156,7 +158,7 @@ public:
         Array<AttrFieldInfo> entry = this->ListFieldInfo();
         for (AttrFieldInfo info: entry) {
             os << info->name << " : " << info->type_info << '\n';
-            if (info->description.length() != 0) {
+            if (!info->description.empty()) {
                 os << "    " << info->description << '\n';
             }
         }
@@ -169,11 +171,13 @@ public:
      * \param v The visitor
      */
     LITETVM_API virtual void VisitNonDefaultAttrs(AttrVisitor* v) = 0;
+
     /*!
      * \brief Get the field information
      * \return The fields in the Attrs.
      */
     LITETVM_API virtual Array<AttrFieldInfo> ListFieldInfo() const = 0;
+
     /*!
      * \brief Initialize the attributes by arguments.
      * \param kwargs The key value pairs for initialization.
@@ -226,7 +230,8 @@ public:
         v->Visit("__dict__", &dict);
     }
 
-    void InitByPackedArgs(const runtime::TVMArgs& args, bool allow_unknown) final;
+    void InitByPackedArgs(const TVMArgs& args, bool allow_unknown) final;
+
     Array<AttrFieldInfo> ListFieldInfo() const final {
         return {};
     }
@@ -271,13 +276,11 @@ public:
    * \endcode
    */
     template<typename TObjectRef>
-    Optional<TObjectRef> GetAttr(
-            const std::string& attr_key,
-            Optional<TObjectRef> default_value = Optional<TObjectRef>(nullptr)) const {
-        static_assert(std::is_base_of_v<ObjectRef, TObjectRef>,
-                      "Can only call GetAttr with ObjectRef types.");
+    Optional<TObjectRef> GetAttr(const std::string& attr_key,
+                                 Optional<TObjectRef> default_value = Optional<TObjectRef>(nullptr)) const {
+        static_assert(std::is_base_of_v<ObjectRef, TObjectRef>, "Can only call GetAttr with ObjectRef types.");
         if (!defined()) return default_value;
-        const DictAttrsNode* node = this->as<DictAttrsNode>();
+        const auto* node = this->as<DictAttrsNode>();
 
         auto it = node->dict.find(attr_key);
         if (it != node->dict.end()) {
@@ -299,6 +302,7 @@ public:
     Optional<TObjectRef> GetAttr(const std::string& attr_key, TObjectRef default_value) const {
         return GetAttr<TObjectRef>(attr_key, Optional<TObjectRef>(default_value));
     }
+
     /*!
    * \brief Check whether the function has an non-zero integer attr.
    *
@@ -576,7 +580,7 @@ struct AttrInitEntry {
 
     AttrInitEntry() = default;
 
-    AttrInitEntry(AttrInitEntry&& other)  noexcept {
+    AttrInitEntry(AttrInitEntry&& other) noexcept {
         type_key_ = other.type_key_;
         key_ = other.key_;
         value_ = other.value_;

@@ -2,7 +2,7 @@
 // Created by 赵丹 on 25-4-17.
 //
 
-#include "struct_info_functor.h"
+#include "relax/struct_info_functor.h"
 
 namespace litetvm {
 namespace relax {
