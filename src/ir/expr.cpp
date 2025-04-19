@@ -9,15 +9,16 @@
 
 namespace litetvm {
 
-using runtime::make_object;
+// using runtime::make_object;
 
-PrimExpr::PrimExpr(int32_t value) : PrimExpr(IntImm(DataType::Int(32), value)) {}
-
-PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(DataType::Float(32), value)) {}
+// PrimExpr::PrimExpr(int32_t value) : PrimExpr(IntImm(DataType::Int(32), value)) {}
+//
+// PrimExpr::PrimExpr(float value) : PrimExpr(FloatImm(DataType::Float(32), value)) {}
 
 IntImm::IntImm(DataType dtype, int64_t value) {
     CHECK(dtype.is_scalar()) << "ValueError: IntImm can only take scalar, but " << dtype << " was supplied.";
     CHECK(dtype.is_int() || dtype.is_uint()) << "ValueError: IntImm supports only int or uint type, but " << dtype << " was supplied.";
+
     if (dtype.is_uint()) {
         CHECK_GE(value, 0U) << "ValueError: Literal value " << value << " is negative for unsigned integer type " << dtype;
         if (dtype.bits() < 64) {

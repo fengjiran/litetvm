@@ -413,6 +413,7 @@ PrimExpr add(PrimExpr a, PrimExpr b) {
     BinaryOpMatchTypes(a, b);
     if (auto ret = arith::TryConstFold<Add>(a, b))
         return ret.value();
+    PrimExpr e(Add(a, b));
     return Add(a, b);
 }
 
@@ -434,8 +435,8 @@ PrimExpr mul(PrimExpr a, PrimExpr b) {
 
 PrimExpr div(PrimExpr a, PrimExpr b) {
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<tir::Div>(a, b)) return ret.value();
-    return tir::Div(a, b);
+    if (auto ret = arith::TryConstFold<Div>(a, b)) return ret.value();
+    return Div(a, b);
 }
 
 PrimExpr truncdiv(PrimExpr a, PrimExpr b) {
@@ -446,8 +447,8 @@ PrimExpr truncdiv(PrimExpr a, PrimExpr b) {
 
 PrimExpr truncmod(PrimExpr a, PrimExpr b) {
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<tir::Mod>(a, b)) return ret.value();
-    return tir::Mod(a, b);
+    if (auto ret = arith::TryConstFold<Mod>(a, b)) return ret.value();
+    return Mod(a, b);
 }
 
 PrimExpr operator/(PrimExpr a, PrimExpr b) { return div(a, b); }
@@ -465,8 +466,8 @@ PrimExpr floordiv(PrimExpr a, PrimExpr b) {
     CHECK(a.dtype().is_int() || a.dtype().is_uint()) << a;
     CHECK(b.dtype().is_int() || b.dtype().is_uint()) << b;
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<tir::FloorDiv>(a, b)) return ret.value();
-    return tir::FloorDiv(a, b);
+    if (auto ret = arith::TryConstFold<FloorDiv>(a, b)) return ret.value();
+    return FloorDiv(a, b);
 }
 
 PrimExpr ceildiv(PrimExpr a, PrimExpr b) {

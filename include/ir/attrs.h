@@ -46,7 +46,6 @@
 namespace litetvm {
 
 using runtime::Downcast;
-using runtime::make_object;
 using runtime::PackedFunc;
 using runtime::TVMArgs;
 using runtime::TVMArgValue;
@@ -57,10 +56,10 @@ using runtime::TVMRetValue;
  * \param ClassName The name of the class.
  * \param TypeKey The type key to be used by the TVM node system.
  */
-#define TVM_DECLARE_ATTRS(ClassName, TypeKey)                          \
-    static constexpr const char* _type_key = TypeKey;                  \
-    TVM_DECLARE_FINAL_OBJECT_INFO(ClassName, ::litetvm::BaseAttrsNode) \
-    template<typename FVisit>                                          \
+#define TVM_DECLARE_ATTRS(ClassName, TypeKey)               \
+    static constexpr const char* _type_key = TypeKey;       \
+    TVM_DECLARE_FINAL_OBJECT_INFO(ClassName, BaseAttrsNode) \
+    template<typename FVisit>                               \
     void _tvm_VisitAttrs(FVisit& _tvm_fvisit)// NOLINT(*)
 
 /*!

@@ -24,6 +24,7 @@ using runtime::DataType;
 using runtime::Object;
 using runtime::ObjectRef;
 using runtime::String;
+using runtime::make_object;
 
 /*!
  * \brief Base type of all the expressions.
@@ -100,16 +101,28 @@ public:
    * \brief construct from integer.
    * \param value The value to be constructed.
    */
-    LITETVM_API PrimExpr(int32_t value);// NOLINT(*)
+    LITETVM_API explicit PrimExpr(int32_t value) {
+        UNUSED(value);
+        auto node = make_object<PrimExprNode>();
+        node->dtype = DataType::Int(32);
+        data_ = std::move(node);
+    }
 
     /*!
    * \brief construct from float.
    * \param value The value to be constructed.
    */
-    LITETVM_API PrimExpr(float value);// NOLINT(*)
+    LITETVM_API explicit PrimExpr(float value) {
+        UNUSED(value);
+        auto node = make_object<PrimExprNode>();
+        node->dtype = DataType::Float(32);
+        data_ = std::move(node);
+    }
 
     /*! \return the data type of this expression. */
-    DataType dtype() const { return get()->dtype; }
+    NODISCARD DataType dtype() const {
+        return get()->dtype;
+    }
 
     TVM_DEFINE_OBJECT_REF_METHODS(PrimExpr, BaseExpr, PrimExprNode);
 
