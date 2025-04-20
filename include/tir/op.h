@@ -120,11 +120,11 @@ LITETVM_API PrimExpr reinterpret(const DataType& t, PrimExpr value);
  *
  * \param a left operand
  * \param b right operand
- * \param span The location of this operation in the source.
  * \return The result expression.
  * \note this function does eager constant folding for
  *       index types(int32, int64) when possible.
  */
+LITETVM_API PrimExpr operator+(PrimExpr a, PrimExpr b);
 LITETVM_API PrimExpr add(PrimExpr a, PrimExpr b);
 
 /*!
@@ -132,22 +132,22 @@ LITETVM_API PrimExpr add(PrimExpr a, PrimExpr b);
  *
  * \param a left operand
  * \param b right operand
- * \param span The location of this operation in the source.
  * \return The result expression.
  * \note this function does eager constant folding for
  *       index types(int32, int64) when possible.
  */
+LITETVM_API PrimExpr operator-(PrimExpr a, PrimExpr b);
 LITETVM_API PrimExpr sub(PrimExpr a, PrimExpr b);
 
 /*!
  * \brief negation.
  *
  * \param a input.
- * \param span The location of this operation in the source.
  * \return The result expression.
  * \note this function does eager constant folding for
  *       index types(int32, int64) when possible.
  */
+LITETVM_API PrimExpr operator-(PrimExpr a);
 LITETVM_API PrimExpr neg(PrimExpr a);
 
 /*!
@@ -155,138 +155,12 @@ LITETVM_API PrimExpr neg(PrimExpr a);
  *
  * \param a left operand
  * \param b right operand
- * \param span The location of this operation in the source.
  * \return The result expression.
  * \note this function does eager constant folding for
  *       index types(int32, int64) when possible.
  */
+LITETVM_API PrimExpr operator*(PrimExpr a, PrimExpr b);
 LITETVM_API PrimExpr mul(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief left shift operator
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr left_shift(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief right shift operator
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr right_shift(PrimExpr a, PrimExpr b);
-/*!
- * \brief greater
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr greater(PrimExpr a, PrimExpr b);
-/*!
- * \brief greater_equal
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr greater_equal(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief less
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr less(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief less_equal
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr less_equal(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief equal
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr equal(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief not_equal
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr not_equal(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief and
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note This operator does eager constant folding.
- */
-LITETVM_API PrimExpr logical_and(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief or
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note This operator does eager constant folding.
- */
-LITETVM_API PrimExpr logical_or(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief not
- *
- * \param a left operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note This operator does eager constant folding.
- */
-LITETVM_API PrimExpr logical_not(PrimExpr a);
 
 /*!
  * \brief compute division in C semantics.
@@ -297,12 +171,189 @@ LITETVM_API PrimExpr logical_not(PrimExpr a);
  *
  * \param a left operand
  * \param b right operand
- * \param span The location of this operation in the source.
  * \return The result expression.
  * \note this function does eager constant folding for
  *       index types(int32, int64) when possible.
  */
+LITETVM_API PrimExpr operator/(PrimExpr a, PrimExpr b);
 LITETVM_API PrimExpr div(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief greater
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator>(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr greater(PrimExpr a, PrimExpr b);
+
+
+/*!
+ * \brief greater_equal
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator>=(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr greater_equal(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief less
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator<(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr less(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief less_equal
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator<=(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr less_equal(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief equal
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator==(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr equal(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief not_equal
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator!=(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr not_equal(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief left shift operator
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator<<(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr left_shift(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief right shift operator
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator>>(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr right_shift(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief and
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note This operator does eager constant folding.
+ */
+LITETVM_API PrimExpr operator&&(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr logical_and(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief or
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note This operator does eager constant folding.
+ */
+LITETVM_API PrimExpr operator||(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr logical_or(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief not
+ *
+ * \param a left operand
+ * \return The result expression.
+ * \note This operator does eager constant folding.
+ */
+LITETVM_API PrimExpr operator!(PrimExpr a);
+LITETVM_API PrimExpr logical_not(PrimExpr a);
+
+/*!
+ * \brief take bitwise and of two values
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator&(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr bitwise_and(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief take bitwise or of two values
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator|(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr bitwise_or(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief take bitwise xor of two values
+ *
+ * \param a left operand
+ * \param b right operand
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator^(PrimExpr a, PrimExpr b);
+LITETVM_API PrimExpr bitwise_xor(PrimExpr a, PrimExpr b);
+
+/*!
+ * \brief take bitwise negation of two values
+ *
+ * \param a the input expression.
+ * \return The result expression.
+ * \note this function does eager constant folding for
+ *       index types(int32, int64) when possible.
+ */
+LITETVM_API PrimExpr operator~(PrimExpr a);
+LITETVM_API PrimExpr bitwise_neg(PrimExpr a);
+
 
 /*!
  * \brief compute trunc(a / b)
@@ -441,53 +492,6 @@ LITETVM_API PrimExpr max(PrimExpr a, PrimExpr b);
  *       index types(int32, int64) when possible.
  */
 LITETVM_API PrimExpr min(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief take bitwise and of two values
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr bitwise_and(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief take bitwise or of two values
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr bitwise_or(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief take bitwise xor of two values
- *
- * \param a left operand
- * \param b right operand
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr bitwise_xor(PrimExpr a, PrimExpr b);
-
-/*!
- * \brief take bitwise negation of two values
- *
- * \param a the input expression.
- * \param span The location of this operation in the source.
- * \return The result expression.
- * \note this function does eager constant folding for
- *       index types(int32, int64) when possible.
- */
-LITETVM_API PrimExpr bitwise_neg(PrimExpr a);
 
 /*!
  * \brief Conditional expression.

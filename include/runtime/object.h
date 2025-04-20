@@ -741,11 +741,9 @@ template<typename SubRef, typename BaseRef>
 SubRef Downcast(BaseRef ref) {
     if (ref.defined()) {
         CHECK(ref->template IsInstance<typename SubRef::ContainerType>())
-                << "Downcast from " << ref->GetTypeKey() << " to " << SubRef::ContainerType::_type_key
-                << " failed.";
+                << "Downcast from " << ref->GetTypeKey() << " to " << SubRef::ContainerType::_type_key << " failed.";
     } else {
-        CHECK(SubRef::_type_is_nullable) << "Downcast from nullptr to not nullable reference of "
-                                         << SubRef::ContainerType::_type_key;
+        CHECK(SubRef::_type_is_nullable) << "Downcast from nullptr to not nullable reference of " << SubRef::ContainerType::_type_key;
     }
     return SubRef(std::move(ref.data_));
 }

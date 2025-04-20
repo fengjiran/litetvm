@@ -44,12 +44,11 @@ std::optional<int> ExtractVscaleFactor(const PrimExpr& lanes) {
 
     if (PMatchesOneOf(multiplier * vscale, vscale * multiplier).Match(lanes)) {
         return multiplier.Eval()->value;
-    } else {
-        return std::nullopt;
     }
+    return std::nullopt;
 }
 
-bool CanProveVscaleExpressionFromKnownValues(arith::Analyzer* analyzer, const PrimExpr& expr,
+bool CanProveVscaleExpressionFromKnownValues(Analyzer* analyzer, const PrimExpr& expr,
                                              const std::vector<unsigned int>& vscale_values) {
     bool can_prove_expr = true;
     for (const unsigned int vscale_value: vscale_values) {

@@ -2,6 +2,8 @@
 // Created by 赵丹 on 25-3-24.
 //
 
+#include <utility>
+
 #include "tir/op.h"
 #include "arith/const_fold.h"
 #include "runtime/registry.h"
@@ -408,16 +410,20 @@ PrimExpr reinterpret(const DataType& t, PrimExpr value) {
 }
 
 // operator+
-PrimExpr operator+(PrimExpr a, PrimExpr b) { return add(a, b); }
+PrimExpr operator+(PrimExpr a, PrimExpr b) {
+    return add(std::move(a), std::move(b));
+}
 PrimExpr add(PrimExpr a, PrimExpr b) {
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<Add>(a, b))
+    if (const auto ret = arith::TryConstFold<Add>(a, b))
         return ret.value();
-    PrimExpr e(Add(a, b));
     return Add(a, b);
 }
 
-PrimExpr operator-(PrimExpr a, PrimExpr b) { return sub(a, b); }
+// operator-
+PrimExpr operator-(PrimExpr a, PrimExpr b) {
+    return sub(std::move(a), std::move(b));
+}
 PrimExpr sub(PrimExpr a, PrimExpr b) {
     BinaryOpMatchTypes(a, b);
     if (auto ret = arith::TryConstFold<Sub>(a, b))
@@ -425,7 +431,10 @@ PrimExpr sub(PrimExpr a, PrimExpr b) {
     return Sub(a, b);
 }
 
-PrimExpr operator*(PrimExpr a, PrimExpr b) { return mul(a, b); }
+// operator*
+PrimExpr operator*(PrimExpr a, PrimExpr b) {
+    return mul(std::move(a), std::move(b));
+}
 PrimExpr mul(PrimExpr a, PrimExpr b) {
     BinaryOpMatchTypes(a, b);
     if (auto ret = arith::TryConstFold<Mul>(a, b))

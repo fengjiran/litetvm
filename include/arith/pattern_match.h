@@ -124,8 +124,11 @@ public:
         derived().InitMatch_();
         return derived().Match_(value) && cond();
     }
+
     /*! \return Derived instance of current class. */
-    const Derived& derived() const { return *static_cast<const Derived*>(this); }
+    const Derived& derived() const {
+        return *static_cast<const Derived*>(this);
+    }
 };
 
 /*!
@@ -135,14 +138,17 @@ public:
 template<typename T>
 class PEqualChecker {
 public:
-    bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
+    bool operator()(const T& lhs, const T& rhs) const {
+        return lhs == rhs;
+    }
 };
 
 template<>
 class PEqualChecker<PrimExpr> {
 public:
     bool operator()(const PrimExpr& lhs, const PrimExpr& rhs) const {
-        if (lhs.same_as(rhs)) return true;
+        if (lhs.same_as(rhs))
+            return true;
         return tir::ExprDeepEqual()(lhs, rhs);
     }
 };
@@ -150,7 +156,9 @@ public:
 template<>
 class PEqualChecker<IntImm> {
 public:
-    bool operator()(const IntImm& lhs, const IntImm& rhs) const { return lhs->value == rhs->value; }
+    bool operator()(const IntImm& lhs, const IntImm& rhs) const {
+        return lhs->value == rhs->value;
+    }
 };
 
 template<>
@@ -162,9 +170,11 @@ public:
 };
 
 template<>
-class PEqualChecker<tir::Var> {
+class PEqualChecker<Var> {
 public:
-    bool operator()(const tir::Var& lhs, const tir::Var& rhs) const { return lhs.same_as(rhs); }
+    bool operator()(const Var& lhs, const Var& rhs) const {
+        return lhs.same_as(rhs);
+    }
 };
 
 /*!
@@ -181,28 +191,28 @@ template<typename T>
 class PVar : public Pattern<PVar<T>> {
 public:
     // Store PVars by reference in the expression.
-    using Nested = const PVar<T>&;
+    using Nested = const PVar&;
 
-    void InitMatch_() const { filled_ = false; }
+    void InitMatch_() const {
+        filled_ = false;
+    }
 
     bool Match_(const T& value) const {
         if (!filled_) {
             value_ = value;
             filled_ = true;
             return true;
-        } else {
-            return PEqualChecker<T>()(value_, value);
         }
+        return PEqualChecker<T>()(value_, value);
     }
 
     template<typename NodeRefType,
-             typename = typename std::enable_if<std::is_base_of<NodeRefType, T>::value>::type>
+             typename = std::enable_if_t<std::is_base_of_v<NodeRefType, T>>>
     bool Match_(const NodeRefType& value) const {
         if (const auto* ptr = value.template as<typename T::ContainerType>()) {
             return Match_(GetRef<T>(ptr));
-        } else {
-            return false;
         }
+        return false;
     }
 
     T Eval() const {
@@ -210,7 +220,9 @@ public:
         return value_;
     }
 
-    T EvalOr(const T& default_value) const { return filled_ ? value_ : default_value; }
+    T EvalOr(const T& default_value) const {
+        return filled_ ? value_ : default_value;
+    }
 
 protected:
     /*! \brief The matched value */
@@ -226,10 +238,10 @@ protected:
  * \tparam T the type of the hole.
  */
 template<typename Derived, typename T>
-class PVarWithCheck : public arith::Pattern<PVarWithCheck<Derived, T>> {
+class PVarWithCheck : public Pattern<PVarWithCheck<Derived, T>> {
 public:
     // Store by reference in the expression.
-    using Nested = const PVarWithCheck<Derived, T>&;
+    using Nested = const PVarWithCheck&;
 
     void InitMatch_() const { pvar_.InitMatch_(); }
 
@@ -239,19 +251,18 @@ public:
     }
 
     template<typename NodeRefType,
-             typename = typename std::enable_if<std::is_base_of<NodeRefType, T>::value>::type>
+             typename = std::enable_if_t<std::is_base_of_v<NodeRefType, T>>>
     bool Match_(const NodeRefType& value) const {
         if (const auto* ptr = value.template as<typename T::ContainerType>()) {
             return Match_(GetRef<T>(ptr));
-        } else {
-            return false;
         }
+        return false;
     }
 
     T Eval() const { return pvar_.Eval(); }
 
 protected:
-    arith::PVar<T> pvar_;
+    PVar<T> pvar_;
 };
 
 /*!
@@ -261,7 +272,7 @@ protected:
  * \tparam DType the Pattern type of dtype.
  */
 template<typename T, typename DType,
-         typename = std::enable_if<std::is_base_of<T, PrimExpr>::value>>
+         typename = std::enable_if_t<std::is_base_of_v<T, PrimExpr>>>
 class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
 public:
     explicit PVarWithDataType(const DType& dtype) : dtype_(dtype) {}
@@ -329,15 +340,15 @@ public:
             if (!a_.Match_(ptr->a)) return false;
             if (!b_.Match_(ptr->b)) return false;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     PrimExpr Eval() const {
         PrimExpr lhs = a_.Eval();
         PrimExpr rhs = b_.Eval();
-        if (auto ret = TryConstFold<OpType>(lhs, rhs)) return ret.value();
+        if (auto ret = TryConstFold<OpType>(lhs, rhs))
+            return ret.value();
         return OpType(lhs, rhs);
     }
 
@@ -427,12 +438,11 @@ public:
     void InitMatch_() const { value_.InitMatch_(); }
 
     bool Match_(const ObjectRef& node) const {
-        if (const tir::NotNode* ptr = node.as<tir::NotNode>()) {
+        if (const auto* ptr = node.as<tir::NotNode>()) {
             if (!value_.Match_(ptr->a)) return false;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     PrimExpr Eval() const { return tir::Not(value_.Eval()); }
@@ -442,7 +452,7 @@ private:
 };
 
 template<typename TA>
-inline PNotExpr<TA> operator!(const Pattern<TA>& value) {
+PNotExpr<TA> operator!(const Pattern<TA>& value) {
     return PNotExpr<TA>(value.derived());
 }
 
@@ -471,9 +481,8 @@ public:
             if (!true_value_.Match_(ptr->true_value)) return false;
             if (!false_value_.Match_(ptr->false_value)) return false;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     PrimExpr Eval() const {
@@ -500,7 +509,7 @@ private:
  * \tparam TB The pattern type of the false operand.
  */
 template<typename TCond, typename TA, typename TB>
-inline PSelectExpr<TCond, TA, TB> select(const Pattern<TCond>& condition,
+PSelectExpr<TCond, TA, TB> select(const Pattern<TCond>& condition,
                                          const Pattern<TA>& true_value,
                                          const Pattern<TB>& false_value) {
     return PSelectExpr<TCond, TA, TB>(condition.derived(), true_value.derived(),
@@ -527,9 +536,8 @@ public:
             if (!dtype_.Match_(ptr->dtype)) return false;
             if (!value_.Match_(ptr->value)) return false;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     PrimExpr Eval() const { return tir::Cast(dtype_.Eval(), value_.Eval()); }
