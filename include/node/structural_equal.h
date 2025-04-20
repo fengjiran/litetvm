@@ -2,8 +2,8 @@
 // Created by 赵丹 on 25-2-28.
 //
 
-#ifndef STRUCTURAL_EQUAL_H
-#define STRUCTURAL_EQUAL_H
+#ifndef LITETVM_NODE_STRUCTURAL_EQUAL_H
+#define LITETVM_NODE_STRUCTURAL_EQUAL_H
 
 #include "node/functor.h"
 #include "node/object_path.h"
@@ -11,7 +11,8 @@
 #include "runtime/data_type.h"
 
 #include <cmath>
-#include <numeric>
+#include <limits>
+// #include <numeric>
 #include <string>
 
 namespace litetvm {
@@ -420,4 +421,4 @@ private:
 }// namespace litetvm
 
 
-#endif//STRUCTURAL_EQUAL_H
+#endif//LITETVM_NODE_STRUCTURAL_EQUAL_H

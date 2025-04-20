@@ -50,10 +50,10 @@
 #ifndef LITETVM_ARITH_PATTERN_MATCH_H
 #define LITETVM_ARITH_PATTERN_MATCH_H
 
+#include "arith/const_fold.h"
+#include "tir/analysis.h"
 #include "tir/builtin.h"
 #include "tir/expr.h"
-#include "tir/analysis.h"
-#include "arith/const_fold.h"
 
 #include <cmath>
 #include <tuple>
@@ -102,7 +102,7 @@ public:
    */
     template<typename NodeType>
     bool Match(const NodeType& value) const {
-        return Match(value, []() { return true; });
+        return Match(value, [] { return true; });
     }
 
     /*!
@@ -246,7 +246,8 @@ public:
     void InitMatch_() const { pvar_.InitMatch_(); }
 
     bool Match_(const T& value) const {
-        if (!static_cast<const Derived*>(this)->Match_(value)) return false;
+        if (!static_cast<const Derived*>(this)->Match_(value))
+            return false;
         return pvar_.Match_(value);
     }
 
@@ -291,7 +292,9 @@ public:
     /*! \brief construct vector dtype placeholder with element type check */
     explicit PVecDataType(const DataType& elem_dtype) : elem_dtype_(elem_dtype) {}
 
-    bool Match_(const DataType& dtype) const { return dtype.code() == elem_dtype_.code(); }
+    bool Match_(const DataType& dtype) const {
+        return dtype.code() == elem_dtype_.code();
+    }
 
 protected:
     DataType elem_dtype_;
@@ -305,12 +308,13 @@ protected:
 template<typename T>
 class PConst : public Pattern<PConst<T>> {
 public:
-    PConst(T value)// NOLINT(*)
-        : value_(value) {}
+    PConst(T value): value_(value) {} // NOLINT(*)
 
     void InitMatch_() const {}
 
-    bool Match_(const T& value) const { return PEqualChecker<T>()(value_, value); }
+    bool Match_(const T& value) const {
+        return PEqualChecker<T>()(value_, value);
+    }
 
     T Eval() const { return value_; }
 
@@ -510,8 +514,8 @@ private:
  */
 template<typename TCond, typename TA, typename TB>
 PSelectExpr<TCond, TA, TB> select(const Pattern<TCond>& condition,
-                                         const Pattern<TA>& true_value,
-                                         const Pattern<TB>& false_value) {
+                                  const Pattern<TA>& true_value,
+                                  const Pattern<TB>& false_value) {
     return PSelectExpr<TCond, TA, TB>(condition.derived(), true_value.derived(),
                                       false_value.derived());
 }
@@ -851,8 +855,8 @@ public:
    * \return Whether value matches the pattern.
    */
     template<typename NodeType>
-    inline bool Match(const NodeType& value) const {
-        return Match(value, []() { return true; });
+    bool Match(const NodeType& value) const {
+        return Match(value, [] { return true; });
     }
 
     /*! \brief Check if value matches one of the patterns.
@@ -872,19 +876,19 @@ public:
    * \return Whether value matches the pattern.
    */
     template<typename NodeType, typename Condition>
-    inline bool Match(const NodeType& value, Condition cond) const {
+    bool Match(const NodeType& value, Condition cond) const {
         return MatchImpl(value, cond, std::make_index_sequence<sizeof...(TPattern)>());
     }
 
 private:
     template<typename NodeType, typename Condition>
-    inline bool MatchImpl(const NodeType& value, Condition cond, std::index_sequence<>) const {
+    bool MatchImpl(const NodeType& value, Condition cond, std::index_sequence<>) const {
         return false;
     }
 
     template<typename NodeType, typename Condition, size_t FirstIndex, size_t... RemainingIndices>
-    inline bool MatchImpl(const NodeType& value, Condition cond,
-                          std::index_sequence<FirstIndex, RemainingIndices...>) const {
+    bool MatchImpl(const NodeType& value, Condition cond,
+                   std::index_sequence<FirstIndex, RemainingIndices...>) const {
         return std::get<FirstIndex>(patterns_).Match(value, cond) ||
                MatchImpl(value, cond, std::index_sequence<RemainingIndices...>());
     }
@@ -909,8 +913,8 @@ private:
  * result/condition of a rewrite.
  */
 template<typename... TPattern>
-inline std::enable_if_t<(std::is_base_of_v<Pattern<TPattern>, TPattern> && ... && true),
-                        PMatchesOneOf<TPattern...>>
+std::enable_if_t<(std::is_base_of_v<Pattern<TPattern>, TPattern> && ... && true),
+                 PMatchesOneOf<TPattern...>>
 matches_one_of(const TPattern&... patterns) {
     return PMatchesOneOf<TPattern...>(patterns...);
 }

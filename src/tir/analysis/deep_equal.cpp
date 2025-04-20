@@ -14,8 +14,7 @@ namespace tir {
 class DeepCmpSEqualHandler : public SEqualReducer::Handler {
 public:
     // use direct recursion.
-    bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
-                      const Optional<ObjectPathPair>&) final {
+    bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars, const Optional<ObjectPathPair>&) final {
         if (lhs.same_as(rhs)) return true;
         if (!lhs.defined() && rhs.defined()) return false;
         if (!rhs.defined() && lhs.defined()) return false;
@@ -24,10 +23,18 @@ public:
                !fail_;
     }
 
-    void DeferFail(const ObjectPathPair&) final { fail_ = true; }
-    bool IsFailDeferralEnabled() final { return false; }
+    void DeferFail(const ObjectPathPair&) final {
+        fail_ = true;
+    }
 
-    ObjectRef MapLhsToRhs(const ObjectRef& lhs) final { return ObjectRef(nullptr); }
+    bool IsFailDeferralEnabled() final {
+        return false;
+    }
+
+    ObjectRef MapLhsToRhs(const ObjectRef& lhs) final {
+        return ObjectRef(nullptr);
+    }
+    
     void MarkGraphNode() final {}
 
 private:

@@ -104,7 +104,7 @@ private:
 class ObjectPath : public ObjectRef {
 public:
     /*! \brief Create a path that represents the root object itself. */
-    static ObjectPath Root(Optional<String> name = NullOpt);
+    static ObjectPath Root(const Optional<String>& name = NullOpt);
 
     TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(ObjectPath, ObjectRef, ObjectPathNode);
 };
@@ -261,8 +261,7 @@ protected:
 
 class MissingMapEntryPath : public ObjectPath {
 public:
-    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(MissingMapEntryPath, ObjectPath,
-                                              MissingMapEntryPathNode);
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(MissingMapEntryPath, ObjectPath, MissingMapEntryPathNode);
 };
 
 

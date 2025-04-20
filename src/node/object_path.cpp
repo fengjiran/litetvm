@@ -142,8 +142,7 @@ bool ObjectPathNode::PathsEqual(const ObjectPath& other) const {
     return lhs == nullptr && rhs == nullptr;
 }
 
-TVM_REGISTER_GLOBAL("node.ObjectPathEqual")
-        .set_body_method<ObjectPath>(&ObjectPathNode::PathsEqual);
+TVM_REGISTER_GLOBAL("node.ObjectPathEqual").set_body_method<ObjectPath>(&ObjectPathNode::PathsEqual);
 
 // --- Repr ---
 
@@ -172,7 +171,7 @@ const ObjectPathNode* ObjectPathNode::ParentNode() const {
 
 // ============== ObjectPath ==============
 
-ObjectPath ObjectPath::Root(Optional<String> name) {
+ObjectPath ObjectPath::Root(const Optional<String>& name) {
     return ObjectPath(make_object<RootPathNode>(name));
 }
 
