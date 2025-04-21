@@ -23,6 +23,7 @@ using runtime::NDArray;
 using runtime::Object;
 using runtime::ObjectPtr;
 using runtime::ObjectRef;
+using runtime::TVMArgs;
 
 /*!
  * \brief Visitor class to get the attributes of an AST/IR node.
@@ -65,9 +66,9 @@ class ReflectionVTable {
 public:
     /*!
    * \brief Visitor function.
-   * \note We use a function pointer, instead of std::function
+   * \note We use the function pointer instead of std::function
    *       to reduce the dispatch overhead as a field visit
-   *       does not need as much customization.
+   *       doesn't need as much customization.
    */
     using FVisitAttrs = void (*)(Object* self, AttrVisitor* visitor);
 
@@ -176,7 +177,7 @@ public:
    * \param kwargs the arguments in format key1, value1, ..., key_n, value_n.
    * \return The created object.
    */
-    NODISCARD LITETVM_API ObjectRef CreateObject(const std::string& type_key, const runtime::TVMArgs& kwargs) const;
+    NODISCARD LITETVM_API ObjectRef CreateObject(const std::string& type_key, const TVMArgs& kwargs) const;
 
     /*!
    * \brief Create an object by giving kwargs about its fields.
