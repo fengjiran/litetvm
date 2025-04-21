@@ -100,7 +100,7 @@ DictAttrs WithoutAttr(DictAttrs attrs, const std::string& key) {
 void DictAttrsNode::InitByPackedArgs(const TVMArgs& args, bool allow_unknown) {
     for (int i = 0; i < args.size(); i += 2) {
         std::string key = args[i];
-        runtime::TVMArgValue val = args[i + 1];
+        TVMArgValue val = args[i + 1];
         if (val.IsObjectRef<ObjectRef>()) {
             dict.Set(key, val.operator ObjectRef());
         } else if (String::CanConvertFrom(val)) {

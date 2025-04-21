@@ -37,8 +37,7 @@ public:
     }
 
     void Visit(const char* key, uint64_t* value) final {
-        CHECK_LE(value[0], static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
-                << "cannot return too big constant";
+        CHECK_LE(value[0], static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) << "cannot return too big constant";
         if (skey == key) {
             *ret = static_cast<int64_t>(value[0]);
         }
@@ -95,43 +94,52 @@ public:
     std::vector<std::string>* names;
 
     void Visit(const char* key, double* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, int64_t* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, uint64_t* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, bool* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, int* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, void** value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, DataType* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, std::string* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, NDArray* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
+
     void Visit(const char* key, ObjectRef* value) final {
-        names->push_back(key);
+        names->emplace_back(key);
         UNUSED(value);
     }
 };
@@ -206,7 +214,7 @@ TVMRetValue ReflectionVTable::GetAttr(Object* self, const String& field_name) co
         success = getter.found_ref_object || ret.type_code() != static_cast<int>(TVMArgTypeCode::kTVMNullptr);
     } else {
         // specially handle dict attr
-        DictAttrsNode* dnode = static_cast<DictAttrsNode*>(self);
+        auto* dnode = static_cast<DictAttrsNode*>(self);
         auto it = dnode->dict.find(getter.skey);
         if (it != dnode->dict.end()) {
             success = true;
@@ -217,8 +225,7 @@ TVMRetValue ReflectionVTable::GetAttr(Object* self, const String& field_name) co
     }
 
     if (!success) {
-        LOG(FATAL) << "AttributeError: " << self->GetTypeKey() << " object has no attributed "
-                   << getter.skey;
+        LOG(FATAL) << "AttributeError: " << self->GetTypeKey() << " object has no attributed " << getter.skey;
     }
     return ret;
 }
@@ -232,7 +239,7 @@ std::vector<std::string> ReflectionVTable::ListAttrNames(Object* self) const {
         VisitAttrs(self, &dir);
     } else {
         // specially handle dict attr
-        DictAttrsNode* dnode = static_cast<DictAttrsNode*>(self);
+        auto* dnode = static_cast<DictAttrsNode*>(self);
         for (const auto& kv: dnode->dict) {
             names.push_back(kv.first);
         }
@@ -263,7 +270,7 @@ void InitNodeByPackedArgs(const ReflectionVTable* reflection, Object* n, const T
     }
     reflection->VisitAttrs(n, &setter);
 
-    if (setter.attrs.size() != 0) {
+    if (!setter.attrs.empty()) {
         std::ostringstream os;
         os << setter.type_key << " does not contain field ";
         for (const auto& kv: setter.attrs) {

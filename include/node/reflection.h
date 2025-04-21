@@ -24,6 +24,7 @@ using runtime::Object;
 using runtime::ObjectPtr;
 using runtime::ObjectRef;
 using runtime::TVMArgs;
+using runtime::TVMRetValue;
 
 /*!
  * \brief Visitor class to get the attributes of an AST/IR node.
@@ -189,13 +190,13 @@ public:
     NODISCARD LITETVM_API ObjectRef CreateObject(const std::string& type_key, const Map<String, ObjectRef>& kwargs) const;
 
     /*!
-   * \brief Get an field object by the attr name.
+   * \brief Get a field object by the attr name.
    * \param self The pointer to the object.
    * \param attr_name The name of the field.
    * \return The corresponding attribute value.
    * \note This function will throw an exception if the object does not contain the field.
    */
-    LITETVM_API runtime::TVMRetValue GetAttr(Object* self, const String& attr_name) const;
+    LITETVM_API TVMRetValue GetAttr(Object* self, const String& attr_name) const;
 
     /*!
    * \brief List all the fields in the object.
@@ -364,7 +365,7 @@ struct SelectVisitAttrs<T, TraitName, false> {
 template<typename T, typename TraitName,
          bool = std::is_null_pointer_v<decltype(TraitName::SEqualReduce)>>
 struct SelectSEqualReduce {
-    static constexpr std::nullptr_t SEqualReduce = nullptr;
+    static constexpr auto SEqualReduce = nullptr;
 };
 
 template<typename T, typename TraitName>
@@ -378,7 +379,7 @@ struct SelectSEqualReduce<T, TraitName, false> {
 template<typename T, typename TraitName,
          bool = std::is_null_pointer_v<decltype(TraitName::SHashReduce)>>
 struct SelectSHashReduce {
-    static constexpr std::nullptr_t SHashReduce = nullptr;
+    static constexpr auto SHashReduce = nullptr;
 };
 
 template<typename T, typename TraitName>
