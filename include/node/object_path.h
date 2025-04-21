@@ -14,6 +14,7 @@ namespace litetvm {
 using runtime::Object;
 using runtime::ObjectPtr;
 using runtime::ObjectRef;
+using runtime::ObjectEqual;
 using runtime::String;
 using runtime::StringObj;
 
@@ -35,6 +36,7 @@ class ObjectPathNode : public Object {
 public:
     /*! \brief Get the parent path */
     NODISCARD Optional<ObjectPath> GetParent() const;
+
     /*!
    * \brief Get the length of the path.
    *
@@ -54,7 +56,7 @@ public:
     /*!
    * \brief Check if this path is a prefix of another path.
    *
-   * The prefix is not strict, i.e. a path is considered a prefix of itself.
+   * The prefix is not strict, i.e., a path is considered a prefix of itself.
    */
     bool IsPrefixOf(const ObjectPath& other) const;
 
@@ -65,7 +67,7 @@ public:
     ObjectPath Attr(const char* attr_key) const;
 
     /*! \brief Extend this path with access to an object attribute. */
-    ObjectPath Attr(Optional<String> attr_key) const;
+    ObjectPath Attr(const Optional<String>& attr_key) const;
 
     /*! \brief Extend this path with access to an array element. */
     ObjectPath ArrayIndex(int32_t index) const;
@@ -81,6 +83,8 @@ public:
 
     static constexpr const char* _type_key = "ObjectPath";
     TVM_DECLARE_BASE_OBJECT_INFO(ObjectPathNode, Object);
+
+    virtual ~ObjectPathNode() = default;
 
 protected:
     explicit ObjectPathNode(const ObjectPathNode* parent)
@@ -115,7 +119,6 @@ public:
 //-------------------------------------------------------------------------
 
 // ----- Root -----
-
 class RootPathNode final : public ObjectPathNode {
 public:
     Optional<String> name;
@@ -136,7 +139,6 @@ public:
 };
 
 // ----- Attribute access -----
-
 class AttributeAccessPathNode final : public ObjectPathNode {
 public:
     /*! \brief Name of the attribute being accessed. Must be a static string. */
@@ -149,17 +151,18 @@ public:
 
 protected:
     bool LastNodeEqual(const ObjectPathNode* other) const override;
-    std::string LastNodeString() const override;
+
+    std::string LastNodeString() const override {
+        return "." + attr_key;
+    }
 };
 
 class AttributeAccessPath : public ObjectPath {
 public:
-    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(AttributeAccessPath, ObjectPath,
-                                              AttributeAccessPathNode);
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(AttributeAccessPath, ObjectPath, AttributeAccessPathNode);
 };
 
 // ----- Unknown attribute access -----
-
 class UnknownAttributeAccessPathNode final : public ObjectPathNode {
 public:
     explicit UnknownAttributeAccessPathNode(const ObjectPathNode* parent);
@@ -168,19 +171,23 @@ public:
     TVM_DECLARE_FINAL_OBJECT_INFO(UnknownAttributeAccessPathNode, ObjectPathNode);
 
 protected:
-    bool LastNodeEqual(const ObjectPathNode* other) const final;
-    std::string LastNodeString() const final;
+    bool LastNodeEqual(const ObjectPathNode* other) const override {
+        // Consider any two unknown attribute accesses unequal
+        return false;
+    }
+
+    std::string LastNodeString() const override {
+        return ".<unknown attribute>";
+    }
 };
 
 class UnknownAttributeAccessPath : public ObjectPath {
 public:
-    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(UnknownAttributeAccessPath, ObjectPath,
-                                              UnknownAttributeAccessPathNode);
+    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(UnknownAttributeAccessPath, ObjectPath, UnknownAttributeAccessPathNode);
 };
 
 // ----- Array element access by index -----
-
-class ArrayIndexPathNode : public ObjectPathNode {
+class ArrayIndexPathNode final : public ObjectPathNode {
 public:
     /*! \brief Index of the array element that is being accessed. */
     int32_t index;
@@ -191,8 +198,10 @@ public:
     TVM_DECLARE_FINAL_OBJECT_INFO(ArrayIndexPathNode, ObjectPathNode);
 
 protected:
-    bool LastNodeEqual(const ObjectPathNode* other) const final;
-    std::string LastNodeString() const final;
+    bool LastNodeEqual(const ObjectPathNode* other) const override;
+    std::string LastNodeString() const override {
+        return "[" + std::to_string(index) + "]";
+    }
 };
 
 class ArrayIndexPath : public ObjectPath {
@@ -201,8 +210,7 @@ public:
 };
 
 // ----- Missing array element -----
-
-class MissingArrayElementPathNode : public ObjectPathNode {
+class MissingArrayElementPathNode final : public ObjectPathNode {
 public:
     /*! \brief Index of the array element that is missing. */
     int32_t index;
@@ -213,8 +221,10 @@ public:
     TVM_DECLARE_FINAL_OBJECT_INFO(MissingArrayElementPathNode, ObjectPathNode);
 
 protected:
-    bool LastNodeEqual(const ObjectPathNode* other) const final;
-    std::string LastNodeString() const final;
+    bool LastNodeEqual(const ObjectPathNode* other) const override;
+    std::string LastNodeString() const override {
+        return "[<missing element #" + std::to_string(index) + ">]";
+    }
 };
 
 class MissingArrayElementPath : public ObjectPath {
@@ -224,8 +234,7 @@ public:
 };
 
 // ----- Map value -----
-
-class MapValuePathNode : public ObjectPathNode {
+class MapValuePathNode final : public ObjectPathNode {
 public:
     /*! \brief Key of the map entry that is being accessed */
     ObjectRef key;
@@ -236,8 +245,8 @@ public:
     TVM_DECLARE_FINAL_OBJECT_INFO(MapValuePathNode, ObjectPathNode);
 
 protected:
-    bool LastNodeEqual(const ObjectPathNode* other) const final;
-    std::string LastNodeString() const final;
+    bool LastNodeEqual(const ObjectPathNode* other) const override;
+    std::string LastNodeString() const override;
 };
 
 class MapValuePath : public ObjectPath {
@@ -246,8 +255,7 @@ public:
 };
 
 // ----- Missing map entry -----
-
-class MissingMapEntryPathNode : public ObjectPathNode {
+class MissingMapEntryPathNode final : public ObjectPathNode {
 public:
     explicit MissingMapEntryPathNode(const ObjectPathNode* parent);
 
@@ -255,8 +263,13 @@ public:
     TVM_DECLARE_FINAL_OBJECT_INFO(MissingMapEntryPathNode, ObjectPathNode);
 
 protected:
-    bool LastNodeEqual(const ObjectPathNode* other) const final;
-    std::string LastNodeString() const final;
+    bool LastNodeEqual(const ObjectPathNode* other) const override {
+        return true;
+    }
+
+    std::string LastNodeString() const override {
+        return "[<missing entry>]";
+    }
 };
 
 class MissingMapEntryPath : public ObjectPath {

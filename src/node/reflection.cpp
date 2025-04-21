@@ -8,11 +8,11 @@
 
 namespace litetvm {
 
+using runtime::NDArray;
 using runtime::PackedFunc;
 using runtime::TVMArgs;
-using runtime::TVMRetValue;
 using runtime::TVMArgValue;
-using runtime::NDArray;
+using runtime::TVMRetValue;
 
 // Attr getter.
 class AttrGetter : public AttrVisitor {
@@ -336,9 +336,7 @@ void MakeNode(const TVMArgs& args, TVMRetValue* rv) {
 }
 
 TVM_REGISTER_GLOBAL("node.NodeGetAttr").set_body(NodeGetAttr);
-
 TVM_REGISTER_GLOBAL("node.NodeListAttrNames").set_body(NodeListAttrNames);
-
 TVM_REGISTER_GLOBAL("node.MakeNode").set_body(MakeNode);
 
 

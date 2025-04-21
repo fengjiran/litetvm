@@ -260,7 +260,9 @@ public:
         return false;
     }
 
-    T Eval() const { return pvar_.Eval(); }
+    T Eval() const {
+        return pvar_.Eval();
+    }
 
 protected:
     PVar<T> pvar_;

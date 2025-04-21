@@ -76,7 +76,7 @@ public:
    * PrimExpr expression construction and can be used for
    * quick type checking.
    *
-   * dtype is sufficient to decide the Type of the PrimExpr
+   * Dtype is sufficient to decide the Type of the PrimExpr
    * when it corresponds to POD value types such as i32.
    *
    * When dtype is DataType::Handle(), the expression could correspond to
@@ -201,7 +201,7 @@ public:
         v->Visit("struct_info_", &struct_info_);
     }
 
-    bool SEqualReduce(const GlobalVarNode* other, SEqualReducer equal) const {
+    bool SEqualReduce(const GlobalVarNode* other, const SEqualReducer& equal) const {
         // name matters for global var.
         return equal(name_hint, other->name_hint) && equal.FreeVarEqualImpl(this, other);
     }
@@ -246,7 +246,7 @@ public:
         // v->Visit("span", &span);
     }
 
-    bool SEqualReduce(const IntImmNode* other, SEqualReducer equal) const {
+    bool SEqualReduce(const IntImmNode* other, const SEqualReducer& equal) const {
         return equal(dtype, other->dtype) && equal(value, other->value);
     }
 
@@ -272,7 +272,6 @@ public:
    * \param value The internal value.
    * \param span The location of this object in the source code.
    */
-    // LITETVM_API IntImm(DataType dtype, int64_t value, Span span = Span());
     LITETVM_API IntImm(DataType dtype, int64_t value);
 
     TVM_DEFINE_OBJECT_REF_METHODS(IntImm, PrimExpr, IntImmNode);
@@ -294,7 +293,7 @@ public:
         // v->Visit("span", &span);
     }
 
-    bool SEqualReduce(const FloatImmNode* other, SEqualReducer equal) const {
+    bool SEqualReduce(const FloatImmNode* other, const SEqualReducer& equal) const {
         return equal(dtype, other->dtype) && equal(value, other->value);
     }
 

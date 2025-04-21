@@ -2,14 +2,13 @@
 // Created by 赵丹 on 25-2-5.
 //
 
-#ifndef BOXED_PRIMITIVE_H
-#define BOXED_PRIMITIVE_H
+#ifndef LITETVM_RUNTIME_BOXED_PRIMITIVE_H
+#define LITETVM_RUNTIME_BOXED_PRIMITIVE_H
 
 #include "runtime/memory.h"
 #include "runtime/object.h"
 
 namespace litetvm::runtime {
-
 namespace detail {
 /* \brief Provide the BoxNode<T> type traits in templated contexts
  *
@@ -122,4 +121,4 @@ struct BoxNodeRuntimeTraits<bool> {
 
 }// namespace litetvm::runtime
 
-#endif//BOXED_PRIMITIVE_H
+#endif//LITETVM_RUNTIME_BOXED_PRIMITIVE_H

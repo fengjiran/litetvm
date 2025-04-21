@@ -2,14 +2,13 @@
 // Created by richard on 7/3/24.
 //
 
-#ifndef LITETVM_OBJECT_H
-#define LITETVM_OBJECT_H
+#ifndef LITETVM_RUNTIME_OBJECT_H
+#define LITETVM_RUNTIME_OBJECT_H
 
 #include "runtime/utils.h"
 
 #include <cstdint>
 #include <dmlc/logging.h>
-// #include <glog/logging.h>
 #include <format>
 #include <functional>
 #include <optional>
@@ -931,4 +930,4 @@ SubRef Downcast(BaseRef ref) {
 }// namespace litetvm::runtime
 
 
-#endif//LITETVM_OBJECT_H
+#endif//LITETVM_RUNTIME_OBJECT_H

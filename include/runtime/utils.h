@@ -2,8 +2,8 @@
 // Created by 赵丹 on 25-2-6.
 //
 
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef LITETVM_RUNTIME_UTILS_H
+#define LITETVM_RUNTIME_UTILS_H
 
 #include <iostream>
 #include <random>
@@ -75,4 +75,4 @@ void print(const T& t, const Args&... args) {
     print(args...);
 }
 
-#endif//UTILS_H
+#endif//LITETVM_RUNTIME_UTILS_H

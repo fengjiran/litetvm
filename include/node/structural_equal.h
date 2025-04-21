@@ -120,8 +120,7 @@ public:
      * \param map_free_params Whether to map free variables.
      * \return The comparison result.
      */
-    LITETVM_API bool operator()(const ObjectRef& lhs, const ObjectRef& rhs,
-                                const bool map_free_params = false) const;
+    LITETVM_API bool operator()(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_params = false) const;
 };
 
 /*!
@@ -184,6 +183,8 @@ public:
          * \brief Mark current comparison as graph node equal comparison.
          */
         virtual void MarkGraphNode() = 0;
+
+        virtual ~Handler() = default;
 
     protected:
         using PathTracingData = PathTracingData;

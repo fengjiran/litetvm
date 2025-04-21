@@ -28,8 +28,8 @@ using runtime::ObjectRef;
  * \brief Visitor class to get the attributes of an AST/IR node.
  *  The content is going to be called for each field.
  *
- *  Each objects that wants reflection will need to implement
- *  a VisitAttrs function and call visitor->Visit on each of its field.
+ *  Each object that wants reflection needs to implement
+ *  a VisitAttrs function and call visitor->Visit on each of its fields.
  */
 class AttrVisitor {
 public:
@@ -58,15 +58,15 @@ public:
 /*!
  * \brief Virtual function table to support IR/AST node reflection.
  *
- * Functions are stored in columnar manner.
+ * Functions are stored in a columnar manner.
  * Each column is a vector indexed by Object's type_index.
  */
 class ReflectionVTable {
 public:
     /*!
    * \brief Visitor function.
-   * \note We use function pointer, instead of std::function
-   *       to reduce the dispatch overhead as field visit
+   * \note We use a function pointer, instead of std::function
+   *       to reduce the dispatch overhead as a field visit
    *       does not need as much customization.
    */
     using FVisitAttrs = void (*)(Object* self, AttrVisitor* visitor);
@@ -176,7 +176,7 @@ public:
    * \param kwargs the arguments in format key1, value1, ..., key_n, value_n.
    * \return The created object.
    */
-    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const runtime::TVMArgs& kwargs) const;
+    NODISCARD LITETVM_API ObjectRef CreateObject(const std::string& type_key, const runtime::TVMArgs& kwargs) const;
 
     /*!
    * \brief Create an object by giving kwargs about its fields.
@@ -185,7 +185,7 @@ public:
    * \param kwargs The field arguments.
    * \return The created object.
    */
-    LITETVM_API ObjectRef CreateObject(const std::string& type_key, const Map<String, ObjectRef>& kwargs) const;
+    NODISCARD LITETVM_API ObjectRef CreateObject(const std::string& type_key, const Map<String, ObjectRef>& kwargs) const;
 
     /*!
    * \brief Get an field object by the attr name.
@@ -226,8 +226,7 @@ private:
 /*! \brief Registry of a reflection table. */
 class ReflectionVTable::Registry {
 public:
-    Registry(ReflectionVTable* parent, uint32_t type_index)
-        : parent_(parent), type_index_(type_index) {}
+    Registry(ReflectionVTable* parent, uint32_t type_index) : parent_(parent), type_index_(type_index) {}
 
     /*!
    * \brief Set fcreate function.
@@ -313,7 +312,7 @@ namespace detail {
 
 template<typename T, bool = T::_type_has_method_visit_attrs>
 struct ImplVisitAttrs {
-    static constexpr std::nullptr_t VisitAttrs = nullptr;
+    static constexpr auto VisitAttrs = nullptr;
 };
 
 template<typename T>
@@ -323,7 +322,7 @@ struct ImplVisitAttrs<T, true> {
 
 template<typename T, bool = T::_type_has_method_sequal_reduce>
 struct ImplSEqualReduce {
-    static constexpr std::nullptr_t SEqualReduce = nullptr;
+    static constexpr auto SEqualReduce = nullptr;
 };
 
 template<typename T>
@@ -335,7 +334,7 @@ struct ImplSEqualReduce<T, true> {
 
 template<typename T, bool = T::_type_has_method_shash_reduce>
 struct ImplSHashReduce {
-    static constexpr std::nullptr_t SHashReduce = nullptr;
+    static constexpr auto SHashReduce = nullptr;
 };
 
 template<typename T>
@@ -407,7 +406,7 @@ ReflectionVTable::Registry ReflectionVTable::Register() {
 
     fshash_reduce_[tindex] = detail::SelectSHashReduce<T, TraitName>::SHashReduce;
 
-    return Registry(this, tindex);
+    return {this, tindex};
 }
 
 /*!

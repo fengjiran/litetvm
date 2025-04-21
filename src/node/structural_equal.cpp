@@ -50,7 +50,7 @@ struct SEqualReducer::PathTracingData {
     ObjectRef rhs_object;
     Optional<ObjectPathPair>* first_mismatch;
 
-    ObjectPathPair GetPathsForAttrs(const ObjectRef& lhs, const ObjectRef& rhs) const {
+    NODISCARD ObjectPathPair GetPathsForAttrs(const ObjectRef& lhs, const ObjectRef& rhs) const {
         ObjectPath lhs_attr_path = GetAttrPath(lhs_object, &lhs, current_paths->lhs_path);
         ObjectPath rhs_attr_path = GetAttrPath(rhs_object, &rhs, current_paths->rhs_path);
         return {lhs_attr_path, rhs_attr_path};

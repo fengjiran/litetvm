@@ -59,13 +59,13 @@ public:
     }
 
     // normal value handling.
-    Optional(T other)// NOLINT(*)
-        : ObjectRef(std::move(other)) {}
+    Optional(T other) : ObjectRef(std::move(other)) {}// NOLINT(*)
 
     Optional& operator=(T other) {
         ObjectRef::operator=(std::move(other));
         return *this;
     }
+
     // delete the int constructor
     // since Optional<Integer>(0) is ambiguious
     // 0 can be implicitly casted to nullptr_t
