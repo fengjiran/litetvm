@@ -90,7 +90,7 @@ public:
 // List names;
 class AttrDir : public AttrVisitor {
 public:
-    std::vector<std::string>* names;
+    std::vector<std::string>* names{nullptr};
 
     void Visit(const char* key, double* value) final {
         names->emplace_back(key);
