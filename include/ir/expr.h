@@ -196,7 +196,6 @@ public:
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("name_hint", &name_hint);
-        // v->Visit("span", &span);
         v->Visit("_checked_type_", &checked_type_);
         v->Visit("struct_info_", &struct_info_);
     }
@@ -243,7 +242,6 @@ public:
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("dtype", &dtype);
         v->Visit("value", &value);
-        // v->Visit("span", &span);
     }
 
     bool SEqualReduce(const IntImmNode* other, const SEqualReducer& equal) const {

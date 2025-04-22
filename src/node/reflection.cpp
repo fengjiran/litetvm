@@ -19,10 +19,9 @@ class AttrGetter : public AttrVisitor {
 public:
     const String& skey;
     TVMRetValue* ret;
-
-    AttrGetter(const String& skey, TVMRetValue* ret) : skey(skey), ret(ret) {}
-
     bool found_ref_object{false};
+
+    AttrGetter(const String& key, TVMRetValue* ret_value) : skey(key), ret(ret_value) {}
 
     void Visit(const char* key, double* value) final {
         if (skey == key) {

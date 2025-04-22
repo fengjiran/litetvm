@@ -319,7 +319,9 @@ struct ImplVisitAttrs {
 
 template<typename T>
 struct ImplVisitAttrs<T, true> {
-    static void VisitAttrs(T* self, AttrVisitor* v) { self->VisitAttrs(v); }
+    static void VisitAttrs(T* self, AttrVisitor* v) {
+        self->VisitAttrs(v);
+    }
 };
 
 template<typename T, bool = T::_type_has_method_sequal_reduce>
@@ -349,7 +351,8 @@ struct ImplSHashReduce<T, true> {
 template<typename T>
 struct ReflectionTrait : ImplVisitAttrs<T>, ImplSEqualReduce<T>, ImplSHashReduce<T> {};
 
-template<typename T, typename TraitName,
+template<typename T,
+         typename TraitName,
          bool = std::is_null_pointer_v<decltype(TraitName::VisitAttrs)>>
 struct SelectVisitAttrs {
     static constexpr auto VisitAttrs = nullptr;
@@ -362,7 +365,8 @@ struct SelectVisitAttrs<T, TraitName, false> {
     }
 };
 
-template<typename T, typename TraitName,
+template<typename T,
+         typename TraitName,
          bool = std::is_null_pointer_v<decltype(TraitName::SEqualReduce)>>
 struct SelectSEqualReduce {
     static constexpr auto SEqualReduce = nullptr;
@@ -376,7 +380,8 @@ struct SelectSEqualReduce<T, TraitName, false> {
     }
 };
 
-template<typename T, typename TraitName,
+template<typename T,
+         typename TraitName,
          bool = std::is_null_pointer_v<decltype(TraitName::SHashReduce)>>
 struct SelectSHashReduce {
     static constexpr auto SHashReduce = nullptr;
@@ -403,9 +408,7 @@ ReflectionVTable::Registry ReflectionVTable::Register() {
     }
     // functor that implements the redirection.
     fvisit_attrs_[tindex] = detail::SelectVisitAttrs<T, TraitName>::VisitAttrs;
-
     fsequal_reduce_[tindex] = detail::SelectSEqualReduce<T, TraitName>::SEqualReduce;
-
     fshash_reduce_[tindex] = detail::SelectSHashReduce<T, TraitName>::SHashReduce;
 
     return {this, tindex};
