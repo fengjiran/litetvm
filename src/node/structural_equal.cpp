@@ -73,13 +73,12 @@ bool SEqualReducer::DefEqual(const ObjectRef& lhs, const ObjectRef& rhs) const {
     return ObjectAttrsEqual(lhs, rhs, true, nullptr);
 }
 
-void SEqualReducer::GetPathsFromAttrAddressesAndStoreMismatch(
-        const void* lhs_address, const void* rhs_address, const PathTracingData* tracing_data) {
+void SEqualReducer::GetPathsFromAttrAddressesAndStoreMismatch(const void* lhs_address,
+                                                              const void* rhs_address,
+                                                              const PathTracingData* tracing_data) {
     if (tracing_data != nullptr && !tracing_data->first_mismatch->defined()) {
-        ObjectPath lhs_attr_path =
-                GetAttrPath(tracing_data->lhs_object, lhs_address, tracing_data->current_paths->lhs_path);
-        ObjectPath rhs_attr_path =
-                GetAttrPath(tracing_data->rhs_object, rhs_address, tracing_data->current_paths->rhs_path);
+        ObjectPath lhs_attr_path = GetAttrPath(tracing_data->lhs_object, lhs_address, tracing_data->current_paths->lhs_path);
+        ObjectPath rhs_attr_path = GetAttrPath(tracing_data->rhs_object, rhs_address, tracing_data->current_paths->rhs_path);
 
         *tracing_data->first_mismatch = ObjectPathPair(lhs_attr_path, rhs_attr_path);
     }
@@ -88,7 +87,7 @@ void SEqualReducer::GetPathsFromAttrAddressesAndStoreMismatch(
 template<typename T>
 bool SEqualReducer::CompareAttributeValues(const T& lhs, const T& rhs,
                                            const PathTracingData* tracing_data,
-                                           Optional<ObjectPathPair> paths) {
+                                           const Optional<ObjectPathPair>& paths) {
     if (BaseValueEqual()(lhs, rhs)) {
         return true;
     }
@@ -103,57 +102,48 @@ bool SEqualReducer::CompareAttributeValues(const T& lhs, const T& rhs,
     return false;
 }
 
-bool SEqualReducer::operator()(const double& lhs, const double& rhs,
-                               Optional<ObjectPathPair> paths) const {
+bool SEqualReducer::operator()(const double& lhs, const double& rhs, const Optional<ObjectPathPair>& paths) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const int64_t& lhs, const int64_t& rhs,
-                               Optional<ObjectPathPair> paths) const {
+bool SEqualReducer::operator()(const int64_t& lhs, const int64_t& rhs, const Optional<ObjectPathPair>& paths) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const uint64_t& lhs, const uint64_t& rhs,
-                               Optional<ObjectPathPair> paths) const {
+bool SEqualReducer::operator()(const uint64_t& lhs, const uint64_t& rhs, const Optional<ObjectPathPair>& paths) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const int& lhs, const int& rhs,
-                               Optional<ObjectPathPair> paths) const {
+bool SEqualReducer::operator()(const int& lhs, const int& rhs, const Optional<ObjectPathPair>& paths) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const bool& lhs, const bool& rhs,
-                               Optional<ObjectPathPair> paths) const {
+bool SEqualReducer::operator()(const bool& lhs, const bool& rhs, const Optional<ObjectPathPair>& paths) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const std::string& lhs, const std::string& rhs,
-                               Optional<ObjectPathPair> paths) const {
+bool SEqualReducer::operator()(const std::string& lhs, const std::string& rhs, const Optional<ObjectPathPair>& paths) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const DataType& lhs, const DataType& rhs,
-                               Optional<ObjectPathPair> paths) const {
+bool SEqualReducer::operator()(const DataType& lhs, const DataType& rhs, const Optional<ObjectPathPair>& paths) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
 const ObjectPathPair& SEqualReducer::GetCurrentObjectPaths() const {
-    CHECK(tracing_data_ != nullptr)
-            << "GetCurrentObjectPaths() can only be called when path tracing is enabled";
+    CHECK(tracing_data_ != nullptr) << "GetCurrentObjectPaths() can only be called when path tracing is enabled";
     return tracing_data_->current_paths;
 }
 
 void SEqualReducer::RecordMismatchPaths(const ObjectPathPair& paths) const {
-    CHECK(tracing_data_ != nullptr)
-            << "RecordMismatchPaths() can only be called when path tracing is enabled";
+    CHECK(tracing_data_ != nullptr) << "RecordMismatchPaths() can only be called when path tracing is enabled";
     if (!tracing_data_->first_mismatch->defined()) {
         *tracing_data_->first_mismatch = paths;
     }
 }
 
 bool SEqualReducer::EnumAttrsEqual(int lhs, int rhs, const void* lhs_address,
-                                   const void* rhs_address, Optional<ObjectPathPair> paths) const {
+                                   const void* rhs_address, const Optional<ObjectPathPair>& paths) const {
     if (lhs == rhs) {
         return true;
     }
@@ -521,8 +511,7 @@ bool SEqualHandlerDefault::DispatchSEqualReduce(const ObjectRef& lhs, const Obje
     return impl->DispatchSEqualReduce(lhs, rhs, map_free_vars, current_paths);
 }
 
-bool StructuralEqual::operator()(const ObjectRef& lhs, const ObjectRef& rhs,
-                                 bool map_free_params) const {
+bool StructuralEqual::operator()(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_params) const {
     return SEqualHandlerDefault(false, nullptr, false).Equal(lhs, rhs, map_free_params);
 }
 
@@ -536,8 +525,7 @@ TVM_REGISTER_GLOBAL("node.StructuralEqual")
             // entire block.
             bool defer_fails = assert_mode;
             Optional<ObjectPathPair> first_mismatch;
-            return SEqualHandlerDefault(assert_mode, &first_mismatch, defer_fails)
-                    .Equal(lhs, rhs, map_free_vars);
+            return SEqualHandlerDefault(assert_mode, &first_mismatch, defer_fails).Equal(lhs, rhs, map_free_vars);
         });
 
 TVM_REGISTER_GLOBAL("node.GetFirstStructuralMismatch")

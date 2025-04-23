@@ -36,9 +36,11 @@ ObjectRef NormalizeAttr(ObjectRef obj) {
     if (auto runtime_bool = obj.as<runtime::Bool::ContainerType>()) {
         return Bool(runtime_bool->value);
     }
+
     if (auto runtime_int = obj.as<runtime::Int::ContainerType>()) {
         return Integer(runtime_int->value);
     }
+
     if (auto opt_array = obj.as<Array<ObjectRef>>()) {
         return opt_array.value().Map([](const ObjectRef& inner) { return NormalizeAttr(inner); });
     }
@@ -122,14 +124,12 @@ DictAttrs::DictAttrs(Map<String, ObjectRef> dict) {
 }
 
 TVM_REGISTER_NODE_TYPE(DictAttrsNode);
-
 TVM_REGISTER_NODE_TYPE(AttrFieldInfoNode);
-
-TVM_REGISTER_GLOBAL("ir.DictAttrsGetDict").set_body_typed([](DictAttrs attrs) {
+TVM_REGISTER_GLOBAL("ir.DictAttrsGetDict").set_body_typed([](const DictAttrs& attrs) {
   return attrs->dict;
 });
 
-TVM_REGISTER_GLOBAL("ir.AttrsListFieldInfo").set_body_typed([](Attrs attrs) {
+TVM_REGISTER_GLOBAL("ir.AttrsListFieldInfo").set_body_typed([](const Attrs& attrs) {
   return attrs->ListFieldInfo();
 });
 

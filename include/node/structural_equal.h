@@ -98,16 +98,16 @@ public:
  *  - Normal node: equality is recursively defined without the restriction
  *    of graph nodes.
  *
- *  Vars(tir::Var, TypeVar) and non-constant relay expression nodes are graph nodes.
+ *  Vars(tir::Var, TypeVar) and non-constant relax expression nodes are graph nodes.
  *  For example, it means that `%1 = %x + %y; %1 + %1` is not structurally equal
- *  to `%1 = %x + %y; %2 = %x + %y; %1 + %2` in relay.
+ *  to `%1 = %x + %y; %2 = %x + %y; %1 + %2` in relax.
  *
  *  A var-type node(e.g. tir::Var, TypeVar) can be mapped as equal to another var
  *  with the same type if one of the following condition holds:
  *
- *  - They appear in a same definition point(e.g. function argument).
+ *  - They appear in the same definition point(e.g. function argument).
  *  - They point to the same VarNode via the same_as relation.
- *  - They appear in a same usage point, and map_free_vars is set to be True.
+ *  - They appear in the same usage point, and map_free_vars is set to be True.
  */
 class StructuralEqual : public BaseValueEqual {
 public:
@@ -206,36 +206,28 @@ public:
    * \brief Reduce condition to comparison of two attribute values.
    *
    * \param lhs The left operand.
-   *
    * \param rhs The right operand.
-   *
-   * \param paths The paths to the LHS and RHS operands.  If
-   * unspecified, will attempt to identify the attribute's address
-   * within the most recent ObjectRef.  In general, the paths only
+   * \param paths The paths to the LHS and RHS operands.
+   * If unspecified, will attempt to identify the attribute's address
+   * within the most recent ObjectRef.
+   * In general, the paths only
    * require explicit handling for computed parameters
    * (e.g. `array.size()`)
    *
    * \return the immediate check result.
    */
-    bool operator()(const double& lhs, const double& rhs,
-                    Optional<ObjectPathPair> paths = NullOpt) const;
-    bool operator()(const int64_t& lhs, const int64_t& rhs,
-                    Optional<ObjectPathPair> paths = NullOpt) const;
-    bool operator()(const uint64_t& lhs, const uint64_t& rhs,
-                    Optional<ObjectPathPair> paths = NullOpt) const;
-    bool operator()(const int& lhs, const int& rhs, Optional<ObjectPathPair> paths = NullOpt) const;
-    bool operator()(const bool& lhs, const bool& rhs, Optional<ObjectPathPair> paths = NullOpt) const;
-    bool operator()(const std::string& lhs, const std::string& rhs,
-                    Optional<ObjectPathPair> paths = NullOpt) const;
-    bool operator()(const DataType& lhs, const DataType& rhs,
-                    Optional<ObjectPathPair> paths = NullOpt) const;
+    bool operator()(const double& lhs, const double& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const int64_t& lhs, const int64_t& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const uint64_t& lhs, const uint64_t& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const int& lhs, const int& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const bool& lhs, const bool& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const std::string& lhs, const std::string& rhs,const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const DataType& lhs, const DataType& rhs,const Optional<ObjectPathPair>& paths = NullOpt) const;
 
-    template<typename ENum, typename = typename std::enable_if<std::is_enum<ENum>::value>::type>
-    bool operator()(const ENum& lhs, const ENum& rhs,
-                    Optional<ObjectPathPair> paths = NullOpt) const {
-        using Underlying = typename std::underlying_type<ENum>::type;
-        static_assert(std::is_same<Underlying, int>::value,
-                      "Enum must have `int` as the underlying type");
+    template<typename ENum, typename = std::enable_if_t<std::is_enum_v<ENum>>>
+    bool operator()(const ENum& lhs, const ENum& rhs,Optional<ObjectPathPair> paths = NullOpt) const {
+        using Underlying = std::underlying_type_t<ENum>;
+        static_assert(std::is_same_v<Underlying, int>,"Enum must have `int` as the underlying type");
         return EnumAttrsEqual(static_cast<int>(lhs), static_cast<int>(rhs), &lhs, &rhs, paths);
     }
 
@@ -354,7 +346,7 @@ public:
 
 private:
     bool EnumAttrsEqual(int lhs, int rhs, const void* lhs_address, const void* rhs_address,
-                        Optional<ObjectPathPair> paths = NullOpt) const;
+                        const Optional<ObjectPathPair>& paths = NullOpt) const;
 
     bool ObjectAttrsEqual(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                           const ObjectPathPair* paths) const;
@@ -365,12 +357,14 @@ private:
     template<typename T>
     static bool CompareAttributeValues(const T& lhs, const T& rhs,
                                        const PathTracingData* tracing_data,
-                                       Optional<ObjectPathPair> paths = NullOpt);
+                                       const Optional<ObjectPathPair>& paths = NullOpt);
 
     /*! \brief Internal class pointer. */
     Handler* handler_ = nullptr;
+
     /*! \brief Pointer to the current path tracing context, or nullptr if path tracing is disabled. */
     const PathTracingData* tracing_data_ = nullptr;
+
     /*! \brief Whether to map free vars. */
     bool map_free_vars_ = false;
 };
@@ -382,9 +376,8 @@ private:
  */
 class SEqualHandlerDefault : public SEqualReducer::Handler {
 public:
-    SEqualHandlerDefault(bool assert_mode, Optional<ObjectPathPair>* first_mismatch,
-                         bool defer_fails);
-    virtual ~SEqualHandlerDefault();
+    SEqualHandlerDefault(bool assert_mode, Optional<ObjectPathPair>* first_mismatch,bool defer_fails);
+    ~SEqualHandlerDefault() override;
 
     bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                       const Optional<ObjectPathPair>& current_paths) override;
