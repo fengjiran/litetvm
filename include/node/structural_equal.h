@@ -221,13 +221,13 @@ public:
     bool operator()(const uint64_t& lhs, const uint64_t& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
     bool operator()(const int& lhs, const int& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
     bool operator()(const bool& lhs, const bool& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
-    bool operator()(const std::string& lhs, const std::string& rhs,const Optional<ObjectPathPair>& paths = NullOpt) const;
-    bool operator()(const DataType& lhs, const DataType& rhs,const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const std::string& lhs, const std::string& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
+    bool operator()(const DataType& lhs, const DataType& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
 
     template<typename ENum, typename = std::enable_if_t<std::is_enum_v<ENum>>>
-    bool operator()(const ENum& lhs, const ENum& rhs,Optional<ObjectPathPair> paths = NullOpt) const {
+    bool operator()(const ENum& lhs, const ENum& rhs, Optional<ObjectPathPair> paths = NullOpt) const {
         using Underlying = std::underlying_type_t<ENum>;
-        static_assert(std::is_same_v<Underlying, int>,"Enum must have `int` as the underlying type");
+        static_assert(std::is_same_v<Underlying, int>, "Enum must have `int` as the underlying type");
         return EnumAttrsEqual(static_cast<int>(lhs), static_cast<int>(rhs), &lhs, &rhs, paths);
     }
 
@@ -376,7 +376,7 @@ private:
  */
 class SEqualHandlerDefault : public SEqualReducer::Handler {
 public:
-    SEqualHandlerDefault(bool assert_mode, Optional<ObjectPathPair>* first_mismatch,bool defer_fails);
+    SEqualHandlerDefault(bool assert_mode, Optional<ObjectPathPair>* first_mismatch, bool defer_fails);
     ~SEqualHandlerDefault() override;
 
     bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,

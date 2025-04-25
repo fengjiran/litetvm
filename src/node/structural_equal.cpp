@@ -10,6 +10,7 @@
 
 #include <optional>
 #include <unordered_map>
+#include <utility>
 
 namespace litetvm {
 
@@ -182,7 +183,7 @@ bool SEqualReducer::ObjectAttrsEqual(const ObjectRef& lhs, const ObjectRef& rhs,
 /*!
  * \brief A non-recursive stack based SEqual handler that can remaps vars.
  *
- *  This handler pushs the Object equality cases into a stack, and
+ *  This handler pushes the Object equality cases into a stack, and
  *  traverses the stack to expand the necessary children that need to be checked.
  *
  *  The order of SEqual being called is the same as the order as if we
@@ -190,20 +191,15 @@ bool SEqualReducer::ObjectAttrsEqual(const ObjectRef& lhs, const ObjectRef& rhs,
  */
 class SEqualHandlerDefault::Impl {
 public:
-    Impl(SEqualHandlerDefault* parent, bool assert_mode, Optional<ObjectPathPair>* first_mismatch,
-         bool defer_fails)
-        : parent_(parent),
-          assert_mode_(assert_mode),
-          first_mismatch_(first_mismatch),
-          defer_fails_(defer_fails) {}
+    Impl(SEqualHandlerDefault* parent, bool assert_mode, Optional<ObjectPathPair>* first_mismatch, bool defer_fails)
+        : parent_(parent), assert_mode_(assert_mode), first_mismatch_(first_mismatch), defer_fails_(defer_fails) {}
 
-    bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
-                      const Optional<ObjectPathPair>& current_paths) {
+    bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars, const Optional<ObjectPathPair>& current_paths) {
         // We cannot use check lhs.same_as(rhs) to check equality.
         // if we choose to enable var remapping.
         //
-        // Counter example below (%x, %y) are shared vars
-        // between the two functions(possibly before/after rewriting).
+        // Counter-example below (%x, %y) are shared vars
+        // between the two functions (possibly before/after rewriting).
         //
         // - function0: fn (%x, %y) { %x + %y }
         // - function1. fn (%y, %x) { %x + %y }
@@ -214,18 +210,22 @@ public:
         //
         // Take away: We can either choose only compare Var by address,
         // in which case we can use same_as for quick checking,
-        // or we have to run deep comparison and avoid to use same_as checks.
-        auto run = [=]() {
-            std::optional<bool> early_result = [&]() -> std::optional<bool> {
+        // or we have to run deep comparison and avoid using same_as checks.
+        auto run = [=] {
+            auto early_result = [&]() -> std::optional<bool> {
                 if (!lhs.defined() && !rhs.defined()) return true;
                 if (!lhs.defined() && rhs.defined()) return false;
                 if (!rhs.defined() && lhs.defined()) return false;
                 if (lhs->type_index() != rhs->type_index()) return false;
+
                 auto it = equal_map_lhs_.find(lhs);
                 if (it != equal_map_lhs_.end()) {
                     return it->second.same_as(rhs);
                 }
-                if (equal_map_rhs_.count(rhs)) return false;
+
+                if (equal_map_rhs_.contains(rhs)) {
+                    return false;
+                }
 
                 return std::nullopt;
             }();
@@ -233,12 +233,13 @@ public:
             if (early_result.has_value()) {
                 if (early_result.value()) {
                     return true;
-                } else if (IsPathTracingEnabled() && IsFailDeferralEnabled() && current_paths.defined()) {
+                }
+
+                if (IsPathTracingEnabled() && IsFailDeferralEnabled() && current_paths.defined()) {
                     DeferFail(current_paths.value());
                     return true;
-                } else {
-                    return false;
                 }
+                return false;
             }
 
             // need to push to pending tasks in this case
@@ -252,7 +253,9 @@ public:
         pending_tasks_.emplace_back(Task::ForceFailTag{}, mismatch_paths);
     }
 
-    bool IsFailDeferralEnabled() { return defer_fails_; }
+    NODISCARD bool IsFailDeferralEnabled() const {
+        return defer_fails_;
+    }
 
     void MarkGraphNode() {
         // need to push to pending tasks in this case
@@ -262,13 +265,17 @@ public:
 
     ObjectRef MapLhsToRhs(const ObjectRef& lhs) {
         auto it = equal_map_lhs_.find(lhs);
-        if (it != equal_map_lhs_.end()) return it->second;
+        if (it != equal_map_lhs_.end())
+            return it->second;
         return ObjectRef(nullptr);
     }
 
     // Function that implements actual equality check.
     bool Equal(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars) {
-        if (!lhs.defined() && !rhs.defined()) return true;
+        if (!lhs.defined() && !rhs.defined()) {
+            return true;
+        }
+
         task_stack_.clear();
         pending_tasks_.clear();
         equal_map_lhs_.clear();
@@ -281,6 +288,7 @@ public:
             auto root_path = ObjectPath::Root();
             current_paths = ObjectPathPair(root_path, root_path);
         }
+
         if (!SEqualReduce(lhs, rhs, map_free_vars, current_paths)) {
             return false;
         }
@@ -295,34 +303,34 @@ public:
     // The default equal as registered in the structural equal vtable.
     bool DispatchSEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                               const Optional<ObjectPathPair>& current_paths) {
-        auto compute = [=]() {
+        auto compute = [=] {
             CHECK(lhs.defined() && rhs.defined() && lhs->type_index() == rhs->type_index());
             // skip entries that already have equality maps.
             auto it = equal_map_lhs_.find(lhs);
             if (it != equal_map_lhs_.end()) {
                 return it->second.same_as(rhs);
             }
-            if (equal_map_rhs_.count(rhs)) return false;
+            if (equal_map_rhs_.contains(rhs)) return false;
 
             if (!IsPathTracingEnabled()) {
                 return vtable_->SEqualReduce(lhs.get(), rhs.get(),
                                              SEqualReducer(parent_, nullptr, map_free_vars));
-            } else {
-                PathTracingData tracing_data = {current_paths.value(), lhs, rhs, first_mismatch_};
-                return vtable_->SEqualReduce(lhs.get(), rhs.get(),
-                                             SEqualReducer(parent_, &tracing_data, map_free_vars));
             }
+
+            PathTracingData tracing_data = {current_paths.value(), lhs, rhs, first_mismatch_};
+            return vtable_->SEqualReduce(lhs.get(), rhs.get(),
+                                         SEqualReducer(parent_, &tracing_data, map_free_vars));
         };
         return CheckResult(compute(), lhs, rhs, current_paths);
     }
 
 protected:
     // Check the result.
-    bool CheckResult(bool result, const ObjectRef& lhs, const ObjectRef& rhs,
-                     const Optional<ObjectPathPair>& current_paths) {
+    bool CheckResult(bool result, const ObjectRef& lhs, const ObjectRef& rhs, const Optional<ObjectPathPair>& current_paths) {
         if (IsPathTracingEnabled() && !result && !first_mismatch_->defined()) {
             *first_mismatch_ = current_paths;
         }
+
         if (assert_mode_ && !result) {
             std::ostringstream oss;
             oss << "ValueError: StructuralEqual check failed, caused by lhs";
@@ -342,8 +350,10 @@ protected:
                 oss << ":" << std::endl
                     << lhs;
             }
+
             oss << std::endl
                 << "and rhs";
+
             if (first_mismatch_->defined()) {
                 oss << " at " << first_mismatch_->value()->rhs_path;
                 if (root_rhs_.defined()) {
@@ -364,13 +374,14 @@ protected:
         }
         return result;
     }
+
     /*!
    * \brief Run tasks until the stack reaches the stack begin
    * \param stack_begin The expected beginning of the stack.
    * \return The checks we encountered throughout the process.
    */
     bool RunTasks() {
-        while (task_stack_.size() != 0) {
+        while (!task_stack_.empty()) {
             // Caution: entry becomes invalid when the stack changes
             auto& entry = task_stack_.back();
 
@@ -402,13 +413,13 @@ protected:
                 // which populates the pending tasks.
                 CHECK_EQ(pending_tasks_.size(), 0U);
                 allow_push_to_stack_ = false;
-                if (!parent_->DispatchSEqualReduce(entry.lhs, entry.rhs, entry.map_free_vars,
-                                                   entry.current_paths))
+                if (!parent_->DispatchSEqualReduce(entry.lhs, entry.rhs, entry.map_free_vars, entry.current_paths)) {
                     return false;
+                }
                 allow_push_to_stack_ = true;
                 // Push pending tasks in reverse order, so earlier tasks get to
                 // expand first in the stack
-                while (pending_tasks_.size() != 0) {
+                while (!pending_tasks_.empty()) {
                     task_stack_.emplace_back(std::move(pending_tasks_.back()));
                     pending_tasks_.pop_back();
                 }
@@ -424,9 +435,10 @@ private:
         ObjectRef lhs;
         /*! \brief The rhs operand to be compared. */
         ObjectRef rhs;
-        /*! \brief If path tracing is enabled, paths taken so far from the root to `lhs` and `rhs`
-     * objects. */
+
+        /*! \brief If path tracing is enabled, paths taken so far from the root to lhs and rhs objects. */
         Optional<ObjectPathPair> current_paths;
+
         /*! \brief The map free var argument. */
         bool map_free_vars;
         /*! \brief Whether the children has been expanded via SEqualReduce */
@@ -438,17 +450,15 @@ private:
 
         Task() = default;
         Task(ObjectRef lhs, ObjectRef rhs, bool map_free_vars, Optional<ObjectPathPair> current_paths)
-            : lhs(lhs),
-              rhs(rhs),
-              current_paths(std::move(current_paths)),
-              map_free_vars(map_free_vars) {}
+            : lhs(std::move(lhs)), rhs(std::move(rhs)), current_paths(std::move(current_paths)), map_free_vars(map_free_vars) {}
 
         struct ForceFailTag {};// dispatch tag for the constructor below
-        Task(ForceFailTag, const ObjectPathPair& current_paths)
-            : current_paths(current_paths), force_fail(true) {}
+        Task(ForceFailTag, const ObjectPathPair& current_paths): current_paths(current_paths), force_fail(true) {}
     };
 
-    bool IsPathTracingEnabled() const { return first_mismatch_ != nullptr; }
+    NODISCARD bool IsPathTracingEnabled() const {
+        return first_mismatch_ != nullptr;
+    }
 
     // The owner of this impl
     SEqualHandlerDefault* parent_;

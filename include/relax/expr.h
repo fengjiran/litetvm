@@ -364,8 +364,8 @@ public:
     void SHashReduce(SHashReducer hash_reduce) const { hash_reduce(values); }
 
     static constexpr const char* _type_key = "relax.expr.ShapeExpr";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_FINAL_OBJECT_INFO(ShapeExprNode, LeafExprNode);
 };
 
