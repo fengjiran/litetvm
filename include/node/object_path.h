@@ -51,35 +51,35 @@ public:
    *
    * Provided `length` must not exceed the `Length()` of this path.
    */
-    ObjectPath GetPrefix(int32_t length) const;
+    NODISCARD ObjectPath GetPrefix(int32_t length) const;
 
     /*!
    * \brief Check if this path is a prefix of another path.
    *
    * The prefix is not strict, i.e., a path is considered a prefix of itself.
    */
-    bool IsPrefixOf(const ObjectPath& other) const;
+    NODISCARD bool IsPrefixOf(const ObjectPath& other) const;
 
     /*! \brief Check if two paths are equal. */
-    bool PathsEqual(const ObjectPath& other) const;
+    NODISCARD bool PathsEqual(const ObjectPath& other) const;
 
     /*! \brief Extend this path with access to an object attribute. */
     ObjectPath Attr(const char* attr_key) const;
 
     /*! \brief Extend this path with access to an object attribute. */
-    ObjectPath Attr(const Optional<String>& attr_key) const;
+    NODISCARD ObjectPath Attr(const Optional<String>& attr_key) const;
 
     /*! \brief Extend this path with access to an array element. */
-    ObjectPath ArrayIndex(int32_t index) const;
+    NODISCARD ObjectPath ArrayIndex(int32_t index) const;
 
     /*! \brief Extend this path with access to a missing array element. */
-    ObjectPath MissingArrayElement(int32_t index) const;
+    NODISCARD ObjectPath MissingArrayElement(int32_t index) const;
 
     /*! \brief Extend this path with access to a map value. */
-    ObjectPath MapValue(ObjectRef key) const;
+    NODISCARD ObjectPath MapValue(ObjectRef key) const;
 
     /*! \brief Extend this path with access to a missing map entry. */
-    ObjectPath MissingMapEntry() const;
+    NODISCARD ObjectPath MissingMapEntry() const;
 
     static constexpr const char* _type_key = "ObjectPath";
     TVM_DECLARE_BASE_OBJECT_INFO(ObjectPathNode, Object);
@@ -90,7 +90,7 @@ protected:
     explicit ObjectPathNode(const ObjectPathNode* parent)
         : parent_(GetRef<ObjectRef>(parent)), length_(parent ? parent->length_ + 1 : 1) {}
 
-    const ObjectPathNode* ParentNode() const;
+    NODISCARD const ObjectPathNode* ParentNode() const;
 
     /*! Compares just the last node of the path, without comparing the whole path. */
     virtual bool LastNodeEqual(const ObjectPathNode* other) const = 0;

@@ -245,8 +245,7 @@ class SEqualReducer;
 struct NDArrayContainerTrait {
     static constexpr std::nullptr_t VisitAttrs = nullptr;
     static void SHashReduce(const runtime::NDArray::Container* key, SHashReducer hash_reduce);
-    static bool SEqualReduce(const runtime::NDArray::Container* lhs,
-                             const runtime::NDArray::Container* rhs, SEqualReducer equal);
+    static bool SEqualReduce(const runtime::NDArray::Container* lhs, const runtime::NDArray::Container* rhs, SEqualReducer equal);
 };
 
 

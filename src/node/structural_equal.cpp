@@ -31,9 +31,7 @@ TVM_REGISTER_GLOBAL("node.ObjectPathPairRhsPath")
 
 namespace {
 ObjectPath GetAttrPath(const ObjectRef& obj, const void* attr_address, const ObjectPath& path) {
-    if (obj->IsInstance<runtime::Int::ContainerType>() ||
-        obj->IsInstance<runtime::Bool::ContainerType>() ||
-        obj->IsInstance<runtime::Float::ContainerType>()) {
+    if (obj->IsInstance<runtime::Int::ContainerType>() || obj->IsInstance<runtime::Bool::ContainerType>() || obj->IsInstance<runtime::Float::ContainerType>()) {
         // Special case for containers that contain boxed primitives.  The
         // "value" attribute containing the boxed value should not be part
         // of the reported mismatched path.
@@ -74,10 +72,9 @@ bool SEqualReducer::DefEqual(const ObjectRef& lhs, const ObjectRef& rhs) const {
     return ObjectAttrsEqual(lhs, rhs, true, nullptr);
 }
 
-void SEqualReducer::GetPathsFromAttrAddressesAndStoreMismatch(const void* lhs_address,
-                                                              const void* rhs_address,
+void SEqualReducer::GetPathsFromAttrAddressesAndStoreMismatch(const void* lhs_address, const void* rhs_address,
                                                               const PathTracingData* tracing_data) {
-    if (tracing_data != nullptr && !tracing_data->first_mismatch->defined()) {
+    if (tracing_data && !tracing_data->first_mismatch->defined()) {
         ObjectPath lhs_attr_path = GetAttrPath(tracing_data->lhs_object, lhs_address, tracing_data->current_paths->lhs_path);
         ObjectPath rhs_attr_path = GetAttrPath(tracing_data->rhs_object, rhs_address, tracing_data->current_paths->rhs_path);
 
@@ -86,9 +83,7 @@ void SEqualReducer::GetPathsFromAttrAddressesAndStoreMismatch(const void* lhs_ad
 }
 
 template<typename T>
-bool SEqualReducer::CompareAttributeValues(const T& lhs, const T& rhs,
-                                           const PathTracingData* tracing_data,
-                                           const Optional<ObjectPathPair>& paths) {
+bool SEqualReducer::CompareAttributeValues(const T& lhs, const T& rhs, const PathTracingData* tracing_data, const Optional<ObjectPathPair>& paths) {
     if (BaseValueEqual()(lhs, rhs)) {
         return true;
     }
@@ -103,31 +98,31 @@ bool SEqualReducer::CompareAttributeValues(const T& lhs, const T& rhs,
     return false;
 }
 
-bool SEqualReducer::operator()(const double& lhs, const double& rhs, const Optional<ObjectPathPair>& paths) const {
+bool SEqualReducer::operator()(const double& lhs, const double& rhs, const Optional<ObjectPathPair>&) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const int64_t& lhs, const int64_t& rhs, const Optional<ObjectPathPair>& paths) const {
+bool SEqualReducer::operator()(const int64_t& lhs, const int64_t& rhs, const Optional<ObjectPathPair>&) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const uint64_t& lhs, const uint64_t& rhs, const Optional<ObjectPathPair>& paths) const {
+bool SEqualReducer::operator()(const uint64_t& lhs, const uint64_t& rhs, const Optional<ObjectPathPair>&) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const int& lhs, const int& rhs, const Optional<ObjectPathPair>& paths) const {
+bool SEqualReducer::operator()(const int& lhs, const int& rhs, const Optional<ObjectPathPair>&) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const bool& lhs, const bool& rhs, const Optional<ObjectPathPair>& paths) const {
+bool SEqualReducer::operator()(const bool& lhs, const bool& rhs, const Optional<ObjectPathPair>&) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const std::string& lhs, const std::string& rhs, const Optional<ObjectPathPair>& paths) const {
+bool SEqualReducer::operator()(const std::string& lhs, const std::string& rhs, const Optional<ObjectPathPair>&) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
-bool SEqualReducer::operator()(const DataType& lhs, const DataType& rhs, const Optional<ObjectPathPair>& paths) const {
+bool SEqualReducer::operator()(const DataType& lhs, const DataType& rhs, const Optional<ObjectPathPair>&) const {
     return CompareAttributeValues(lhs, rhs, tracing_data_);
 }
 
@@ -181,7 +176,7 @@ bool SEqualReducer::ObjectAttrsEqual(const ObjectRef& lhs, const ObjectRef& rhs,
 }
 
 /*!
- * \brief A non-recursive stack based SEqual handler that can remaps vars.
+ * \brief A non-recursive stack-based SEqual handler that can remaps vars.
  *
  *  This handler pushes the Object equality cases into a stack, and
  *  traverses the stack to expand the necessary children that need to be checked.
@@ -318,8 +313,7 @@ public:
             }
 
             PathTracingData tracing_data = {current_paths.value(), lhs, rhs, first_mismatch_};
-            return vtable_->SEqualReduce(lhs.get(), rhs.get(),
-                                         SEqualReducer(parent_, &tracing_data, map_free_vars));
+            return vtable_->SEqualReduce(lhs.get(), rhs.get(), SEqualReducer(parent_, &tracing_data, map_free_vars));
         };
         return CheckResult(compute(), lhs, rhs, current_paths);
     }
@@ -453,7 +447,7 @@ private:
             : lhs(std::move(lhs)), rhs(std::move(rhs)), current_paths(std::move(current_paths)), map_free_vars(map_free_vars) {}
 
         struct ForceFailTag {};// dispatch tag for the constructor below
-        Task(ForceFailTag, const ObjectPathPair& current_paths): current_paths(current_paths), force_fail(true) {}
+        Task(ForceFailTag, const ObjectPathPair& current_paths) : current_paths(current_paths), force_fail(true) {}
     };
 
     NODISCARD bool IsPathTracingEnabled() const {
@@ -487,16 +481,15 @@ private:
     bool defer_fails_;
 };
 
-SEqualHandlerDefault::SEqualHandlerDefault(bool assert_mode,
-                                           Optional<ObjectPathPair>* first_mismatch,
-                                           bool defer_fails) {
+SEqualHandlerDefault::SEqualHandlerDefault(bool assert_mode, Optional<ObjectPathPair>* first_mismatch, bool defer_fails) {
     impl = new Impl(this, assert_mode, first_mismatch, defer_fails);
 }
 
-SEqualHandlerDefault::~SEqualHandlerDefault() { delete impl; }
+SEqualHandlerDefault::~SEqualHandlerDefault() {
+    delete impl;
+}
 
-bool SEqualHandlerDefault::SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs,
-                                        bool map_free_vars,
+bool SEqualHandlerDefault::SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                                         const Optional<ObjectPathPair>& current_paths) {
     return impl->SEqualReduce(lhs, rhs, map_free_vars, current_paths);
 }
@@ -505,18 +498,23 @@ void SEqualHandlerDefault::DeferFail(const ObjectPathPair& mismatch_paths) {
     impl->DeferFail(mismatch_paths);
 }
 
-bool SEqualHandlerDefault::IsFailDeferralEnabled() { return impl->IsFailDeferralEnabled(); }
+bool SEqualHandlerDefault::IsFailDeferralEnabled() {
+    return impl->IsFailDeferralEnabled();
+}
 
-ObjectRef SEqualHandlerDefault::MapLhsToRhs(const ObjectRef& lhs) { return impl->MapLhsToRhs(lhs); }
+ObjectRef SEqualHandlerDefault::MapLhsToRhs(const ObjectRef& lhs) {
+    return impl->MapLhsToRhs(lhs);
+}
 
-void SEqualHandlerDefault::MarkGraphNode() { impl->MarkGraphNode(); }
+void SEqualHandlerDefault::MarkGraphNode() {
+    impl->MarkGraphNode();
+}
 
 bool SEqualHandlerDefault::Equal(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars) {
     return impl->Equal(lhs, rhs, map_free_vars);
 }
 
-bool SEqualHandlerDefault::DispatchSEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs,
-                                                bool map_free_vars,
+bool SEqualHandlerDefault::DispatchSEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                                                 const Optional<ObjectPathPair>& current_paths) {
     return impl->DispatchSEqualReduce(lhs, rhs, map_free_vars, current_paths);
 }
@@ -526,8 +524,7 @@ bool StructuralEqual::operator()(const ObjectRef& lhs, const ObjectRef& rhs, boo
 }
 
 TVM_REGISTER_GLOBAL("node.StructuralEqual")
-        .set_body_typed([](const ObjectRef& lhs, const ObjectRef& rhs, bool assert_mode,
-                           bool map_free_vars) {
+        .set_body_typed([](const ObjectRef& lhs, const ObjectRef& rhs, bool assert_mode, bool map_free_vars) {
             // If we are asserting on failure, then the `defer_fails` option
             // should be enabled, to provide better error messages.  For
             // example, if the number of bindings in a `relax::BindingBlock`
@@ -541,14 +538,12 @@ TVM_REGISTER_GLOBAL("node.StructuralEqual")
 TVM_REGISTER_GLOBAL("node.GetFirstStructuralMismatch")
         .set_body_typed([](const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars) {
             Optional<ObjectPathPair> first_mismatch;
-            bool equal =
-                    SEqualHandlerDefault(false, &first_mismatch, true).Equal(lhs, rhs, map_free_vars);
+            bool equal = SEqualHandlerDefault(false, &first_mismatch, true).Equal(lhs, rhs, map_free_vars);
             CHECK(equal == !first_mismatch.defined());
             return first_mismatch;
         });
 
-bool NDArrayEqual(const runtime::NDArray::Container* lhs, const runtime::NDArray::Container* rhs,
-                  SEqualReducer equal, bool compare_data) {
+bool NDArrayEqual(const NDArray::Container* lhs, const NDArray::Container* rhs, SEqualReducer equal, bool compare_data) {
     if (lhs == rhs) return true;
 
     auto ldt = lhs->dl_tensor.dtype;
@@ -572,9 +567,7 @@ bool NDArrayEqual(const runtime::NDArray::Container* lhs, const runtime::NDArray
     return false;
 }
 
-bool NDArrayContainerTrait::SEqualReduce(const NDArray::Container* lhs,
-                                         const NDArray::Container* rhs,
-                                         SEqualReducer equal) {
+bool NDArrayContainerTrait::SEqualReduce(const NDArray::Container* lhs, const NDArray::Container* rhs, SEqualReducer equal) {
     return NDArrayEqual(lhs, rhs, equal, true);
 }
 

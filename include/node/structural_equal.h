@@ -111,10 +111,11 @@ public:
  */
 class StructuralEqual : public BaseValueEqual {
 public:
-    // inheritate operator()
+    // inheritance operator()
     using BaseValueEqual::operator();
+
     /*!
-     * \brief Compare objects via strutural equal.
+     * \brief Compare objects via structural equal.
      * \param lhs The left operand.
      * \param rhs The right operand.
      * \param map_free_params Whether to map free variables.
@@ -210,8 +211,7 @@ public:
    * \param paths The paths to the LHS and RHS operands.
    * If unspecified, will attempt to identify the attribute's address
    * within the most recent ObjectRef.
-   * In general, the paths only
-   * require explicit handling for computed parameters
+   * In general, the paths only require explicit handling for computed parameters
    * (e.g. `array.size()`)
    *
    * \return the immediate check result.
@@ -224,21 +224,21 @@ public:
     bool operator()(const std::string& lhs, const std::string& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
     bool operator()(const DataType& lhs, const DataType& rhs, const Optional<ObjectPathPair>& paths = NullOpt) const;
 
-    template<typename ENum, typename = std::enable_if_t<std::is_enum_v<ENum>>>
+    template<typename ENum,
+             typename = std::enable_if_t<std::is_enum_v<ENum>>>
     bool operator()(const ENum& lhs, const ENum& rhs, Optional<ObjectPathPair> paths = NullOpt) const {
         using Underlying = std::underlying_type_t<ENum>;
         static_assert(std::is_same_v<Underlying, int>, "Enum must have `int` as the underlying type");
         return EnumAttrsEqual(static_cast<int>(lhs), static_cast<int>(rhs), &lhs, &rhs, paths);
     }
 
-    template<typename T, typename Callable,
-             typename = std::enable_if_t<
-                     std::is_same_v<std::invoke_result_t<Callable, const ObjectPath&>, ObjectPath>>>
+    template<typename T,
+             typename Callable,
+             typename = std::enable_if_t<std::is_same_v<std::invoke_result_t<Callable, const ObjectPath&>, ObjectPath>>>
     bool operator()(const T& lhs, const T& rhs, const Callable& callable) {
         if (IsPathTracingEnabled()) {
             ObjectPathPair current_paths = GetCurrentObjectPaths();
-            ObjectPathPair new_paths = {callable(current_paths->lhs_path),
-                                        callable(current_paths->rhs_path)};
+            ObjectPathPair new_paths = {callable(current_paths->lhs_path), callable(current_paths->rhs_path)};
             return (*this)(lhs, rhs, new_paths);
         }
         return (*this)(lhs, rhs);
@@ -283,7 +283,7 @@ public:
    * \param rhs The right operand.
    * \return the immediate check result.
    */
-    bool DefEqual(const ObjectRef& lhs, const ObjectRef& rhs) const;
+    NODISCARD bool DefEqual(const ObjectRef& lhs, const ObjectRef& rhs) const;
 
     /*!
    * \brief Reduce condition to comparison of two arrays.
@@ -298,7 +298,8 @@ public:
             // depth as array comparison is pretty common.
             if (lhs.size() != rhs.size()) return false;
             for (size_t i = 0; i < lhs.size(); ++i) {
-                if (!(operator()(lhs[i], rhs[i]))) return false;
+                if (!operator()(lhs[i], rhs[i]))
+                    return false;
             }
             return true;
         }
@@ -315,7 +316,7 @@ public:
    * \param rhs The right operand.
    * \return the result.
    */
-    bool FreeVarEqualImpl(const runtime::Object* lhs, const runtime::Object* rhs) const {
+    bool FreeVarEqualImpl(const Object* lhs, const Object* rhs) const {
         // var need to be remapped, so it belongs to graph node.
         handler_->MarkGraphNode();
         // We only map free vars if they correspond to the same address
@@ -324,10 +325,14 @@ public:
     }
 
     /*! \return Get the internal handler. */
-    Handler* operator->() const { return handler_; }
+    Handler* operator->() const {
+        return handler_;
+    }
 
     /*! \brief Check if this reducer is tracing paths to the first mismatch. */
-    NODISCARD bool IsPathTracingEnabled() const { return tracing_data_ != nullptr; }
+    NODISCARD bool IsPathTracingEnabled() const {
+        return tracing_data_ != nullptr;
+    }
 
     /*!
    * \brief Get the paths of the currently compared objects.
@@ -351,12 +356,10 @@ private:
     bool ObjectAttrsEqual(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                           const ObjectPathPair* paths) const;
 
-    static void GetPathsFromAttrAddressesAndStoreMismatch(const void* lhs_address,
-                                                          const void* rhs_address,
+    static void GetPathsFromAttrAddressesAndStoreMismatch(const void* lhs_address, const void* rhs_address,
                                                           const PathTracingData* tracing_data);
     template<typename T>
-    static bool CompareAttributeValues(const T& lhs, const T& rhs,
-                                       const PathTracingData* tracing_data,
+    static bool CompareAttributeValues(const T& lhs, const T& rhs, const PathTracingData* tracing_data,
                                        const Optional<ObjectPathPair>& paths = NullOpt);
 
     /*! \brief Internal class pointer. */
@@ -377,13 +380,18 @@ private:
 class SEqualHandlerDefault : public SEqualReducer::Handler {
 public:
     SEqualHandlerDefault(bool assert_mode, Optional<ObjectPathPair>* first_mismatch, bool defer_fails);
+
     ~SEqualHandlerDefault() override;
 
     bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                       const Optional<ObjectPathPair>& current_paths) override;
+
     void DeferFail(const ObjectPathPair& mismatch_paths) override;
+
     bool IsFailDeferralEnabled() override;
+
     ObjectRef MapLhsToRhs(const ObjectRef& lhs) override;
+
     void MarkGraphNode() override;
 
     /*!
