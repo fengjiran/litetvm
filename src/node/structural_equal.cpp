@@ -207,7 +207,7 @@ public:
         // in which case we can use same_as for quick checking,
         // or we have to run deep comparison and avoid using same_as checks.
         auto run = [=] {
-            auto early_result = [&]() -> std::optional<bool> {
+            auto early_result = [&] -> std::optional<bool> {
                 if (!lhs.defined() && !rhs.defined()) return true;
                 if (!lhs.defined() && rhs.defined()) return false;
                 if (!rhs.defined() && lhs.defined()) return false;
@@ -241,6 +241,7 @@ public:
             pending_tasks_.emplace_back(lhs, rhs, map_free_vars, current_paths);
             return true;
         };
+
         return CheckResult(run(), lhs, rhs, current_paths);
     }
 
@@ -442,11 +443,12 @@ private:
         /*! \brief whether the task should return "false" without actually comparing anything */
         bool force_fail{false};
 
+        struct ForceFailTag {};// dispatch tag for the constructor below
+
         Task() = default;
         Task(ObjectRef lhs, ObjectRef rhs, bool map_free_vars, Optional<ObjectPathPair> current_paths)
             : lhs(std::move(lhs)), rhs(std::move(rhs)), current_paths(std::move(current_paths)), map_free_vars(map_free_vars) {}
 
-        struct ForceFailTag {};// dispatch tag for the constructor below
         Task(ForceFailTag, const ObjectPathPair& current_paths) : current_paths(current_paths), force_fail(true) {}
     };
 

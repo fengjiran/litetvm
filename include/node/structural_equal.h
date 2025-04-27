@@ -164,7 +164,7 @@ public:
         virtual void DeferFail(const ObjectPathPair& mismatch_paths) = 0;
 
         /*!
-     * \brief Check if fail defferal is enabled.
+     * \brief Check if fail deferral is enabled.
      *
      * \return false if the fail deferral is not enabled, true otherwise.
      */
