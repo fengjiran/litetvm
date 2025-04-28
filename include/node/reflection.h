@@ -375,8 +375,7 @@ struct SelectSEqualReduce {
 template<typename T, typename TraitName>
 struct SelectSEqualReduce<T, TraitName, false> {
     static bool SEqualReduce(const Object* self, const Object* other, SEqualReducer equal) {
-        return TraitName::SEqualReduce(static_cast<const T*>(self), static_cast<const T*>(other),
-                                       equal);
+        return TraitName::SEqualReduce(static_cast<const T*>(self), static_cast<const T*>(other), equal);
     }
 };
 

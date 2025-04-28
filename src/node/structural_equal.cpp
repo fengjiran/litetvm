@@ -306,7 +306,10 @@ public:
             if (it != equal_map_lhs_.end()) {
                 return it->second.same_as(rhs);
             }
-            if (equal_map_rhs_.contains(rhs)) return false;
+
+            if (equal_map_rhs_.contains(rhs)) {
+                return false;
+            }
 
             if (!IsPathTracingEnabled()) {
                 return vtable_->SEqualReduce(lhs.get(), rhs.get(),
