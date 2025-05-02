@@ -208,10 +208,17 @@ public:
         // or we have to run deep comparison and avoid using same_as checks.
         auto run = [=] {
             auto early_result = [&] -> std::optional<bool> {
-                if (!lhs.defined() && !rhs.defined()) return true;
-                if (!lhs.defined() && rhs.defined()) return false;
-                if (!rhs.defined() && lhs.defined()) return false;
-                if (lhs->type_index() != rhs->type_index()) return false;
+                if (!lhs.defined() && !rhs.defined()) {
+                    return true;
+                }
+
+                if ((!lhs.defined() && rhs.defined()) || (!rhs.defined() && lhs.defined())) {
+                    return false;
+                }
+
+                if (lhs->type_index() != rhs->type_index()) {
+                    return false;
+                }
 
                 auto it = equal_map_lhs_.find(lhs);
                 if (it != equal_map_lhs_.end()) {
