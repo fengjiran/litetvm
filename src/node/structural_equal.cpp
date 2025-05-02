@@ -395,9 +395,9 @@ protected:
             }
 
             if (entry.children_expanded) {
-                // When all the children has expanded and visited.
+                // When all the children have expanded and visited.
                 // This means all the condition checks for
-                // the current entry has been passed
+                // the current entry have been passed
                 // We can safely mark lhs and rhs as equal to each other.
                 auto it = equal_map_lhs_.find(entry.lhs);
                 if (it != equal_map_lhs_.end()) {
