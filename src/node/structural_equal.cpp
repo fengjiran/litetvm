@@ -189,6 +189,36 @@ public:
     Impl(SEqualHandlerDefault* parent, bool assert_mode, Optional<ObjectPathPair>* first_mismatch, bool defer_fails)
         : parent_(parent), assert_mode_(assert_mode), first_mismatch_(first_mismatch), defer_fails_(defer_fails) {}
 
+    // Function that implements actual equality check.
+    bool Equal(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars) {
+        if (!lhs.defined() && !rhs.defined()) {
+            return true;
+        }
+
+        task_stack_.clear();
+        pending_tasks_.clear();
+        equal_map_lhs_.clear();
+        equal_map_rhs_.clear();
+        root_lhs_ = lhs;
+        root_rhs_ = rhs;
+
+        Optional<ObjectPathPair> current_paths;
+        if (IsPathTracingEnabled()) {
+            auto root_path = ObjectPath::Root();
+            current_paths = ObjectPathPair(root_path, root_path);
+        }
+
+        if (!SEqualReduce(lhs, rhs, map_free_vars, current_paths)) {
+            return false;
+        }
+
+        CHECK_EQ(pending_tasks_.size(), 1U);
+        CHECK(allow_push_to_stack_);
+        task_stack_.emplace_back(std::move(pending_tasks_.back()));
+        pending_tasks_.clear();
+        return RunTasks();
+    }
+
     bool SEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars, const Optional<ObjectPathPair>& current_paths) {
         // We cannot use check lhs.same_as(rhs) to check equality.
         // if we choose to enable var remapping.
@@ -252,57 +282,6 @@ public:
         return CheckResult(run(), lhs, rhs, current_paths);
     }
 
-    void DeferFail(const ObjectPathPair& mismatch_paths) {
-        pending_tasks_.emplace_back(Task::ForceFailTag{}, mismatch_paths);
-    }
-
-    NODISCARD bool IsFailDeferralEnabled() const {
-        return defer_fails_;
-    }
-
-    void MarkGraphNode() {
-        // need to push to pending tasks in this case
-        CHECK(!allow_push_to_stack_ && !task_stack_.empty());
-        task_stack_.back().graph_equal = true;
-    }
-
-    ObjectRef MapLhsToRhs(const ObjectRef& lhs) {
-        auto it = equal_map_lhs_.find(lhs);
-        if (it != equal_map_lhs_.end())
-            return it->second;
-        return ObjectRef(nullptr);
-    }
-
-    // Function that implements actual equality check.
-    bool Equal(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars) {
-        if (!lhs.defined() && !rhs.defined()) {
-            return true;
-        }
-
-        task_stack_.clear();
-        pending_tasks_.clear();
-        equal_map_lhs_.clear();
-        equal_map_rhs_.clear();
-        root_lhs_ = lhs;
-        root_rhs_ = rhs;
-
-        Optional<ObjectPathPair> current_paths;
-        if (IsPathTracingEnabled()) {
-            auto root_path = ObjectPath::Root();
-            current_paths = ObjectPathPair(root_path, root_path);
-        }
-
-        if (!SEqualReduce(lhs, rhs, map_free_vars, current_paths)) {
-            return false;
-        }
-
-        CHECK_EQ(pending_tasks_.size(), 1U);
-        CHECK(allow_push_to_stack_);
-        task_stack_.emplace_back(std::move(pending_tasks_.back()));
-        pending_tasks_.clear();
-        return RunTasks();
-    }
-
     // The default equal as registered in the structural equal vtable.
     bool DispatchSEqualReduce(const ObjectRef& lhs, const ObjectRef& rhs, bool map_free_vars,
                               const Optional<ObjectPathPair>& current_paths) {
@@ -327,6 +306,27 @@ public:
             return vtable_->SEqualReduce(lhs.get(), rhs.get(), SEqualReducer(parent_, &tracing_data, map_free_vars));
         };
         return CheckResult(compute(), lhs, rhs, current_paths);
+    }
+
+    void DeferFail(const ObjectPathPair& mismatch_paths) {
+        pending_tasks_.emplace_back(Task::ForceFailTag{}, mismatch_paths);
+    }
+
+    NODISCARD bool IsFailDeferralEnabled() const {
+        return defer_fails_;
+    }
+
+    void MarkGraphNode() {
+        // need to push to pending tasks in this case
+        CHECK(!allow_push_to_stack_ && !task_stack_.empty());
+        task_stack_.back().graph_equal = true;
+    }
+
+    ObjectRef MapLhsToRhs(const ObjectRef& lhs) {
+        auto it = equal_map_lhs_.find(lhs);
+        if (it != equal_map_lhs_.end())
+            return it->second;
+        return ObjectRef(nullptr);
     }
 
 protected:
