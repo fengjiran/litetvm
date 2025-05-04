@@ -416,7 +416,8 @@ protected:
                 // Expand the objects
                 // The SEqual of the object can call into this->SEqualReduce
                 // which populates the pending tasks.
-                CHECK_EQ(pending_tasks_.size(), 0U);
+                // CHECK_EQ(pending_tasks_.size(), 0U);
+                CHECK(pending_tasks_.empty());
                 allow_push_to_stack_ = false;
                 if (!parent_->DispatchSEqualReduce(entry.lhs, entry.rhs, entry.map_free_vars, entry.current_paths)) {
                     return false;
@@ -446,7 +447,7 @@ private:
 
         /*! \brief The map free var argument. */
         bool map_free_vars;
-        /*! \brief Whether the children has been expanded via SEqualReduce */
+        /*! \brief Whether the children have been expanded via SEqualReduce */
         bool children_expanded{false};
         /*! \brief whether the task is about graph equality(need remap). */
         bool graph_equal{false};
