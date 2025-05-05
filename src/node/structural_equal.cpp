@@ -298,8 +298,7 @@ public:
             }
 
             if (!IsPathTracingEnabled()) {
-                return vtable_->SEqualReduce(lhs.get(), rhs.get(),
-                                             SEqualReducer(parent_, nullptr, map_free_vars));
+                return vtable_->SEqualReduce(lhs.get(), rhs.get(), SEqualReducer(parent_, nullptr, map_free_vars));
             }
 
             PathTracingData tracing_data = {current_paths.value(), lhs, rhs, first_mismatch_};
