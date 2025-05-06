@@ -91,7 +91,7 @@ public:
     using Nested = Derived;
 
     /*!
-   * \brief Check if value matches the current pattern.
+   * \brief Check if the value matches the current pattern.
    *
    * This call also populates the PVars with matched value.
    * The values in PVars are valid until the next call to Match.
@@ -106,13 +106,12 @@ public:
     }
 
     /*!
-   * \brief Check if value matches the current pattern.
+   * \brief Check if the value matches the current pattern.
    *
    * This call also populates the PVars with matched value.
    * The values in PVars are valid until the next call to Match.
    *
    * \param value The value to be matched against
-   *
    * \param cond A callable that performs additional validation,
    * returning true if the match passes.  This will typically be a
    * lambda function written in terms of the filled PVars.
@@ -565,7 +564,7 @@ private:
  * \tparam TA The pattern type of value.
  */
 template<typename DType, typename TA>
-inline PCastExpr<DType, TA> cast(const Pattern<DType>& dtype, const Pattern<TA>& value) {
+PCastExpr<DType, TA> cast(const Pattern<DType>& dtype, const Pattern<TA>& value) {
     return PCastExpr<DType, TA>(dtype.derived(), value.derived());
 }
 

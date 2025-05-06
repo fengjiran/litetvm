@@ -317,7 +317,7 @@ public:
    * \return the result.
    */
     bool FreeVarEqualImpl(const Object* lhs, const Object* rhs) const {
-        // var need to be remapped, so it belongs to graph node.
+        // var needs to be remapped, so it belongs to a graph node.
         handler_->MarkGraphNode();
         // We only map free vars if they correspond to the same address
         // or map free_var option is set to be true.

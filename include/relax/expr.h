@@ -51,7 +51,9 @@ public:
         return equal.FreeVarEqualImpl(this, other);
     }
 
-    void SHashReduce(SHashReducer hash_reduce) const { hash_reduce.FreeVarHashImpl(this); }
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce.FreeVarHashImpl(this);
+    }
 
     static constexpr const char* _type_key = "relax.Id";
     static constexpr bool _type_has_method_sequal_reduce = true;
@@ -93,7 +95,7 @@ public:
  * The compiler will still compile the code(with less information)
  * when we erase to the static type.
  *
- * If an StructInfo contains an Expr field, then that field
+ * If a StructInfo contains an Expr field, then that field
  * must be normalized already through NormalizeArg.
  * This invariant will be checked in constructors
  * and help us to simplify our assumption
@@ -444,8 +446,8 @@ public:
     }
 
     static constexpr const char* _type_key = "relax.expr.DataflowVar";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_FINAL_OBJECT_INFO(DataflowVarNode, VarNode);
 };
 
