@@ -370,14 +370,15 @@ public:
     void InitMatch_() const {}
 
     bool Match_(const ObjectRef& node) const {
-        if (const tir::IntImmNode* ptr = node.as<tir::IntImmNode>()) {
+        if (const auto* ptr = node.as<tir::IntImmNode>()) {
             return ptr->value == value_;
-        } else {
-            return false;
         }
+        return false;
     }
 
-    PrimExpr Eval() const { return tir::make_const(ref_.Eval().dtype(), value_); }
+    PrimExpr Eval() const {
+        return tir::make_const(ref_.Eval().dtype(), value_);
+    }
 
 private:
     typename TA::Nested ref_;
