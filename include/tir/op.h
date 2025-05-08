@@ -938,7 +938,9 @@ inline bool is_no_op(const Stmt& stmt) {
 
 template<typename ValueType>
 PrimExpr MakeConstScalar(DataType t, ValueType value) {
-    if (t.is_int()) return IntImm(t, static_cast<int64_t>(value));
+    if (t.is_int())
+        return IntImm(t, static_cast<int64_t>(value));
+
     if (t.is_uint()) {
         // Use IntImm if it is a small integer
         uint64_t uval = static_cast<uint64_t>(value);
@@ -981,7 +983,7 @@ PrimExpr make_const(DataType t, ValueType value) {
         return Broadcast(MakeConstScalar(t.element_of(), value), t.lanes());
     }
 
-    PrimExpr lanes = Mul(Call(DataType::Int(32), tir::builtin::vscale(), {}), t.vscale_factor());
+    PrimExpr lanes = Mul(Call(DataType::Int(32), builtin::vscale(), {}), t.vscale_factor());
     return Broadcast(MakeConstScalar(t.element_of(), value), lanes);
 }
 

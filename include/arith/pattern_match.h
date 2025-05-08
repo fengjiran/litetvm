@@ -242,7 +242,9 @@ public:
     // Store by reference in the expression.
     using Nested = const PVarWithCheck&;
 
-    void InitMatch_() const { pvar_.InitMatch_(); }
+    void InitMatch_() const {
+        pvar_.InitMatch_();
+    }
 
     bool Match_(const T& value) const {
         if (!static_cast<const Derived*>(this)->Match_(value))
@@ -279,7 +281,9 @@ class PVarWithDataType : public PVarWithCheck<PVarWithDataType<T, DType>, T> {
 public:
     explicit PVarWithDataType(const DType& dtype) : dtype_(dtype) {}
 
-    bool Match_(const T& value) const { return dtype_.Match_(value->dtype); }
+    bool Match_(const T& value) const {
+        return dtype_.Match_(value->dtype);
+    }
 
 protected:
     typename DType::Nested dtype_;
@@ -309,7 +313,7 @@ protected:
 template<typename T>
 class PConst : public Pattern<PConst<T>> {
 public:
-    PConst(T value): value_(value) {} // NOLINT(*)
+    PConst(T value) : value_(value) {}// NOLINT(*)
 
     void InitMatch_() const {}
 
@@ -317,7 +321,9 @@ public:
         return PEqualChecker<T>()(value_, value);
     }
 
-    T Eval() const { return value_; }
+    T Eval() const {
+        return value_;
+    }
 
 private:
     const T value_;
@@ -441,7 +447,9 @@ class PNotExpr : public Pattern<PNotExpr<TA>> {
 public:
     explicit PNotExpr(const TA& value) : value_(value) {}
 
-    void InitMatch_() const { value_.InitMatch_(); }
+    void InitMatch_() const {
+        value_.InitMatch_();
+    }
 
     bool Match_(const ObjectRef& node) const {
         if (const auto* ptr = node.as<tir::NotNode>()) {
@@ -451,7 +459,9 @@ public:
         return false;
     }
 
-    PrimExpr Eval() const { return tir::Not(value_.Eval()); }
+    PrimExpr Eval() const {
+        return tir::Not(value_.Eval());
+    }
 
 private:
     typename TA::Nested value_;
@@ -546,7 +556,9 @@ public:
         return false;
     }
 
-    PrimExpr Eval() const { return tir::Cast(dtype_.Eval(), value_.Eval()); }
+    PrimExpr Eval() const {
+        return tir::Cast(dtype_.Eval(), value_.Eval());
+    }
 
 private:
     typename DType::Nested dtype_;
@@ -593,12 +605,13 @@ public:
             if (!stride_.Match_(ptr->stride)) return false;
             if (!lanes_.Match_(ptr->lanes)) return false;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
-    PrimExpr Eval() const { return tir::Ramp(base_.Eval(), stride_.Eval(), lanes_.Eval()); }
+    PrimExpr Eval() const {
+        return tir::Ramp(base_.Eval(), stride_.Eval(), lanes_.Eval());
+    }
 
 private:
     typename TBase::Nested base_;
@@ -620,14 +633,14 @@ private:
  * \tparam TLanes The pattern type of the lanes.
  */
 template<typename TBase, typename TStride, typename TLanes>
-inline PRampExpr<TBase, TStride, TLanes> ramp(const Pattern<TBase>& base,
-                                              const Pattern<TStride>& stride,
-                                              const Pattern<TLanes>& lanes) {
+PRampExpr<TBase, TStride, TLanes> ramp(const Pattern<TBase>& base,
+                                       const Pattern<TStride>& stride,
+                                       const Pattern<TLanes>& lanes) {
     return PRampExpr<TBase, TStride, TLanes>(base.derived(), stride.derived(), lanes.derived());
 }
 
 template<typename TBase>
-inline PRampExpr<TBase, PConstWithTypeLike<TBase>, PConstWithTypeLike<TBase>> ramp(
+PRampExpr<TBase, PConstWithTypeLike<TBase>, PConstWithTypeLike<TBase>> ramp(
         const Pattern<TBase>& base, int stride, int lanes) {
     return PRampExpr<TBase, PConstWithTypeLike<TBase>, PConstWithTypeLike<TBase>>(
             base.derived(), PConstWithTypeLike<TBase>(base.derived(), stride),
@@ -654,12 +667,13 @@ public:
             if (!value_.Match_(ptr->value)) return false;
             if (!lanes_.Match_(ptr->lanes)) return false;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
-    PrimExpr Eval() const { return tir::Broadcast(value_.Eval(), lanes_.Eval()); }
+    PrimExpr Eval() const {
+        return tir::Broadcast(value_.Eval(), lanes_.Eval());
+    }
 
 private:
     typename TA::Nested value_;
@@ -678,8 +692,8 @@ private:
  * \tparam TLanes The pattern type of the lanes.
  */
 template<typename TA, typename TLanes>
-inline PBroadcastExpr<TA, TLanes> broadcast(const Pattern<TA>& value,
-                                            const Pattern<TLanes>& lanes) {
+PBroadcastExpr<TA, TLanes> broadcast(const Pattern<TA>& value,
+                                     const Pattern<TLanes>& lanes) {
     return PBroadcastExpr<TA, TLanes>(value.derived(), lanes.derived());
 }
 
@@ -702,7 +716,7 @@ struct tuple_for_each_dispatcher<true, I, F> {
 };
 
 template<typename F, typename TTuple>
-inline void tuple_for_each(F& f, const TTuple& tuple) {// NOLINT(*)
+void tuple_for_each(F& f, const TTuple& tuple) {// NOLINT(*)
     tuple_for_each_dispatcher<std::tuple_size<TTuple>::value == 0, 0, F>::run(f, tuple);
 }
 
@@ -759,9 +773,8 @@ public:
             detail::PCallExprMatchFunctor fmatch(ptr);
             detail::tuple_for_each(fmatch, args_);
             return fmatch.matched_;
-        } else {
-            return false;
         }
+        return false;
     }
 
     PrimExpr Eval() const {
