@@ -125,7 +125,7 @@ public:
     }
 
     /*! \return Derived instance of current class. */
-    const Derived& derived() const {
+    NODISCARD const Derived& derived() const {
         return *static_cast<const Derived*>(this);
     }
 };
