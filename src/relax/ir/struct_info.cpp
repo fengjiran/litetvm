@@ -49,7 +49,7 @@ TVM_REGISTER_GLOBAL("relax.PrimStructInfoFromValue").set_body_typed([](PrimExpr 
 });
 
 // Shape
-ShapeStructInfo::ShapeStructInfo(Array<PrimExpr> values) {
+ShapeStructInfo::ShapeStructInfo(const Array<PrimExpr>& values) {
     ObjectPtr<ShapeStructInfoNode> n = make_object<ShapeStructInfoNode>();
     n->ndim = static_cast<int>(values.size());
     n->values = values.Map([](PrimExpr value) {
@@ -96,7 +96,7 @@ TensorStructInfo::TensorStructInfo(Expr shape, DataType dtype, Optional<VDevice>
     // assign rest of the fields.
     n->shape = std::move(shape);
     n->dtype = dtype;
-    n->vdevice = vdevice;
+    n->vdevice = std::move(vdevice);
     // n->span = span;
     data_ = std::move(n);
 }
@@ -106,7 +106,7 @@ TensorStructInfo::TensorStructInfo(DataType dtype, int ndim, Optional<VDevice> v
     CHECK_GE(ndim, -1) << "ndim of TensorStructInfo must be >= -1, but got " << ndim;
     n->ndim = ndim;
     n->dtype = dtype;
-    n->vdevice = vdevice;
+    n->vdevice = std::move(vdevice);
     // n->span = span;
     data_ = std::move(n);
 }

@@ -140,7 +140,7 @@ public:
      * \param values The symbolic shape values
      * \param span The span of the AST.
      */
-    LITETVM_API ShapeStructInfo(Array<PrimExpr> values);
+    LITETVM_API ShapeStructInfo(const Array<PrimExpr>& values);
     /*!
      * \brief Construction with known unknown symbolic shape patterns.
      * \param ndim Number of dimensions -- can be kUnknownNDim
@@ -170,6 +170,7 @@ public:
 
     /*! \brief The content data type, use void to denote the dtype is unknown. */
     DataType dtype;
+
     /*!
    * \brief The number of dimensions of the tensor, can be unknown.
    * \sa kUnknownNDim
@@ -177,22 +178,22 @@ public:
     int ndim;
 
     /*! \return Whether the struct info contains unknown ndim. */
-    bool IsUnknownNdim() const {
+    NODISCARD bool IsUnknownNdim() const {
         return ndim == kUnknownNDim;
     }
 
     /*! \return Whether the struct info contains unknown dtype. */
-    bool IsUnknownDtype() const {
+    NODISCARD bool IsUnknownDtype() const {
         return dtype.is_void();
     }
 
     /*! \return Shape if it is known. */
-    Optional<Array<PrimExpr>> GetShape() const {
+    NODISCARD Optional<Array<PrimExpr>> GetShape() const {
         if (!shape.defined()) {
             return {};
         }
 
-        ShapeStructInfo shape_sinfo = Downcast<ShapeStructInfo>(this->shape.value()->struct_info_);
+        auto shape_sinfo = Downcast<ShapeStructInfo>(this->shape.value()->struct_info_);
         return shape_sinfo->values;
     }
 
@@ -311,16 +312,19 @@ public:
    *       We define such functions as Opaque function.
    */
     Optional<Array<StructInfo>> params;
+
     /*!
    * \brief The struct info of the function's return value.
    */
     StructInfo ret;
+
     /*!
    * \brief Derivation function of opaque functions that may take any number of parameters.
    * \note When derive_func is not empty, then params should be NullOpt,
    *       ret should be ObjectStructInfo()
    */
     Optional<StructInfoDeriveFunc> derive_func;
+
     /*!
    * \brief Whether the function is pure.
    * \note This parameter should be set to true only if the function is pure on all inputs.
@@ -332,7 +336,9 @@ public:
    * \return Whether the func struct info is opaque.
    * \note We define a function as opaque we have no constraints on params.
    */
-    bool IsOpaque() const { return !params.defined(); }
+    NODISCARD bool IsOpaque() const {
+        return !params.defined();
+    }
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("params", &params);
