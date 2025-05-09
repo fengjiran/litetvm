@@ -7,9 +7,9 @@
 
 #include "ir/env_func.h"
 #include "ir/global_info.h"
+#include "relax/block_builder.h"
 #include "relax/expr.h"
 #include "relax/type.h"
-#include "relax/block_builder.h"
 
 namespace litetvm {
 namespace relax {
@@ -23,9 +23,13 @@ public:
         // v->Visit("span", &span);
     }
 
-    bool SEqualReduce(const ObjectStructInfoNode* other, SEqualReducer equal) const { return true; }
+    bool SEqualReduce(const ObjectStructInfoNode* other, SEqualReducer equal) const {
+        return true;
+    }
 
-    void SHashReduce(SHashReducer hash_reduce) const { hash_reduce(0); }
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(0);
+    }
 
     static constexpr const char* _type_key = "relax.ObjectStructInfo";
     TVM_DECLARE_FINAL_OBJECT_INFO(ObjectStructInfoNode, StructInfoNode);
@@ -96,13 +100,15 @@ public:
     /*! \brief optionally stores the symbolic value patterns of the shape */
     Optional<Array<PrimExpr>> values;
     /*!
-     * \brief The number of dimension of the shape, can be unknown.
+     * \brief The number of dimensions of the shape, can be unknown.
      * \sa kUnknownNDim
      */
     int ndim;
 
     /*! \return Whether the struct info contains unknown ndim. */
-    bool IsUnknownNdim() const { return ndim == kUnknownNDim; }
+    bool IsUnknownNdim() const {
+        return ndim == kUnknownNDim;
+    }
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("values", &values);
@@ -156,27 +162,36 @@ public:
    * \note shape must be normalized: it can only be NullOpt or ShapeExpr or Var.
    */
     Optional<Expr> shape;
+
     /*! \brief The virtual device, indicates where the tensor
    *  is expected to be executed.
    */
     Optional<VDevice> vdevice;
+
     /*! \brief The content data type, use void to denote the dtype is unknown. */
     DataType dtype;
     /*!
-   * \brief The number of dimension of the tensor, can be unknown.
+   * \brief The number of dimensions of the tensor, can be unknown.
    * \sa kUnknownNDim
    */
     int ndim;
 
     /*! \return Whether the struct info contains unknown ndim. */
-    bool IsUnknownNdim() const { return ndim == kUnknownNDim; }
+    bool IsUnknownNdim() const {
+        return ndim == kUnknownNDim;
+    }
 
     /*! \return Whether the struct info contains unknown dtype. */
-    bool IsUnknownDtype() const { return dtype.is_void(); }
+    bool IsUnknownDtype() const {
+        return dtype.is_void();
+    }
 
     /*! \return Shape if it is known. */
     Optional<Array<PrimExpr>> GetShape() const {
-        if (!shape.defined()) return {};
+        if (!shape.defined()) {
+            return {};
+        }
+
         ShapeStructInfo shape_sinfo = Downcast<ShapeStructInfo>(this->shape.value()->struct_info_);
         return shape_sinfo->values;
     }

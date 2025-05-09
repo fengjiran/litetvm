@@ -45,7 +45,9 @@ public:
    */
     String name_hint;
 
-    void VisitAttrs(AttrVisitor* v) { v->Visit("name_hint", &name_hint); }
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("name_hint", &name_hint);
+    }
 
     bool SEqualReduce(const IdNode* other, SEqualReducer equal) const {
         return equal.FreeVarEqualImpl(this, other);
@@ -93,7 +95,7 @@ public:
  *
  * Each struct info can be uniquely erased to a static-type.
  * The compiler will still compile the code(with less information)
- * when we erase to the static type.
+ * when we erase the static type.
  *
  * If a StructInfo contains an Expr field, then that field
  * must be normalized already through NormalizeArg.

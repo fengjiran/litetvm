@@ -205,9 +205,9 @@ public:
         return PEqualChecker<T>()(value_, value);
     }
 
-    template<typename NodeRefType,
-             typename = std::enable_if_t<std::is_base_of_v<NodeRefType, T>>>
-    bool Match_(const NodeRefType& value) const {
+    template<typename RefType,
+             typename = std::enable_if_t<std::is_base_of_v<RefType, T>>>
+    bool Match_(const RefType& value) const {
         if (const auto* ptr = value.template as<typename T::ContainerType>()) {
             return Match_(GetRef<T>(ptr));
         }
