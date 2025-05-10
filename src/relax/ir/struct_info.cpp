@@ -56,8 +56,7 @@ ShapeStructInfo::ShapeStructInfo(const Array<PrimExpr>& values) {
         if (value->IsInstance<IntImmNode>()) {
             return cast(DataType::Int(64), value);
         }
-        CHECK(value.dtype() == DataType::Int(64))
-                << "the value in ShapeStructInfo can only have dtype of int64";
+        CHECK(value.dtype() == DataType::Int(64))<< "the value in ShapeStructInfo can only have dtype of int64";
         return value;
     });
     // n->span = span;

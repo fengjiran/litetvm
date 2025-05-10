@@ -58,32 +58,21 @@ FloatImm::FloatImm(DataType dtype, double value) {
     // check range for float32 and float16 since they have specified range.
     if (!std::isinf(value) && !std::isnan(value)) {
         if (dtype.bits() == 32) {
-            CHECK_GE(value, std::numeric_limits<float>::lowest())
-                    << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
-            CHECK_LE(value, std::numeric_limits<float>::max())
-                    << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
+            CHECK_GE(value, std::numeric_limits<float>::lowest()) << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
+            CHECK_LE(value, std::numeric_limits<float>::max()) << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
         } else if (dtype.is_float16()) {
-            CHECK_GE(value, -support::kMaxFloat16)
-                    << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
-            CHECK_LE(value, support::kMaxFloat16)
-                    << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
+            CHECK_GE(value, -support::kMaxFloat16) << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
+            CHECK_LE(value, support::kMaxFloat16) << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
         } else if (dtype.is_bfloat16()) {
-            CHECK_GE(value, -support::kMaxBFloat16)
-                    << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
-            CHECK_LE(value, support::kMaxBFloat16)
-                    << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
+            CHECK_GE(value, -support::kMaxBFloat16) << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
+            CHECK_LE(value, support::kMaxBFloat16) << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
         } else if (dtype.is_float8()) {
-            double bound =
-                    (dtype.code() == (int) DataType::TypeCode::kFloat8_e4m3fn) ? support::kMaxE4M3FN : support::kMaxE5M2;
-            CHECK_GE(value, -bound) << "ValueError: Literal value " << value << " exceeds minimum of "
-                                    << dtype;
-            CHECK_LE(value, bound) << "ValueError: Literal vaule " << value << " exceeds maximum of "
-                                   << dtype;
+            double bound = dtype.code() == static_cast<int>(DataType::TypeCode::kFloat8_e4m3fn) ? support::kMaxE4M3FN : support::kMaxE5M2;
+            CHECK_GE(value, -bound) << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
+            CHECK_LE(value, bound) << "ValueError: Literal vaule " << value << " exceeds maximum of " << dtype;
         } else if (dtype.is_float4()) {
-            CHECK_GE(value, -support::kMaxE2M1FN)
-                    << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
-            CHECK_LE(value, support::kMaxE2M1FN)
-                    << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
+            CHECK_GE(value, -support::kMaxE2M1FN) << "ValueError: Literal value " << value << " exceeds minimum of " << dtype;
+            CHECK_LE(value, support::kMaxE2M1FN) << "ValueError: Literal value " << value << " exceeds maximum of " << dtype;
         }
     }
     ObjectPtr<FloatImmNode> node = make_object<FloatImmNode>();
