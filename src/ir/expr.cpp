@@ -2,10 +2,13 @@
 // Created by richard on 3/6/25.
 //
 #include "ir/expr.h"
+
 #include "runtime/memory.h"
 #include "runtime/registry.h"
 #include "support/scalars.h"
 #include "tir/expr.h"
+#include "tir/op.h"
+#include <utility>
 
 namespace litetvm {
 
@@ -95,5 +98,46 @@ TVM_REGISTER_GLOBAL("ir.FloatImm").set_body_typed([](DataType dtype, double valu
 });
 
 TVM_REGISTER_NODE_TYPE(FloatImmNode);
+
+Range::Range(PrimExpr begin, PrimExpr end) {
+    auto extent = tir::is_zero(begin) ? end : end - begin;
+    auto n = make_object<RangeNode>(begin, extent);
+    data_ = std::move(n);
+}
+
+Range Range::FromMinExtent(PrimExpr min, PrimExpr extent) {
+    return Range(make_object<RangeNode>(std::move(min), std::move(extent)));
+}
+
+TVM_REGISTER_NODE_TYPE(RangeNode);
+
+TVM_REGISTER_GLOBAL("ir.Range_from_min_extent").set_body_typed(Range::FromMinExtent);
+
+TVM_REGISTER_GLOBAL("ir.Range").set_body_typed([](PrimExpr begin, Optional<PrimExpr> end) -> Range {
+    if (end.defined()) {
+        return {begin, end.value()};
+    }
+    return {IntImm(begin->dtype, 0), begin};
+});
+
+GlobalVar::GlobalVar(String name_hint, Type type) {
+    auto n = make_object<GlobalVarNode>();
+    n->name_hint = std::move(name_hint);
+    n->checked_type_ = std::move(type);
+    data_ = std::move(n);
+}
+
+TVM_REGISTER_NODE_TYPE(GlobalVarNode);
+
+TVM_REGISTER_GLOBAL("ir.GlobalVar").set_body_typed([](String name, Type type) {
+    return GlobalVar(std::move(name), std::move(type));
+});
+
+TVM_REGISTER_GLOBAL("ir.DebugPrint").set_body_typed([](ObjectRef ref) {
+    std::stringstream ss;
+    ss << ref;
+    return ss.str();
+});
+
 
 }// namespace litetvm

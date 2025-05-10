@@ -21,10 +21,10 @@
 namespace litetvm {
 
 using runtime::DataType;
+using runtime::make_object;
 using runtime::Object;
 using runtime::ObjectRef;
 using runtime::String;
-using runtime::make_object;
 
 /*!
  * \brief Base type of all the expressions.
@@ -101,13 +101,13 @@ public:
    * \brief construct from integer.
    * \param value The value to be constructed.
    */
-    LITETVM_API PrimExpr(int32_t value); // NOLINT
+    LITETVM_API PrimExpr(int32_t value);// NOLINT
 
     /*!
    * \brief construct from float.
    * \param value The value to be constructed.
    */
-    LITETVM_API PrimExpr(float value); // NOLINT
+    LITETVM_API PrimExpr(float value);// NOLINT
 
     /*! \return the data type of this expression. */
     NODISCARD DataType dtype() const {
@@ -344,9 +344,11 @@ public:
 inline Bool operator||(const Bool& a, bool b) {
     return Bool(a.operator bool() || b);
 }
+
 inline Bool operator||(bool a, const Bool& b) {
     return Bool(a || b.operator bool());
 }
+
 inline Bool operator||(const Bool& a, const Bool& b) {
     return Bool(a.operator bool() || b.operator bool());
 }
@@ -354,9 +356,11 @@ inline Bool operator||(const Bool& a, const Bool& b) {
 inline Bool operator&&(const Bool& a, bool b) {
     return Bool(a.operator bool() && b);
 }
+
 inline Bool operator&&(bool a, const Bool& b) {
     return Bool(a && b.operator bool());
 }
+
 inline Bool operator&&(const Bool& a, const Bool& b) {
     return Bool(a.operator bool() && b.operator bool());
 }
@@ -364,9 +368,11 @@ inline Bool operator&&(const Bool& a, const Bool& b) {
 inline bool operator==(const Bool& a, bool b) {
     return a.operator bool() == b;
 }
+
 inline bool operator==(bool a, const Bool& b) {
     return a == b.operator bool();
 }
+
 inline bool operator==(const Bool& a, const Bool& b) {
     return a.operator bool() == b.operator bool();
 }
@@ -385,7 +391,7 @@ public:
     /*!
    * \brief constructor from node.
    */
-    explicit Integer(ObjectPtr<Object> node) : IntImm(node) {}
+    explicit Integer(ObjectPtr<Object> node) : IntImm(std::move(node)) {}
     /*!
    * \brief Construct integer from int value.
    */
@@ -428,7 +434,8 @@ public:
 
     // comparators
     Bool operator==(int other) const {
-        if (data_ == nullptr) return Bool(false);
+        if (data_ == nullptr)
+            return Bool(false);
         return Bool((*this)->value == other);
     }
 
@@ -516,7 +523,7 @@ public:
 };
 
 // implementations
-inline const litetvm::Type& RelaxExprNode::checked_type() const {
+inline const Type& RelaxExprNode::checked_type() const {
     CHECK(checked_type_.defined()) << "internal error: the type checker has "
                                    << "not populated the checked_type "
                                    << "field for " << GetRef<RelaxExpr>(this);
@@ -525,12 +532,10 @@ inline const litetvm::Type& RelaxExprNode::checked_type() const {
 
 template<typename TTypeNode>
 const TTypeNode* RelaxExprNode::type_as() const {
-    static_assert(std::is_base_of_v<litetvm::TypeNode, TTypeNode>, "TType must be a special case of type");
-    CHECK(checked_type_.defined())
-            << "Type inference for this Expr has not completed. Try to call infer_type pass.";
+    static_assert(std::is_base_of_v<TypeNode, TTypeNode>, "TType must be a special case of type");
+    CHECK(checked_type_.defined()) << "Type inference for this Expr has not completed. Try to call infer_type pass.";
     const TTypeNode* node = checked_type_.as<TTypeNode>();
-    CHECK(node != nullptr) << "Expected type to be " << TTypeNode::_type_key << ", but get "
-                           << checked_type_->GetTypeKey();
+    CHECK(node != nullptr) << "Expected type to be " << TTypeNode::_type_key << ", but get " << checked_type_->GetTypeKey();
     return node;
 }
 
