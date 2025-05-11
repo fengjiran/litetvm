@@ -12,8 +12,10 @@ namespace litetvm {
 namespace relax {
 namespace distributed {
 
-enum class PlacementSpecKind : int { kSharding = 0,
-                                     kReplica = 1 };
+enum class PlacementSpecKind : int {
+    kSharding = 0,
+    kReplica = 1
+};
 
 /*! \brief Describes how data is distributed in one dimension of the device mesh*/
 class PlacementSpecNode : public Object {
@@ -30,6 +32,7 @@ public:
         v->Visit("axis", &axis);
         v->Visit("kind", &kind);
     }
+
     bool SEqualReduce(const PlacementSpecNode* other, SEqualReducer equal) const {
         return equal(axis, other->axis) && equal(kind, other->kind);
     }
@@ -40,8 +43,8 @@ public:
     }
 
     static constexpr const char* _type_key = "relax.distributed.PlacementSpec";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_BASE_OBJECT_INFO(PlacementSpecNode, Object);
 };
 
@@ -82,16 +85,20 @@ public:
 
     String ToString() const;
 
-    void VisitAttrs(AttrVisitor* v) { v->Visit("dim_specs", &dim_specs); }
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("dim_specs", &dim_specs);
+    }
 
     bool SEqualReduce(const PlacementNode* other, SEqualReducer equal) const {
         return equal(dim_specs, other->dim_specs);
     }
 
-    void SHashReduce(SHashReducer hash_reduce) const { hash_reduce(dim_specs); }
+    void SHashReduce(SHashReducer hash_reduce) const {
+        hash_reduce(dim_specs);
+    }
 
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     static constexpr const char* _type_key = "relax.distributed.Placement";
     TVM_DECLARE_FINAL_OBJECT_INFO(PlacementNode, Object);
 };

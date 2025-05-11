@@ -16,7 +16,7 @@ using runtime::Optional;
 TVM_REGISTER_NODE_TYPE(IdNode);
 
 Id::Id(String name_hint) {
-    ObjectPtr<IdNode> n = make_object<IdNode>();
+    auto n = make_object<IdNode>();
     n->name_hint = std::move(name_hint);
     data_ = std::move(n);
 }
@@ -81,8 +81,9 @@ Call WithFields(Call call, Optional<Expr> opt_op, Optional<Array<Expr>> opt_args
 
 TVM_REGISTER_NODE_TYPE(CallNode);
 
-TVM_REGISTER_GLOBAL("relax.Call")
-        .set_body_typed([](Expr op, Array<Expr> args, Attrs attrs, Array<StructInfo> sinfo_args) { return Call(op, args, attrs, sinfo_args); });
+TVM_REGISTER_GLOBAL("relax.Call").set_body_typed([](Expr op, Array<Expr> args, Attrs attrs, Array<StructInfo> sinfo_args) {
+    return Call(op, args, attrs, sinfo_args);
+});
 
 Tuple::Tuple(Array<Expr> fields) {
     Optional<StructInfo> tuple_sinfo = [&]() -> Optional<StructInfo> {

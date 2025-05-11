@@ -89,7 +89,9 @@ Placement Placement::FromText(String text_repr) {
 TVM_REGISTER_NODE_TYPE(PlacementNode);
 TVM_REGISTER_GLOBAL("relax.distributed.PlacementFromText").set_body_typed(Placement::FromText);
 TVM_REGISTER_GLOBAL("relax.distributed.Placement")
-        .set_body_typed([](Array<PlacementSpec> dim_specs) { return Placement(dim_specs); });
+        .set_body_typed([](Array<PlacementSpec> dim_specs) {
+            return Placement(dim_specs);
+        });
 
 // DTensor
 DTensorStructInfo::DTensorStructInfo(TensorStructInfo tensor_sinfo, DeviceMesh device_mesh,

@@ -7,8 +7,8 @@
 
 #include "runtime/object.h"
 
-#include <vector>
 #include <cstring>
+#include <vector>
 
 namespace litetvm {
 
@@ -68,9 +68,11 @@ public:
    * \param n The node to be dispatched
    * \return Whether dispatching function is registered for n's type.
    */
-    bool can_dispatch(const ObjectRef& n) const {
+    NODISCARD bool can_dispatch(const ObjectRef& n) const {
         uint32_t type_index = n->type_index();
-        if (type_index < begin_type_index_) return false;
+        if (type_index < begin_type_index_) {
+            return false;
+        }
         type_index -= begin_type_index_;
         return type_index < func_.size() && func_[type_index] != nullptr;
     }
@@ -82,8 +84,7 @@ public:
    * \return The result.
    */
     R operator()(const ObjectRef& n, Args... args) const {
-        CHECK(can_dispatch(n)) << "NodeFunctor calls un-registered function on type "
-                               << n->GetTypeKey();
+        CHECK(can_dispatch(n)) << "NodeFunctor calls un-registered function on type " << n->GetTypeKey();
         return (*func_[n->type_index() - begin_type_index_])(n, std::forward<Args>(args)...);
     }
 

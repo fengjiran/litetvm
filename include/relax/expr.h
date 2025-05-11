@@ -193,8 +193,7 @@ public:
    * \param sinfo_args The structure info arguments passed to a function.
    * \param span The source span of the expression.
    */
-    LITETVM_API Call(Expr op, Array<Expr> args, Attrs attrs = Attrs(),
-                     Array<StructInfo> sinfo_args = Array<StructInfo>());
+    LITETVM_API Call(Expr op, Array<Expr> args, Attrs attrs = Attrs(), Array<StructInfo> sinfo_args = Array<StructInfo>());
 
     TVM_DEFINE_OBJECT_REF_METHODS(Call, Expr, CallNode);
     TVM_DEFINE_OBJECT_REF_COW_METHOD(CallNode);

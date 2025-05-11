@@ -32,8 +32,10 @@ class StructInfoFunctor<R(const StructInfo& n, Args...)> {
 public:
     /*! \brief the result type of this functor */
     using result_type = R;
+
     /*! \brief virtual destructor */
-    virtual ~StructInfoFunctor() {}
+    virtual ~StructInfoFunctor() = default;
+
     /*!
    * \brief Same as call.
    * \param n The expression node.
@@ -43,6 +45,7 @@ public:
     R operator()(const StructInfo& n, Args... args) {
         return VisitStructInfo(n, std::forward<Args>(args)...);
     }
+
     /*!
    * \brief The functor call.
    * \param n The expression node.
@@ -55,20 +58,13 @@ public:
         return vtable(n, this, std::forward<Args>(args)...);
     }
     // Functions that can be overriden by subclass
-    virtual R VisitStructInfo_(const ObjectStructInfoNode* op,
-                               Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
-    virtual R VisitStructInfo_(const PrimStructInfoNode* op,
-                               Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
-    virtual R VisitStructInfo_(const ShapeStructInfoNode* op,
-                               Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
-    virtual R VisitStructInfo_(const TensorStructInfoNode* op,
-                               Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
-    virtual R VisitStructInfo_(const distributed::DTensorStructInfoNode* op,
-                               Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
-    virtual R VisitStructInfo_(const TupleStructInfoNode* op,
-                               Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
-    virtual R VisitStructInfo_(const FuncStructInfoNode* op,
-                               Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
+    virtual R VisitStructInfo_(const ObjectStructInfoNode* op, Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
+    virtual R VisitStructInfo_(const PrimStructInfoNode* op, Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
+    virtual R VisitStructInfo_(const ShapeStructInfoNode* op, Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
+    virtual R VisitStructInfo_(const TensorStructInfoNode* op, Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
+    virtual R VisitStructInfo_(const distributed::DTensorStructInfoNode* op, Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
+    virtual R VisitStructInfo_(const TupleStructInfoNode* op, Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
+    virtual R VisitStructInfo_(const FuncStructInfoNode* op, Args... args) STRUCT_INFO_FUNCTOR_DEFAULT;
     virtual R VisitStructInfoDefault_(const Object* op, Args...) {
         LOG(FATAL) << "Do not have a default for " << op->GetTypeKey();
         throw;// unreachable, written to stop compiler warning
