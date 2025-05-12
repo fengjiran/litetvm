@@ -76,13 +76,13 @@ class ExprFunctor;
 template<typename R, typename... Args>
 class ExprFunctor<R(const PrimExpr& n, Args...)> {
     using TSelf = ExprFunctor;
-    using FType = NodeFunctor<R(const ObjectRef& n, TSelf* self, Args...)>;
+    using FType = NodeFunctor<R(const ObjectRef&, TSelf*, Args...)>;
 
 public:
     /*! \brief the result type of this functor */
     using result_type = R;
     /*! \brief virtual destructor */
-    virtual ~ExprFunctor() {}
+    virtual ~ExprFunctor() = default;
 
     /*!
    * \brief Same as call.
