@@ -535,9 +535,9 @@ bool TensorizeComparator::CompareBufferAccess(const T* lhs, const T* rhs) {
         return false;
     }
     auto it = buffer_indices_.find(lhs->buffer);
-    ICHECK(it != buffer_indices_.end());
+    CHECK(it != buffer_indices_.end());
     const std::vector<PrimExpr>& indices_base = (*it).second;
-    ICHECK_EQ(indices_base.size(), rhs->indices.size() + offset);
+    CHECK_EQ(indices_base.size(), rhs->indices.size() + offset);
     for (size_t i = 0; i < rhs->indices.size(); i++) {
         PrimExpr normalized_lhs_index = lhs->indices[i + offset] - indices_base[i + offset];
         if (!analyzer_.CanProveEqual(normalized_lhs_index, rhs->indices[i])) {

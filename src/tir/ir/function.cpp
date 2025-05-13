@@ -3,8 +3,12 @@
 //
 
 #include "tir/function.h"
+#include "relax/expr.h"
+#include "relax/struct_info.h"
 #include "runtime/registry.h"
+#include "tir/analysis.h"
 #include "tir/op.h"
+#include "tir/utils.h"
 
 namespace litetvm {
 namespace tir {

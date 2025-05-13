@@ -34,7 +34,7 @@ enum class BufferIndexType : int32_t {
 /**************** Random variable: BlockRV ****************/
 
 /*! \brief A random variable that evaluates to a TensorIR block */
-class BlockRVNode : public runtime::Object {
+class BlockRVNode : public Object {
 public:
     void VisitAttrs(AttrVisitor* v) {}
     static constexpr const char* _type_key = "tir.BlockRV";

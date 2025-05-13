@@ -3,6 +3,7 @@
 //
 
 #include "tir/schedule/instruction.h"
+#include "tir/schedule/schedule.h"
 #include "node/attr_registry.h"
 #include "runtime/registry.h"
 #include "tir/utils.h"

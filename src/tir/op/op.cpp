@@ -4,12 +4,13 @@
 
 #include <utility>
 
-#include "tir/op.h"
 #include "arith/const_fold.h"
+#include "arith/scalable_expression.h"
 #include "runtime/registry.h"
 #include "target/registry.h"
 #include "tir/builtin.h"
 #include "tir/expr.h"
+#include "tir/op.h"
 #include "tir/op_attr_types.h"
 
 namespace litetvm {
@@ -483,16 +484,16 @@ PrimExpr ceildiv(PrimExpr a, PrimExpr b) {
     CHECK(a.dtype().is_int() || a.dtype().is_uint()) << a;
     CHECK(b.dtype().is_int() || b.dtype().is_uint()) << b;
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<tir::FloorDiv>(a + b - 1, b)) return ret.value();
-    return tir::FloorDiv(a + b - 1, b);
+    if (auto ret = arith::TryConstFold<FloorDiv>(a + b - 1, b)) return ret.value();
+    return FloorDiv(a + b - 1, b);
 }
 
 PrimExpr floormod(PrimExpr a, PrimExpr b) {
     CHECK(a.dtype().is_int() || a.dtype().is_uint()) << a;
     CHECK(b.dtype().is_int() || b.dtype().is_uint()) << b;
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<tir::FloorMod>(a, b)) return ret.value();
-    return tir::FloorMod(a, b);
+    if (auto ret = arith::TryConstFold<FloorMod>(a, b)) return ret.value();
+    return FloorMod(a, b);
 }
 
 PrimExpr min(PrimExpr a, PrimExpr b) {
@@ -504,8 +505,8 @@ PrimExpr min(PrimExpr a, PrimExpr b) {
     if (is_pos_inf(b)) return a;
     if (is_neg_inf(b)) return b;
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<tir::Min>(a, b)) return ret.value();
-    return tir::Min(a, b);
+    if (auto ret = arith::TryConstFold<Min>(a, b)) return ret.value();
+    return Min(a, b);
 }
 
 PrimExpr max(PrimExpr a, PrimExpr b) {
@@ -517,8 +518,8 @@ PrimExpr max(PrimExpr a, PrimExpr b) {
     if (is_pos_inf(b)) return b;
     if (is_neg_inf(b)) return a;
     BinaryOpMatchTypes(a, b);
-    if (auto ret = arith::TryConstFold<tir::Max>(a, b)) return ret.value();
-    return tir::Max(a, b);
+    if (auto ret = arith::TryConstFold<Max>(a, b)) return ret.value();
+    return Max(a, b);
 }
 
 // if_then_else
@@ -526,16 +527,14 @@ PrimExpr if_then_else(PrimExpr cond, PrimExpr true_value, PrimExpr false_value) 
     CHECK(cond.dtype() == DataType::Bool(1))
             << "if_then_else only accept the condition to be boolean type.";
     BinaryOpMatchTypes(true_value, false_value);
-    if (const IntImmNode* op = cond.as<IntImmNode>()) {
+    if (const auto* op = cond.as<IntImmNode>()) {
         if (op->value != 0) {
             return true_value;
-        } else {
-            return false_value;
         }
+        return false_value;
     }
 
-    return tir::Call(true_value.dtype(), tir::builtin::if_then_else(),
-                     {cond, true_value, false_value});
+    return Call(true_value.dtype(), builtin::if_then_else(), {cond, true_value, false_value});
 }
 
 // likely
@@ -549,8 +548,8 @@ PrimExpr operator-(PrimExpr a) { return neg(a); }
 PrimExpr neg(PrimExpr a) {
     using tir::FloatImmNode;
     using tir::IntImmNode;
-    const IntImmNode* pa = a.as<IntImmNode>();
-    const FloatImmNode* fa = a.as<FloatImmNode>();
+    const auto* pa = a.as<IntImmNode>();
+    const auto* fa = a.as<FloatImmNode>();
     if (pa) return IntImm(a.dtype(), -pa->value);
     if (fa) return FloatImm(a.dtype(), -fa->value);
     return make_zero(a.dtype()) - a;
@@ -633,21 +632,21 @@ PrimExpr operator&&(PrimExpr a, PrimExpr b) { return logical_and(a, b); }
 PrimExpr logical_and(PrimExpr a, PrimExpr b) {
     type_check_boolean_args(a, b, "&& operator (logical AND)");
     if (auto ret = arith::TryConstFold<tir::And>(a, b)) return ret.value();
-    return tir::And(a, b);
+    return And(a, b);
 }
 
 PrimExpr operator||(PrimExpr a, PrimExpr b) { return logical_or(a, b); }
 PrimExpr logical_or(PrimExpr a, PrimExpr b) {
     type_check_boolean_args(a, b, "|| operator (logical OR)");
     if (auto ret = arith::TryConstFold<tir::Or>(a, b)) return ret.value();
-    return tir::Or(a, b);
+    return Or(a, b);
 }
 
 PrimExpr operator!(PrimExpr a) { return logical_not(a); }
 PrimExpr logical_not(PrimExpr a) {
     type_check_boolean_args(a, "! operator (logical NOT)");
     if (auto ret = arith::TryConstFold<tir::Not>(a)) return ret.value();
-    return tir::Not(a);
+    return Not(a);
 }
 
 // shift right
@@ -671,7 +670,7 @@ PrimExpr right_shift(PrimExpr a, PrimExpr b) {
         }
     });
 
-    return tir::Call(a.dtype(), tir::builtin::shift_right(), {a, b});
+    return Call(a.dtype(), builtin::shift_right(), {a, b});
 }
 
 // shift left
@@ -690,7 +689,7 @@ PrimExpr left_shift(PrimExpr a, PrimExpr b) {
             if (pb->value == 0) return a;
         }
     });
-    return tir::Call(a.dtype(), tir::builtin::shift_left(), {a, b});
+    return Call(a.dtype(), builtin::shift_left(), {a, b});
 }
 
 // bitwise and
@@ -702,7 +701,7 @@ PrimExpr bitwise_and(PrimExpr a, PrimExpr b) {
         const DataType& rtype = a.dtype();
         if (pa && pb) return IntImm(rtype, (pa->value & pb->value));
     });
-    return tir::Call(a.dtype(), tir::builtin::bitwise_and(), {a, b});
+    return Call(a.dtype(), builtin::bitwise_and(), {a, b});
 }
 
 // bitwise_or
@@ -714,7 +713,7 @@ PrimExpr bitwise_or(PrimExpr a, PrimExpr b) {
         const DataType& rtype = a.dtype();
         if (pa && pb) return IntImm(rtype, (pa->value | pb->value));
     });
-    return tir::Call(a.dtype(), tir::builtin::bitwise_or(), {a, b});
+    return Call(a.dtype(), builtin::bitwise_or(), {a, b});
 }
 
 // bitwise_xor
@@ -726,7 +725,7 @@ PrimExpr bitwise_xor(PrimExpr a, PrimExpr b) {
         const DataType& rtype = a.dtype();
         if (pa && pb) return IntImm(rtype, (pa->value ^ pb->value));
     });
-    return tir::Call(a.dtype(), tir::builtin::bitwise_xor(), {a, b});
+    return Call(a.dtype(), builtin::bitwise_xor(), {a, b});
 }
 
 // bitwise_not
@@ -734,7 +733,7 @@ PrimExpr operator~(PrimExpr a) { return bitwise_neg(a); }
 
 PrimExpr bitwise_neg(PrimExpr a) {
     type_check_integer_args(a, "~ operator (bitwise NOT)");
-    return tir::Call(a.dtype(), tir::builtin::bitwise_not(), {a});
+    return Call(a.dtype(), builtin::bitwise_not(), {a});
 }
 
 TVM_REGISTER_GLOBAL("tir.bitwise_not").set_body_typed([](PrimExpr a) {
@@ -749,7 +748,7 @@ PrimExpr pow(PrimExpr x, PrimExpr y) {
     // If we detect pow(x, 3), suggest using x * x * x
     if (y.dtype().is_int()) {
         using tir::IntImmNode;
-        const IntImmNode* px = y.as<IntImmNode>();
+        const auto* px = y.as<IntImmNode>();
         if (px) {
             if (px->value >= 3) {
                 LOG(WARNING)
@@ -760,7 +759,7 @@ PrimExpr pow(PrimExpr x, PrimExpr y) {
         }
     } else if (y.dtype().is_float()) {
         using tir::FloatImmNode;
-        const FloatImmNode* fx = y.as<FloatImmNode>();
+        const auto* fx = y.as<FloatImmNode>();
         if (fx) {
             if (fx->value >= 3.0) {
                 LOG(WARNING)
@@ -772,7 +771,7 @@ PrimExpr pow(PrimExpr x, PrimExpr y) {
     }
 
     static auto op = Op::Get("tir.pow");
-    return tir::Call(x.dtype(), op, {x, y});
+    return Call(x.dtype(), op, {x, y});
 }
 
 TVM_TIR_REGISTER_PURE_BINARY_OP("pow").set_attr<TVectorizable>("TVectorizable", true);
@@ -781,26 +780,27 @@ TVM_TIR_REGISTER_PURE_BINARY_OP("pow").set_attr<TVectorizable>("TVectorizable", 
 PrimExpr abs(PrimExpr x) {
     if (x.dtype().is_int()) {
         using tir::IntImmNode;
-        const IntImmNode* px = x.as<IntImmNode>();
+        const auto* px = x.as<IntImmNode>();
         if (px) {
             return IntImm(x.dtype(), std::abs(px->value));
         }
-        return tir::Select(x >= make_zero(x.dtype()), x, -x);
-    } else if (x.dtype().is_float() || x.dtype().is_bfloat()) {
+        return Select(x >= make_zero(x.dtype()), x, -x);
+    }
+    if (x.dtype().is_float() || x.dtype().is_bfloat()) {
         using tir::FloatImmNode;
-        const FloatImmNode* fx = x.as<FloatImmNode>();
+        const auto* fx = x.as<FloatImmNode>();
         if (fx) {
             return FloatImm(x.dtype(), std::fabs(fx->value));
         }
         static auto op = Op::Get("tir.fabs");
-        return tir::Call(x.dtype(), op, {x});
-    } else if (x.dtype().is_uint()) {
-        return x;
-    } else {
-        LOG(FATAL) << "Data type " << x.dtype()
-                   << " not supported for absolute op. Skipping absolute op...";
+        return Call(x.dtype(), op, {x});
+    }
+    if (x.dtype().is_uint()) {
         return x;
     }
+    LOG(FATAL) << "Data type " << x.dtype()
+               << " not supported for absolute op. Skipping absolute op...";
+    return x;
 }
 
 TVM_TIR_REGISTER_PURE_UNARY_OP("fabs").set_attr<TVectorizable>("TVectorizable", true);
@@ -810,21 +810,20 @@ PrimExpr isnan(PrimExpr x) {
     DataType t = DataType::Bool(x.dtype().lanes());
     if (x.dtype().is_int() || x.dtype().is_uint()) {
         return make_const(t, false);
-    } else if (x.dtype().is_float()) {
+    }
+    if (x.dtype().is_float()) {
         using tir::FloatImmNode;
-        const FloatImmNode* fx = x.as<FloatImmNode>();
+        const auto* fx = x.as<FloatImmNode>();
         if (fx) {
             return make_const(t, std::isnan(fx->value));
         }
         static auto op = Op::Get("tir.isnan");
         if (x.dtype().bits() == 16) {
-            return tir::Call(t, op, {cast(DataType::Float(32, t.lanes()), std::move(x))});
-        } else {
-            return tir::Call(t, op, {x});
+            return Call(t, op, {cast(DataType::Float(32, t.lanes()), std::move(x))});
         }
-    } else {
-        LOG(FATAL) << "Data type " << x.dtype() << " not supported for isnan op. Skipping isnan op...";
+        return Call(t, op, {x});
     }
+    LOG(FATAL) << "Data type " << x.dtype() << " not supported for isnan op. Skipping isnan op...";
 }
 
 // isinf
@@ -832,12 +831,12 @@ PrimExpr isinf(PrimExpr x) {
     DataType t = DataType::Bool(x.dtype().lanes());
     if (x.dtype().is_int() || x.dtype().is_uint()) {
         return make_const(t, false);
-    } else if (x.dtype().is_float()) {
+    }
+    if (x.dtype().is_float()) {
         PrimExpr infX = infinity(x.dtype());
         return abs(x) == infX && !isnan(x);
-    } else {
-        LOG(FATAL) << "Data type " << x.dtype() << " not supported for finiteness ops. Skipping it...";
     }
+    LOG(FATAL) << "Data type " << x.dtype() << " not supported for finiteness ops. Skipping it...";
 }
 
 // isfinite
@@ -845,9 +844,9 @@ PrimExpr isfinite(PrimExpr x) { return !isinf(x) && !isnan(x); }
 
 PrimExpr sum(PrimExpr source, Array<IterVar> rdom, Array<PrimExpr> init) {
     Var x("x", source.dtype()), y("y", source.dtype());
-    PrimExpr result = tir::Add(x, y);
+    PrimExpr result = Add(x, y);
     PrimExpr identity_element = make_zero(source.dtype());
-    tir::CommReducer combiner = tir::CommReducer({x}, {y}, {result}, {identity_element});
+    CommReducer combiner = CommReducer({x}, {y}, {result}, {identity_element});
     return tir::Reduce(combiner, {source}, rdom, make_const(DataType::Bool(1), true), 0, init);
 }
 

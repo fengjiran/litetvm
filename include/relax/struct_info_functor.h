@@ -92,7 +92,7 @@ private:
 /*!
  * \brief A struct info visitor.
  */
-class TVM_DLL StructInfoVisitor : public StructInfoFunctor<void(const StructInfo& n)> {
+class LITETVM_API StructInfoVisitor : public StructInfoFunctor<void(const StructInfo& n)> {
 public:
     void VisitStructInfo_(const ObjectStructInfoNode* op) override;
     void VisitStructInfo_(const PrimStructInfoNode* op) override;
@@ -111,7 +111,7 @@ protected:
 /*!
  * \brief StructInfoMutator that mutates struct info.
  */
-class TVM_DLL StructInfoMutator : public StructInfoFunctor<StructInfo(const StructInfo& n)> {
+class LITETVM_API StructInfoMutator : public StructInfoFunctor<StructInfo(const StructInfo& n)> {
 public:
     StructInfo VisitStructInfo_(const ObjectStructInfoNode* op) override;
     StructInfo VisitStructInfo_(const PrimStructInfoNode* op) override;

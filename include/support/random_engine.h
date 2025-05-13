@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <random>
+#include <dmlc/logging.h>
 
 namespace litetvm {
 namespace support {
@@ -74,7 +75,7 @@ public:
             rand_state = 1;
         }
         if (rand_state < 0) {
-            LOG(FATAL) << "ValueError: Random seed must be non-negative";
+            LOG(DFATAL) << "ValueError: Random seed must be non-negative";
         }
         return rand_state;
     }
