@@ -49,9 +49,19 @@ public:
     /*! \brief Nullopt handling */
     Optional(NullOptType) {}// NOLINT(*)
 
+    // nullopt hanlding
+    Optional(std::nullopt_t) {}  // NOLINT(*)
+
     // nullptr handling.
     // disallow implicit conversion as 0 can be implicitly converted to nullptr_t
     explicit Optional(std::nullptr_t) {}
+
+    // handle conversion from std::optional<T>
+    Optional(std::optional<T> other) {  // NOLINT(*)
+        if (other.has_value()) {
+            *this = *std::move(other);
+        }
+    }
 
     Optional& operator=(std::nullptr_t) {
         data_ = nullptr;

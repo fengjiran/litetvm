@@ -387,7 +387,9 @@ public:
     Id vid;
 
     /*! \return The name hint of the variable */
-    const String& name_hint() const { return vid->name_hint; }
+    const String& name_hint() const {
+        return vid->name_hint;
+    }
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("vid", &vid);
@@ -407,16 +409,16 @@ public:
     }
 
     static constexpr const char* _type_key = "relax.expr.Var";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
-    static constexpr const uint32_t _type_child_slots = 1;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
+    static constexpr uint32_t _type_child_slots = 1;
     TVM_DECLARE_BASE_OBJECT_INFO(VarNode, LeafExprNode);
 };
 
 class Var : public LeafExpr {
 public:
     LITETVM_API explicit Var(String name_hint, Optional<StructInfo> struct_info_annotation)
-        : Var(Id(name_hint), struct_info_annotation) {}
+        : Var(Id(std::move(name_hint)), std::move(struct_info_annotation)) {}
 
     LITETVM_API explicit Var(Id vid, Optional<StructInfo> struct_info_annotation);
     TVM_DEFINE_OBJECT_REF_METHODS(Var, LeafExpr, VarNode);
@@ -455,7 +457,7 @@ public:
 class DataflowVar : public Var {
 public:
     LITETVM_API explicit DataflowVar(String name_hint, Optional<StructInfo> struct_info_annotation)
-        : DataflowVar(Id(name_hint), struct_info_annotation) {}
+        : DataflowVar(Id(std::move(name_hint)), std::move(struct_info_annotation)) {}
 
     LITETVM_API explicit DataflowVar(Id vid, Optional<StructInfo> struct_info_annotation);
 
@@ -472,13 +474,15 @@ public:
 class ConstantNode : public LeafExprNode {
 public:
     /*! \brief The data of the tensor */
-    runtime::NDArray data;
+    NDArray data;
 
     /*! \return The corresponding tensor type of the data */
     TensorType tensor_type() const;
 
     /*! \return Whether it is scalar(ndim-0 tensor) */
-    bool is_scalar() const { return data->ndim == 0; }
+    bool is_scalar() const {
+        return data->ndim == 0;
+    }
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("data", &data);
@@ -510,7 +514,7 @@ public:
      *        If not specified, infer it from data.
      * \param span The source span of the expression.
      */
-    LITETVM_API explicit Constant(runtime::NDArray data,
+    LITETVM_API explicit Constant(NDArray data,
                                   Optional<StructInfo> struct_info_annotation = NullOpt);
 
     TVM_DEFINE_OBJECT_REF_METHODS(Constant, LeafExpr, ConstantNode);
@@ -665,8 +669,8 @@ public:
     // mutable Span span;
 
     static constexpr const char* _type_key = "relax.expr.Binding";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_BASE_OBJECT_INFO(BindingNode, Object);
 };
 
@@ -677,8 +681,13 @@ protected:
 public:
     explicit Binding(ObjectPtr<Object> n) : ObjectRef(n) {}
     TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(Binding);
-    const BindingNode* operator->() const { return static_cast<const BindingNode*>(data_.get()); }
-    const BindingNode* get() const { return operator->(); }
+    const BindingNode* operator->() const {
+        return static_cast<const BindingNode*>(data_.get());
+    }
+
+    const BindingNode* get() const {
+        return operator->();
+    }
     using ContainerType = BindingNode;
 };
 
@@ -707,8 +716,8 @@ public:
     void SHashReduce(SHashReducer hash_reduce) const;
 
     static constexpr const char* _type_key = "relax.expr.MatchCast";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_FINAL_OBJECT_INFO(MatchCastNode, BindingNode);
 };
 
@@ -739,8 +748,8 @@ public:
     void SHashReduce(SHashReducer hash_reduce) const;
 
     static constexpr const char* _type_key = "relax.expr.VarBinding";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_FINAL_OBJECT_INFO(VarBindingNode, BindingNode);
 };
 
@@ -768,8 +777,8 @@ public:
     void SHashReduce(SHashReducer hash_reduce) const { hash_reduce(bindings); }
 
     static constexpr const char* _type_key = "relax.expr.BindingBlock";
-    static constexpr const bool _type_has_method_sequal_reduce = true;
-    static constexpr const bool _type_has_method_shash_reduce = true;
+    static constexpr bool _type_has_method_sequal_reduce = true;
+    static constexpr bool _type_has_method_shash_reduce = true;
     TVM_DECLARE_BASE_OBJECT_INFO(BindingBlockNode, Object);
 };
 

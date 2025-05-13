@@ -199,9 +199,9 @@ private:
 class LITETVM_API ExprVisitor : public ExprFunctor<void(const PrimExpr&)> {
 public:
     using ExprFunctor::operator();
+    using ExprFunctor::VisitExpr;
 
 protected:
-    using ExprFunctor::VisitExpr;
     // list of functions to override.
     void VisitExpr_(const VarNode* op) override;
     void VisitExpr_(const SizeVarNode* op) override;

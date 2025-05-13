@@ -32,7 +32,7 @@ public:
     /*! \brief the result type of this functor */
     using result_type = R;
     /*! \brief virtual destructor */
-    virtual ~TypeFunctor() {}
+    virtual ~TypeFunctor() = default;
 
     /*!
    * \brief Same as call.

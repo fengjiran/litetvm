@@ -2,6 +2,7 @@
 // Created by 赵丹 on 25-4-14.
 //
 
+#include "relax/analysis.h"
 #include "relax/expr.h"
 #include "relax/struct_info.h"
 
@@ -419,6 +420,7 @@ bool VarBindingNode::SEqualReduce(const VarBindingNode* other, SEqualReducer equ
         return equal(value, other->value) && equal.DefEqual(var, other->var);
     }
 }
+
 void VarBindingNode::SHashReduce(SHashReducer hash_reduce) const {
     if (value->IsInstance<FunctionNode>()) {
         hash_reduce.DefHash(var);
