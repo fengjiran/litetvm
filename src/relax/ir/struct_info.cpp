@@ -4,6 +4,7 @@
 
 #include "relax/struct_info.h"
 #include "relax/expr.h"
+#include "relax/analysis.h"
 #include "runtime/registry.h"
 
 namespace litetvm {
