@@ -6,6 +6,7 @@
 #include "arith/const_fold.h"
 #include "arith/pattern_match.h"
 #include "arith/product_normal_form.h"
+#include "runtime/registry.h"
 #include "support/utils.h"
 #include "tir/analysis.h"
 #include "tir/expr.h"

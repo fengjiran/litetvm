@@ -10,6 +10,7 @@
 #include "relax/block_builder.h"
 #include "relax/expr.h"
 #include "relax/type.h"
+#include "runtime/registry.h"
 
 namespace litetvm {
 namespace relax {

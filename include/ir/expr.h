@@ -10,6 +10,7 @@
 #include "node/script_printer.h"
 #include "runtime/object.h"
 #include "runtime/string.h"
+#include "runtime/registry.h"
 
 // #include <algorithm>
 // #include <functional>

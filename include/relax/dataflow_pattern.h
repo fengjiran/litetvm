@@ -817,7 +817,9 @@ public:
     std::tuple<PrimExpr, bool> AsPrimExpr(
             std::function<Optional<Var>(const DFPatternNode*)> match_state) const override;
 
-    void VisitAttrs(AttrVisitor* v) { v->Visit("args", &args); }
+    void VisitAttrs(AttrVisitor* v) {
+        v->Visit("args", &args);
+    }
 
     static constexpr const char* _type_key = "relax.dpl.SameShapeConstraint";
     TVM_DECLARE_FINAL_OBJECT_INFO(SameShapeConstraintNode, DFConstraintNode);

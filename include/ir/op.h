@@ -9,7 +9,6 @@
 #include "ir/expr.h"
 #include "ir/type.h"
 #include "node/attr_registry_map.h"
-#include "runtime/registry.h"
 
 #include <string>
 #include <vector>
@@ -20,6 +19,9 @@ namespace litetvm {
 template<typename>
 class OpAttrMap;
 
+// Forward declaration
+template<typename, typename>
+class AttrRegistry;
 
 /*!
  * \brief Primitive Op(builtin intrinsics)
@@ -287,12 +289,15 @@ public:
     LITETVM_API static OpRegEntry& RegisterOrGet(const String& name);
 
 private:
-    template<typename, typename>
-    friend class AttrRegistry;
+    // template<typename, typename>
+    // friend class AttrRegistry;
+
+    friend class AttrRegistry<OpRegEntry, Op>;
     // the name
     std::string name;
     /*! \brief The operator */
     Op op_;
+
     // private constructor
     LITETVM_API OpRegEntry(uint32_t reg_index);
 

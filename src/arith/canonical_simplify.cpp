@@ -35,7 +35,7 @@ public:
     void VisitAttrs(AttrVisitor* v) {}
 
     static constexpr const char* _type_key = "arith.CanonicalExpr";
-    static constexpr const uint32_t _type_child_slots = 2;
+    static constexpr uint32_t _type_child_slots = 2;
     TVM_DECLARE_BASE_OBJECT_INFO(CanonicalExprNode, PrimExprNode);
 };
 
@@ -572,7 +572,9 @@ public:
     }
 
     // Normal mutation without normalization.
-    PrimExpr CanonicalMutate(PrimExpr expr) { return Rewriter::VisitExpr(expr); }
+    PrimExpr CanonicalMutate(PrimExpr expr) {
+        return Rewriter::VisitExpr(expr);
+    }
 
     using Rewriter::VisitExpr_;
     PrimExpr VisitExpr_(const AddNode* op) final;
@@ -641,9 +643,8 @@ private:
     PrimExpr Normalize(PrimExpr expr) {
         if (const auto* op = expr.as<CanonicalExprNode>()) {
             return op->Normalize();
-        } else {
-            return expr;
         }
+        return expr;
     }
     /*!
    * \brief Create a SplitExpr from expr.
@@ -702,10 +703,9 @@ private:
         if (const auto* op = expr.as<IntImmNode>()) {
             n->base = op->value;
             return SumExpr(n);
-        } else {
-            n->args.emplace_back(ToSplitExpr(expr));
-            return SumExpr(n);
         }
+        n->args.emplace_back(ToSplitExpr(expr));
+        return SumExpr(n);
     }
     // Simplify the combiner used in reduce.
     PrimExpr SimplifyReduceCombiner(const ReduceNode* op);

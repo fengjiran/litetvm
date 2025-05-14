@@ -7,6 +7,7 @@
 #include "node/attr_registry.h"
 #include "runtime/module.h"
 #include "runtime/packed_func.h"
+#include "runtime/registry.h"
 
 #include <memory>
 #include <utility>

@@ -53,7 +53,9 @@ public:
         }
 
         auto registry_index = static_cast<uint32_t>(entries_.size());
-        auto entry = std::unique_ptr<EntryType>(new EntryType(registry_index));
+        // auto entry = std::unique_ptr<EntryType>(new EntryType(registry_index));
+        auto* x = new EntryType(registry_index);
+        auto entry = std::unique_ptr<EntryType>(x);
         auto* eptr = entry.get();
         eptr->name = name;
         entry_map_[name] = eptr;
@@ -149,7 +151,7 @@ public:
    * \return a global singleton of the registry.
    */
     static TSelf* Global() {
-        static TSelf* inst = new TSelf();
+        static auto* inst = new TSelf();
         return inst;
     }
 

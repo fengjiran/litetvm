@@ -118,7 +118,7 @@ public:
  * \brief Managed reference to InstructionKindNode
  * \sa InstructionKindNode
  */
-class InstructionKind : public runtime::ObjectRef {
+class InstructionKind : public ObjectRef {
 public:
     /*!
    * \brief Retrieve an InstructionKind using its name
@@ -130,7 +130,7 @@ public:
 };
 
 /*! \brief Schedule instructions each corresponds to a schedule primitive */
-class InstructionNode : public runtime::Object {
+class InstructionNode : public Object {
 public:
     /*! \brief The kind of the instruction */
     InstructionKind kind;
@@ -175,7 +175,7 @@ public:
  * \brief Managed reference to InstructionNode
  * \sa InstructionNode
  */
-class Instruction : public runtime::ObjectRef {
+class Instruction : public ObjectRef {
 public:
     /*!
    * \brief Constructor
@@ -254,7 +254,12 @@ public:
         return *this;
     }
 
+    // template<typename T, typename U>
+    // friend class AttrRegistry;
+
 private:
+    friend class AttrRegistry<InstructionKindRegEntry, InstructionKind>;
+
     /*! \brief Private constructor, used only by AttrRegistry */
     explicit InstructionKindRegEntry(uint32_t reg_index);
     /*! \brief Get the mutable reference to the internal InstructionKind */
@@ -266,8 +271,7 @@ private:
     String name;
     /*! \brief The instruction kind */
     InstructionKind inst_kind_;
-    template<typename, typename>
-    friend class AttrRegistry;
+
     friend class InstructionKind;
 };
 
