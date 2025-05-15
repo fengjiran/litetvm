@@ -31,6 +31,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/include
         ${DMLC_PATH}
         ${BACKTRACE_PATH}
+        ${DLPACK_PATH}
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -25,7 +25,7 @@
 #define TVM_FFI_C_API_H_
 
 #include <dlpack/dlpack.h>
-#include <stdint.h>
+#include <cstdint>
 
 #if !defined(TVM_FFI_DLL) && defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
@@ -51,80 +51,80 @@ enum TVMFFITypeIndex : int32_t {
 #else
 typedef enum {
 #endif
-  // [Section] On-stack POD and special types: [0, kTVMFFIStaticObjectBegin)
-  // N.B. `kTVMFFIRawStr` is a string backed by a `\0`-terminated char array,
-  // which is not owned by TVMFFIAny. It is required that the following
-  // invariant holds:
-  // - `Any::type_index` is never `kTVMFFIRawStr`
-  // - `AnyView::type_index` can be `kTVMFFIRawStr`
-  //
-  /*
+    // [Section] On-stack POD and special types: [0, kTVMFFIStaticObjectBegin)
+    // N.B. `kTVMFFIRawStr` is a string backed by a `\0`-terminated char array,
+    // which is not owned by TVMFFIAny. It is required that the following
+    // invariant holds:
+    // - `Any::type_index` is never `kTVMFFIRawStr`
+    // - `AnyView::type_index` can be `kTVMFFIRawStr`
+    //
+    /*
    * \brief The root type of all FFI objects.
    *
    * We include it so TypeIndex captures all possible runtime values.
    * `kTVMFFIAny` code will never appear in Any::type_index.
    * However, it may appear in field annotations during reflection.
    */
-  kTVMFFIAny = -1,
-  /*! \brief None/nullptr value */
-  kTVMFFINone = 0,
-  /*! \brief POD int value */
-  kTVMFFIInt = 1,
-  /*! \brief POD bool value */
-  kTVMFFIBool = 2,
-  /*! \brief POD float value */
-  kTVMFFIFloat = 3,
-  /*! \brief Opaque pointer object */
-  kTVMFFIOpaquePtr = 4,
-  /*! \brief DLDataType */
-  kTVMFFIDataType = 5,
-  /*! \brief DLDevice */
-  kTVMFFIDevice = 6,
-  /*! \brief DLTensor* */
-  kTVMFFIDLTensorPtr = 7,
-  /*! \brief const char**/
-  kTVMFFIRawStr = 8,
-  /*! \brief TVMFFIByteArray* */
-  kTVMFFIByteArrayPtr = 9,
-  /*! \brief R-value reference to ObjectRef */
-  kTVMFFIObjectRValueRef = 10,
-  /*! \brief Start of statically defined objects. */
-  kTVMFFIStaticObjectBegin = 64,
-  /*!
+    kTVMFFIAny = -1,
+    /*! \brief None/nullptr value */
+    kTVMFFINone = 0,
+    /*! \brief POD int value */
+    kTVMFFIInt = 1,
+    /*! \brief POD bool value */
+    kTVMFFIBool = 2,
+    /*! \brief POD float value */
+    kTVMFFIFloat = 3,
+    /*! \brief Opaque pointer object */
+    kTVMFFIOpaquePtr = 4,
+    /*! \brief DLDataType */
+    kTVMFFIDataType = 5,
+    /*! \brief DLDevice */
+    kTVMFFIDevice = 6,
+    /*! \brief DLTensor* */
+    kTVMFFIDLTensorPtr = 7,
+    /*! \brief const char**/
+    kTVMFFIRawStr = 8,
+    /*! \brief TVMFFIByteArray* */
+    kTVMFFIByteArrayPtr = 9,
+    /*! \brief R-value reference to ObjectRef */
+    kTVMFFIObjectRValueRef = 10,
+    /*! \brief Start of statically defined objects. */
+    kTVMFFIStaticObjectBegin = 64,
+    /*!
    * \brief Object, all objects starts with TVMFFIObject as its header.
    * \note We will also add other fields
    */
-  kTVMFFIObject = 64,
-  /*!
+    kTVMFFIObject = 64,
+    /*!
    * \brief String object, layout = { TVMFFIObject, TVMFFIByteArray, ... }
    */
-  kTVMFFIStr = 65,
-  /*!
+    kTVMFFIStr = 65,
+    /*!
    * \brief Bytes object, layout = { TVMFFIObject, TVMFFIByteArray, ... }
    */
-  kTVMFFIBytes = 66,
-  /*! \brief Error object. */
-  kTVMFFIError = 67,
-  /*! \brief Function object. */
-  kTVMFFIFunction = 68,
-  /*! \brief Array object. */
-  kTVMFFIArray = 69,
-  /*! \brief Map object. */
-  kTVMFFIMap = 70,
-  /*!
+    kTVMFFIBytes = 66,
+    /*! \brief Error object. */
+    kTVMFFIError = 67,
+    /*! \brief Function object. */
+    kTVMFFIFunction = 68,
+    /*! \brief Array object. */
+    kTVMFFIArray = 69,
+    /*! \brief Map object. */
+    kTVMFFIMap = 70,
+    /*!
    * \brief Shape object, layout = { TVMFFIObject, { const int64_t*, size_t }, ... }
    */
-  kTVMFFIShape = 71,
-  /*!
+    kTVMFFIShape = 71,
+    /*!
    * \brief NDArray object, layout = { TVMFFIObject, DLTensor, ... }
    */
-  kTVMFFINDArray = 72,
-  /*! \brief Runtime module object. */
-  kTVMFFIModule = 73,
-  kTVMFFIStaticObjectEnd,
-  // [Section] Dynamic Boxed: [kTVMFFIDynObjectBegin, +oo)
-  /*! \brief Start of type indices that are allocated at runtime. */
-  kTVMFFIDynObjectBegin = 128
+    kTVMFFINDArray = 72,
+    /*! \brief Runtime module object. */
+    kTVMFFIModule = 73,
+    kTVMFFIStaticObjectEnd,
+    // [Section] Dynamic Boxed: [kTVMFFIDynObjectBegin, +oo)
+    /*! \brief Start of type indices that are allocated at runtime. */
+    kTVMFFIDynObjectBegin = 128
 #ifdef __cplusplus
 };
 #else
@@ -139,22 +139,22 @@ typedef void* TVMFFIObjectHandle;
  * \note TVMFFIObject and TVMFFIAny share the common type_index header
  */
 typedef struct TVMFFIObject {
-  /*!
+    /*!
    * \brief type index of the object.
    * \note The type index of Object and Any are shared in FFI.
    */
-  int32_t type_index;
-  /*! \brief Reference counter of the object. */
-  int32_t ref_counter;
-  union {
-    /*! \brief Deleter to be invoked when reference counter goes to zero. */
-    void (*deleter)(struct TVMFFIObject* self);
-    /*!
+    int32_t type_index;
+    /*! \brief Reference counter of the object. */
+    int32_t ref_counter;
+    union {
+        /*! \brief Deleter to be invoked when reference counter goes to zero. */
+        void (*deleter)(struct TVMFFIObject* self);
+        /*!
      * \brief auxilary field to TVMFFIObject is always 8 bytes aligned.
      * \note This helps us to ensure cross platform compatibility.
      */
-    int64_t __ensure_align;
-  };
+        int64_t __ensure_align;
+    };
 } TVMFFIObject;
 
 /*!
@@ -164,28 +164,28 @@ typedef struct TVMFFIObject {
  * as well as reference counted pointers to object.
  */
 typedef struct TVMFFIAny {
-  /*!
+    /*!
    * \brief type index of the object.
    * \note The type index of Object and Any are shared in FFI.
    */
-  int32_t type_index;
-  /*!
+    int32_t type_index;
+    /*!
    * \brief length for on-stack Any object, such as small-string
    * \note This field is reserved for future compact.
    */
-  int32_t small_len;
-  union {                  // 8 bytes
-    int64_t v_int64;       // integers
-    double v_float64;      // floating-point numbers
-    void* v_ptr;           // typeless pointers
-    const char* v_c_str;   // raw C-string
-    TVMFFIObject* v_obj;   // ref counted objects
-    DLDataType v_dtype;    // data type
-    DLDevice v_device;     // device
-    char v_bytes[8];       // small string
-    char32_t v_char32[2];  // small UCS4 string and Unicode
-    uint64_t v_uint64;     // uint64 repr mainly used for hashing
-  };
+    int32_t small_len;
+    union {                  // 8 bytes
+        int64_t v_int64;     // integers
+        double v_float64;    // floating-point numbers
+        void* v_ptr;         // typeless pointers
+        const char* v_c_str; // raw C-string
+        TVMFFIObject* v_obj; // ref counted objects
+        DLDataType v_dtype;  // data type
+        DLDevice v_device;   // device
+        char v_bytes[8];     // small string
+        char32_t v_char32[2];// small UCS4 string and Unicode
+        uint64_t v_uint64;   // uint64 repr mainly used for hashing
+    };
 } TVMFFIAny;
 
 /*!
@@ -200,36 +200,36 @@ typedef struct TVMFFIAny {
  *       The FFI binding should be careful when treating this ABI.
  */
 typedef struct {
-  const char* data;
-  size_t size;
+    const char* data;
+    size_t size;
 } TVMFFIByteArray;
 
 /*!
  * \brief Shape cell used in shape object following header.
  */
 typedef struct {
-  const int64_t* data;
-  size_t size;
+    const int64_t* data;
+    size_t size;
 } TVMFFIShapeCell;
 
 /*!
  * \brief Error cell used in error object following header.
  */
 typedef struct {
-  /*! \brief The kind of the error. */
-  TVMFFIByteArray kind;
-  /*! \brief The message of the error. */
-  TVMFFIByteArray message;
-  /*!
+    /*! \brief The kind of the error. */
+    TVMFFIByteArray kind;
+    /*! \brief The message of the error. */
+    TVMFFIByteArray message;
+    /*!
    * \brief The traceback of the error.
    */
-  TVMFFIByteArray traceback;
-  /*!
+    TVMFFIByteArray traceback;
+    /*!
    * \brief Function handle to update the traceback of the error.
    * \param self The self object handle.
    * \param traceback The traceback to update.
    */
-  void (*update_traceback)(TVMFFIObjectHandle self, const TVMFFIByteArray* traceback);
+    void (*update_traceback)(TVMFFIObjectHandle self, const TVMFFIByteArray* traceback);
 } TVMFFIErrorCell;
 
 /*!
@@ -271,8 +271,8 @@ typedef int (*TVMFFISafeCallType)(void* self, const TVMFFIAny* args, int32_t num
  * \brief Object cell for function object following header.
  */
 typedef struct {
-  /*! \brief A C API compatible call with exception catching. */
-  TVMFFISafeCallType safe_call;
+    /*! \brief A C API compatible call with exception catching. */
+    TVMFFISafeCallType safe_call;
 } TVMFFIFunctionCell;
 
 /*!
@@ -293,9 +293,9 @@ typedef int (*TVMFFIFieldSetter)(void* field, const TVMFFIAny* value);
  * \brief Information support for optional object reflection.
  */
 typedef struct {
-  /*! \brief The name of the field. */
-  TVMFFIByteArray name;
-  /*!
+    /*! \brief The name of the field. */
+    TVMFFIByteArray name;
+    /*!
    * \brief Records the static type kind of the field.
    *
    * Possible values:
@@ -312,63 +312,63 @@ typedef struct {
    * object. It also helps to provide opportunities to enable
    * short-cut access to the field.
    */
-  int32_t field_static_type_index;
-  /*!
+    int32_t field_static_type_index;
+    /*!
    * \brief Mark whether field is readonly.
    */
-  int32_t readonly;
-  /*!
+    int32_t readonly;
+    /*!
    * \brief Byte offset of the field.
    */
-  int64_t byte_offset;
-  /*! \brief The getter to access the field. */
-  TVMFFIFieldGetter getter;
-  /*! \brief The setter to access the field. */
-  TVMFFIFieldSetter setter;
+    int64_t byte_offset;
+    /*! \brief The getter to access the field. */
+    TVMFFIFieldGetter getter;
+    /*! \brief The setter to access the field. */
+    TVMFFIFieldSetter setter;
 } TVMFFIFieldInfo;
 
 /*!
  * \brief Method information that can appear in reflection table.
  */
 typedef struct {
-  /*! \brief The name of the field. */
-  TVMFFIByteArray name;
-  /*!
+    /*! \brief The name of the field. */
+    TVMFFIByteArray name;
+    /*!
    * \brief The method wrapped as Function
    * \note The first argument to the method is always the self.
    */
-  TVMFFIObjectHandle method;
+    TVMFFIObjectHandle method;
 } TVMFFIMethodInfo;
 
 /*!
  * \brief Runtime type information for object type checking.
  */
 typedef struct {
-  /*!
+    /*!
    *\brief The runtime type index,
    * It can be allocated during runtime if the type is dynamic.
    */
-  int32_t type_index;
-  /*! \brief number of parent types in the type hierachy. */
-  int32_t type_depth;
-  /*! \brief the unique type key to identify the type. */
-  TVMFFIByteArray type_key;
-  /*! \brief Cached hash value of the type key, used for consistent structural hashing. */
-  uint64_t type_key_hash;
-  /*!
+    int32_t type_index;
+    /*! \brief number of parent types in the type hierachy. */
+    int32_t type_depth;
+    /*! \brief the unique type key to identify the type. */
+    TVMFFIByteArray type_key;
+    /*! \brief Cached hash value of the type key, used for consistent structural hashing. */
+    uint64_t type_key_hash;
+    /*!
    * \brief type_acenstors[depth] stores the type_index of the acenstors at depth level
    * \note To keep things simple, we do not allow multiple inheritance so the
    *       hieracy stays as a tree
    */
-  const int32_t* type_acenstors;
-  /*! \brief number of reflection accessible fields. */
-  int32_t num_fields;
-  /*! \brief number of reflection acccesible methods. */
-  int32_t num_methods;
-  /*! \brief The reflection field information. */
-  TVMFFIFieldInfo* fields;
-  /*! \brief The reflection method. */
-  TVMFFIMethodInfo* methods;
+    const int32_t* type_acenstors;
+    /*! \brief number of reflection accessible fields. */
+    int32_t num_fields;
+    /*! \brief number of reflection acccesible methods. */
+    int32_t num_methods;
+    /*! \brief The reflection field information. */
+    TVMFFIFieldInfo* fields;
+    /*! \brief The reflection method. */
+    TVMFFIMethodInfo* methods;
 } TVMFFITypeInfo;
 
 //------------------------------------------------------------
@@ -640,7 +640,7 @@ TVM_FFI_DLL int32_t TVMFFIGetOrAllocTypeIndex(const TVMFFIByteArray* type_key,
 TVM_FFI_DLL const TVMFFITypeInfo* TVMFFIGetTypeInfo(int32_t type_index);
 
 #ifdef __cplusplus
-}  // TVM_FFI_EXTERN_C
+}// TVM_FFI_EXTERN_C
 #endif
 
 //---------------------------------------------------------------
@@ -659,7 +659,7 @@ TVM_FFI_DLL const TVMFFITypeInfo* TVMFFIGetTypeInfo(int32_t type_index);
  * \return The type index.
  */
 inline int32_t TVMFFIObjectGetTypeIndex(TVMFFIObjectHandle obj) {
-  return static_cast<TVMFFIObject*>(obj)->type_index;
+    return static_cast<TVMFFIObject*>(obj)->type_index;
 }
 
 /*!
@@ -668,7 +668,7 @@ inline int32_t TVMFFIObjectGetTypeIndex(TVMFFIObjectHandle obj) {
  * \return The data pointer.
  */
 inline TVMFFIByteArray* TVMFFIBytesGetByteArrayPtr(TVMFFIObjectHandle obj) {
-  return reinterpret_cast<TVMFFIByteArray*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
+    return reinterpret_cast<TVMFFIByteArray*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
 }
 
 /*!
@@ -677,7 +677,7 @@ inline TVMFFIByteArray* TVMFFIBytesGetByteArrayPtr(TVMFFIObjectHandle obj) {
  * \return The data pointer.
  */
 inline TVMFFIErrorCell* TVMFFIErrorGetCellPtr(TVMFFIObjectHandle obj) {
-  return reinterpret_cast<TVMFFIErrorCell*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
+    return reinterpret_cast<TVMFFIErrorCell*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
 }
 
 /*!
@@ -686,7 +686,7 @@ inline TVMFFIErrorCell* TVMFFIErrorGetCellPtr(TVMFFIObjectHandle obj) {
  * \return The data pointer.
  */
 inline TVMFFIFunctionCell* TVMFFIFunctionGetCellPtr(TVMFFIObjectHandle obj) {
-  return reinterpret_cast<TVMFFIFunctionCell*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
+    return reinterpret_cast<TVMFFIFunctionCell*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
 }
 
 /*!
@@ -695,7 +695,7 @@ inline TVMFFIFunctionCell* TVMFFIFunctionGetCellPtr(TVMFFIObjectHandle obj) {
  * \return The data pointer.
  */
 inline TVMFFIShapeCell* TVMFFIShapeGetCellPtr(TVMFFIObjectHandle obj) {
-  return reinterpret_cast<TVMFFIShapeCell*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
+    return reinterpret_cast<TVMFFIShapeCell*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
 }
 
 /*!
@@ -704,7 +704,7 @@ inline TVMFFIShapeCell* TVMFFIShapeGetCellPtr(TVMFFIObjectHandle obj) {
  * \return The DLTensor pointer.
  */
 inline DLTensor* TVMFFINDArrayGetDLTensorPtr(TVMFFIObjectHandle obj) {
-  return reinterpret_cast<DLTensor*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
+    return reinterpret_cast<DLTensor*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
 }
 
 /*!
@@ -714,7 +714,7 @@ inline DLTensor* TVMFFINDArrayGetDLTensorPtr(TVMFFIObjectHandle obj) {
  * \return The DLDevice.
  */
 inline DLDevice TVMFFIDLDeviceFromIntPair(int32_t device_type, int32_t device_id) {
-  return DLDevice{static_cast<DLDeviceType>(device_type), device_id};
+    return DLDevice{static_cast<DLDeviceType>(device_type), device_id};
 }
-#endif  // __cplusplus
-#endif  // TVM_FFI_C_API_H_
+#endif// __cplusplus
+#endif// TVM_FFI_C_API_H_
