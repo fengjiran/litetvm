@@ -1254,7 +1254,7 @@ public:
     /*! \brief The match buffer regions. */
     Array<MatchBufferRegion> match_buffers;
     /*! \brief The annotation of the block. */
-    Map<String, ObjectRef> annotations;
+    Map<String, Any> annotations;
 
     void VisitAttrs(AttrVisitor* v) {
         v->Visit("iter_vars", &iter_vars);
