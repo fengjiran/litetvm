@@ -4,5 +4,6 @@
 #ifndef _MSC_VER
 
 #include "ffi/c_api.h"
+#include "ffi/object.h"
 
 #endif

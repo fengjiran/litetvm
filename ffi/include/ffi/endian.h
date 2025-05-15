@@ -22,8 +22,8 @@
  * \file tvm/ffi/endian.h
  * \brief Endian detection and handling
  */
-#ifndef TVM_FFI_ENDIAN_H_
-#define TVM_FFI_ENDIAN_H_
+#ifndef LITETVM_FFI_ENDIAN_H_
+#define LITETVM_FFI_ENDIAN_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -64,7 +64,7 @@
 /*! \brief whether serialize using little endian */
 #define TVM_FFI_IO_NO_ENDIAN_SWAP (TVM_FFI_LITTLE_ENDIAN == TVM_FFI_IO_USE_LITTLE_ENDIAN)
 
-namespace tvm {
+namespace litetvm {
 namespace ffi {
 /*!
  * \brief A generic inplace byte swapping function.
@@ -75,15 +75,15 @@ namespace ffi {
  *       compiler optimization
  */
 inline void ByteSwap(void* data, size_t elem_bytes, size_t num_elems) {
-  for (size_t i = 0; i < num_elems; ++i) {
-    uint8_t* bptr = reinterpret_cast<uint8_t*>(data) + elem_bytes * i;
-    for (size_t j = 0; j < elem_bytes / 2; ++j) {
-      uint8_t v = bptr[elem_bytes - 1 - j];
-      bptr[elem_bytes - 1 - j] = bptr[j];
-      bptr[j] = v;
+    for (size_t i = 0; i < num_elems; ++i) {
+        uint8_t* bptr = reinterpret_cast<uint8_t*>(data) + elem_bytes * i;
+        for (size_t j = 0; j < elem_bytes / 2; ++j) {
+            uint8_t v = bptr[elem_bytes - 1 - j];
+            bptr[elem_bytes - 1 - j] = bptr[j];
+            bptr[j] = v;
+        }
     }
-  }
 }
-}  // namespace ffi
-}  // namespace tvm
-#endif  // TVM_FFI_ENDIAN_H_
+}// namespace ffi
+}// namespace litetvm
+#endif// LITETVM_FFI_ENDIAN_H_
