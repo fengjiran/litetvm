@@ -56,18 +56,12 @@ add_library(tvm_ffi_header INTERFACE)
 target_include_directories(tvm_ffi_header INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(tvm_ffi_header INTERFACE dlpack_header)
 
-########## Target: `tvm_ffi` ##########
-add_library(tvm_ffi_objs OBJECT
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/traceback.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/traceback_win.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/object.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/error.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/function.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/ndarray.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/dtype.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/testing.cc"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi/container.cc"
+file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc
 )
+
+########## Target: `tvm_ffi` ##########
+add_library(tvm_ffi_objs OBJECT ${SRC_FILES})
 set_target_properties(
   tvm_ffi_objs PROPERTIES
   POSITION_INDEPENDENT_CODE ON

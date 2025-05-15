@@ -35,7 +35,7 @@ include_directories(
 
 target_link_libraries(${PROJECT_NAME}
 #        glog::glog
-#        tvm_ffi_objs
+        tvm_ffi_objs
         libbacktrace
         pthread
 )
