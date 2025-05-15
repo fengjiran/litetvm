@@ -216,7 +216,7 @@ private:
     // friend classes
     template<typename>
     friend class ObjectPtr;
-    friend struct tvm::ffi::details::ObjectUnsafe;
+    friend struct details::ObjectUnsafe;
 };
 
 /*!
@@ -592,7 +592,7 @@ struct ObjectPtrEqual {
  */
 #define TVM_FFI_DEFINE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                      \
     TypeName() = default;                                                                        \
-    explicit TypeName(::litetvm::ffi::ObjectPtr<::tvm::ffi::Object> n) : ParentType(n) {}        \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}        \
     TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                        \
     const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); } \
     const ObjectName* get() const { return operator->(); }                                       \
@@ -606,7 +606,7 @@ struct ObjectPtrEqual {
  * \param ObjectName The type name of the object.
  */
 #define TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)          \
-    explicit TypeName(::litetvm::ffi::ObjectPtr<::tvm::ffi::Object> n) : ParentType(n) {}        \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}        \
     TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                        \
     const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); } \
     const ObjectName* get() const { return operator->(); }                                       \
