@@ -34,10 +34,11 @@ include_directories(
 
 target_link_libraries(${PROJECT_NAME}
 #        glog::glog
+#        tvm_ffi_objs
         libbacktrace
         pthread
 )
 
 
-
+add_subdirectory(ffi)
 add_subdirectory(test)
