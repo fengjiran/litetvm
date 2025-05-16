@@ -28,7 +28,7 @@ namespace ffi {
 class TypeTable {
 public:
     /*! \brief Type information */
-    struct Entry : public TypeInfo {
+    struct Entry : TypeInfo {
         /*! \brief stored type key */
         std::string type_key_data;
         /*! \brief acenstor information */
@@ -51,7 +51,8 @@ public:
             this->num_slots = num_slots;
             this->allocated_slots = 1;
             this->child_slots_can_overflow = child_slots_can_overflow;
-            // set up type acenstors information
+
+            // set up type ancestors information
             if (type_depth != 0) {
                 TVM_FFI_ICHECK_NOTNULL(parent);
                 TVM_FFI_ICHECK_EQ(type_depth, parent->type_depth + 1);
@@ -215,8 +216,8 @@ public:
 
 private:
     TypeTable() {
-        type_table_.reserve(TypeIndex::kTVMFFIDynObjectBegin);
-        for (int32_t i = 0; i < TypeIndex::kTVMFFIDynObjectBegin; ++i) {
+        type_table_.reserve(kTVMFFIDynObjectBegin);
+        for (int32_t i = 0; i < kTVMFFIDynObjectBegin; ++i) {
             type_table_.emplace_back(nullptr);
         }
         // initialize the entry for object
@@ -249,7 +250,7 @@ private:
         return c_val;
     }
 
-    int32_t type_counter_{TypeIndex::kTVMFFIDynObjectBegin};
+    int32_t type_counter_{kTVMFFIDynObjectBegin};
     std::vector<std::unique_ptr<Entry>> type_table_;
     std::unordered_map<std::string, int32_t> type_key2index_;
     std::vector<std::unique_ptr<std::string>> string_pool_;

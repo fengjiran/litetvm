@@ -152,7 +152,7 @@ TVM_FFI_INLINE int32_t AtomicDecrementRelAcq(int32_t* ptr) {
 }
 
 TVM_FFI_INLINE int32_t AtomicLoadRelaxed(const int32_t* ptr) {
-    int32_t* raw_ptr = const_cast<int32_t*>(ptr);
+    auto* raw_ptr = const_cast<int32_t*>(ptr);
 #ifdef _MSC_VER
     // simply load the variable ptr out
     return (reinterpret_cast<const volatile long*>(raw_ptr))[0];// NOLINT(*)
@@ -162,23 +162,30 @@ TVM_FFI_INLINE int32_t AtomicLoadRelaxed(const int32_t* ptr) {
 }
 
 // for each iterator
-template<bool stop, std::size_t I, typename F>
-struct for_each_dispatcher {
-    template<typename T, typename... Args>
-    static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
-        f(I, std::forward<T>(value));
-        for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
-    }
-};
-
-template<std::size_t I, typename F>
-struct for_each_dispatcher<true, I, F> {
-    static void run(const F&) {}// NOLINT(*)
-};
+// template<bool stop, std::size_t I, typename F>
+// struct for_each_dispatcher {
+//     template<typename T, typename... Args>
+//     static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
+//         f(I, std::forward<T>(value));
+//         for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
+//     }
+// };
+//
+// template<std::size_t I, typename F>
+// struct for_each_dispatcher<true, I, F> {
+//     static void run(const F&) {}// NOLINT(*)
+// };
+//
+// template<typename F, typename... Args>
+// void for_each(const F& f, Args&&... args) {// NOLINT(*)
+//     for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
+// }
 
 template<typename F, typename... Args>
-void for_each(const F& f, Args&&... args) {// NOLINT(*)
-    for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
+void for_each(const F& f, Args&&... args) {
+    using IntArray = int[];
+    int i = 0;
+    (void) IntArray{(f(i++, std::forward<Args>(args)), 0)...};
 }
 
 /*!
@@ -194,7 +201,7 @@ template<typename T, std::enable_if_t<std::is_convertible<T, uint64_t>::value, b
 TVM_FFI_INLINE uint64_t StableHashCombine(uint64_t key, const T& value) {
     // XXX: do not use std::hash in this function. This hash must be stable
     // across different platforms and std::hash is implementation dependent.
-    return key ^ (uint64_t(value) + 0x9e3779b9 + (key << 6) + (key >> 2));
+    return key ^ (static_cast<uint64_t>(value) + 0x9e3779b9 + (key << 6) + (key >> 2));
 }
 
 /*!
@@ -204,8 +211,8 @@ TVM_FFI_INLINE uint64_t StableHashCombine(uint64_t key, const T& value) {
  * \return the hash value.
  */
 TVM_FFI_INLINE uint64_t StableHashBytes(const char* data, size_t size) {
-    const constexpr uint64_t kMultiplier = 1099511628211ULL;
-    const constexpr uint64_t kMod = 2147483647ULL;
+    constexpr uint64_t kMultiplier = 1099511628211ULL;
+    constexpr uint64_t kMod = 2147483647ULL;
     union Union {
         uint8_t a[8];
         uint64_t b;

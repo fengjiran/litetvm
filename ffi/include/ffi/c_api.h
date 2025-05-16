@@ -24,8 +24,8 @@
 #ifndef TVM_FFI_C_API_H_
 #define TVM_FFI_C_API_H_
 
-#include <dlpack/dlpack.h>
 #include <cstdint>
+#include <dlpack/dlpack.h>
 
 #if !defined(TVM_FFI_DLL) && defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
@@ -132,13 +132,14 @@ typedef enum {
 #endif
 
 /*! \brief Handle to Object from C API's pov */
-typedef void* TVMFFIObjectHandle;
+// typedef void* TVMFFIObjectHandle;
+using TVMFFIObjectHandle = void*;
 
 /*!
  * \brief C-based type of all FFI object header that allocates on heap.
  * \note TVMFFIObject and TVMFFIAny share the common type_index header
  */
-typedef struct TVMFFIObject {
+struct TVMFFIObject {
     /*!
    * \brief type index of the object.
    * \note The type index of Object and Any are shared in FFI.
@@ -148,14 +149,14 @@ typedef struct TVMFFIObject {
     int32_t ref_counter;
     union {
         /*! \brief Deleter to be invoked when reference counter goes to zero. */
-        void (*deleter)(struct TVMFFIObject* self);
+        void (*deleter)(TVMFFIObject* self);
         /*!
      * \brief auxilary field to TVMFFIObject is always 8 bytes aligned.
      * \note This helps us to ensure cross platform compatibility.
      */
         int64_t __ensure_align;
     };
-} TVMFFIObject;
+};
 
 /*!
  * \brief C-based type of all on stack Any value.
@@ -163,7 +164,7 @@ typedef struct TVMFFIObject {
  * Any value can hold on stack values like int,
  * as well as reference counted pointers to object.
  */
-typedef struct TVMFFIAny {
+struct TVMFFIAny {
     /*!
    * \brief type index of the object.
    * \note The type index of Object and Any are shared in FFI.
@@ -186,7 +187,7 @@ typedef struct TVMFFIAny {
         char32_t v_char32[2];// small UCS4 string and Unicode
         uint64_t v_uint64;   // uint64 repr mainly used for hashing
     };
-} TVMFFIAny;
+};
 
 /*!
  * \brief Byte array data structure used by String and Bytes.
@@ -199,23 +200,23 @@ typedef struct TVMFFIAny {
  *       for the size field on 32-bit platforms.
  *       The FFI binding should be careful when treating this ABI.
  */
-typedef struct {
+struct TVMFFIByteArray {
     const char* data;
     size_t size;
-} TVMFFIByteArray;
+};
 
 /*!
  * \brief Shape cell used in shape object following header.
  */
-typedef struct {
+struct TVMFFIShapeCell {
     const int64_t* data;
     size_t size;
-} TVMFFIShapeCell;
+};
 
 /*!
  * \brief Error cell used in error object following header.
  */
-typedef struct {
+struct TVMFFIErrorCell {
     /*! \brief The kind of the error. */
     TVMFFIByteArray kind;
     /*! \brief The message of the error. */
@@ -230,7 +231,7 @@ typedef struct {
    * \param traceback The traceback to update.
    */
     void (*update_traceback)(TVMFFIObjectHandle self, const TVMFFIByteArray* traceback);
-} TVMFFIErrorCell;
+};
 
 /*!
  * \brief Type that defines C-style safe call convention
@@ -264,35 +265,38 @@ typedef struct {
  * \sa TVMFFIErrorSetRaised
  * \sa TVMFFIErrorSetRaisedByCStr
  */
-typedef int (*TVMFFISafeCallType)(void* self, const TVMFFIAny* args, int32_t num_args,
-                                  TVMFFIAny* result);
+// typedef int (*TVMFFISafeCallType)(void* self, const TVMFFIAny* args, int32_t num_args,
+//                                   TVMFFIAny* result);
+using TVMFFISafeCallType = int (*)(void* self, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* result);
 
 /*!
  * \brief Object cell for function object following header.
  */
-typedef struct {
+struct TVMFFIFunctionCell {
     /*! \brief A C API compatible call with exception catching. */
     TVMFFISafeCallType safe_call;
-} TVMFFIFunctionCell;
+};
 
 /*!
  * \brief Getter that can take address of a field and set the result.
  * \param field The raw address of the field.
  * \param result Stores the result.
  */
-typedef int (*TVMFFIFieldGetter)(void* field, TVMFFIAny* result);
+// typedef int (*TVMFFIFieldGetter)(void* field, TVMFFIAny* result);
+using TVMFFIFieldGetter = int (*)(void* field, TVMFFIAny* result);
 
 /*!
  * \brief Getter that can take address of a field and set to value.
  * \param field The raw address of the field.
  * \param value The value to set.
  */
-typedef int (*TVMFFIFieldSetter)(void* field, const TVMFFIAny* value);
+// typedef int (*TVMFFIFieldSetter)(void* field, const TVMFFIAny* value);
+using TVMFFIFieldSetter = int (*)(void* field, const TVMFFIAny* value);
 
 /*!
  * \brief Information support for optional object reflection.
  */
-typedef struct {
+struct TVMFFIFieldInfo {
     /*! \brief The name of the field. */
     TVMFFIByteArray name;
     /*!
@@ -325,12 +329,12 @@ typedef struct {
     TVMFFIFieldGetter getter;
     /*! \brief The setter to access the field. */
     TVMFFIFieldSetter setter;
-} TVMFFIFieldInfo;
+};
 
 /*!
  * \brief Method information that can appear in reflection table.
  */
-typedef struct {
+struct TVMFFIMethodInfo {
     /*! \brief The name of the field. */
     TVMFFIByteArray name;
     /*!
@@ -338,18 +342,18 @@ typedef struct {
    * \note The first argument to the method is always the self.
    */
     TVMFFIObjectHandle method;
-} TVMFFIMethodInfo;
+};
 
 /*!
  * \brief Runtime type information for object type checking.
  */
-typedef struct {
+struct TVMFFITypeInfo {
     /*!
    *\brief The runtime type index,
    * It can be allocated during runtime if the type is dynamic.
    */
     int32_t type_index;
-    /*! \brief number of parent types in the type hierachy. */
+    /*! \brief number of parent types in the type hierarchy. */
     int32_t type_depth;
     /*! \brief the unique type key to identify the type. */
     TVMFFIByteArray type_key;
@@ -369,7 +373,7 @@ typedef struct {
     TVMFFIFieldInfo* fields;
     /*! \brief The reflection method. */
     TVMFFIMethodInfo* methods;
-} TVMFFITypeInfo;
+};
 
 //------------------------------------------------------------
 // Section: User APIs to interact with the FFI
