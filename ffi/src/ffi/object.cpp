@@ -80,19 +80,17 @@ public:
     };
 
     int32_t GetOrAllocTypeIndex(std::string type_key, int32_t static_type_index, int32_t type_depth,
-                                int32_t num_child_slots, bool child_slots_can_overflow,
-                                int32_t parent_type_index) {
-        auto it = type_key2index_.find(type_key);
-        if (it != type_key2index_.end()) {
+                                int32_t num_child_slots, bool child_slots_can_overflow, int32_t parent_type_index) {
+        if (auto it = type_key2index_.find(type_key); it != type_key2index_.end()) {
             return type_table_[it->second]->type_index;
         }
 
         // get parent's entry
         Entry* parent = [&]() -> Entry* {
-            if (parent_type_index < 0) return nullptr;
+            if (parent_type_index < 0)
+                return nullptr;
             // try to allocate from parent's type table.
-            TVM_FFI_ICHECK_LT(parent_type_index, type_table_.size())
-                    << " type_key=" << type_key << ", static_index=" << static_type_index;
+            TVM_FFI_ICHECK_LT(parent_type_index, type_table_.size()) << " type_key=" << type_key << ", static_index=" << static_type_index;
             return type_table_[parent_type_index].get();
         }();
 
@@ -225,17 +223,16 @@ private:
                                   Object::_type_child_slots, Object::_type_child_slots_can_overflow,
                                   -1);
         // reserve the static types
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFINone, TypeIndex::kTVMFFINone);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIInt, TypeIndex::kTVMFFIInt);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIFloat, TypeIndex::kTVMFFIFloat);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIBool, TypeIndex::kTVMFFIBool);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIRawStr, TypeIndex::kTVMFFIRawStr);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIOpaquePtr, TypeIndex::kTVMFFIOpaquePtr);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIDataType, TypeIndex::kTVMFFIDataType);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIDevice, TypeIndex::kTVMFFIDevice);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIByteArrayPtr, TypeIndex::kTVMFFIByteArrayPtr);
-        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIObjectRValueRef,
-                                TypeIndex::kTVMFFIObjectRValueRef);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFINone, kTVMFFINone);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIInt, kTVMFFIInt);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIFloat, kTVMFFIFloat);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIBool, kTVMFFIBool);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIRawStr, kTVMFFIRawStr);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIOpaquePtr, kTVMFFIOpaquePtr);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIDataType, kTVMFFIDataType);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIDevice, kTVMFFIDevice);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIByteArrayPtr, kTVMFFIByteArrayPtr);
+        ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIObjectRValueRef, kTVMFFIObjectRValueRef);
         // no need to reserve for object types as they will be registered
     }
 
