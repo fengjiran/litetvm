@@ -95,7 +95,7 @@ public:
         }();
 
         // get allocated index
-        int32_t allocated_tindex = [&]() {
+        int32_t allocated_tindex = [&] {
             // Step 0: static allocation
             if (static_type_index >= 0) {
                 TVM_FFI_ICHECK_LT(static_type_index, type_table_.size());
@@ -114,8 +114,7 @@ public:
                 return allocated_tindex;
             }
             // Step 2: allocate from overflow
-            TVM_FFI_ICHECK(parent->child_slots_can_overflow)
-                    << "Reach maximum number of sub-classes for " << ToStringView(parent->type_key);
+            TVM_FFI_ICHECK(parent->child_slots_can_overflow)<< "Reach maximum number of sub-classes for " << ToStringView(parent->type_key);
             // allocate new entries.
             int32_t allocated_tindex = type_counter_;
             type_counter_ += num_slots;
@@ -219,7 +218,7 @@ private:
             type_table_.emplace_back(nullptr);
         }
         // initialize the entry for object
-        this->GetOrAllocTypeIndex(Object::_type_key, Object::_type_index, Object::_type_depth,
+        GetOrAllocTypeIndex(Object::_type_key, Object::_type_index, Object::_type_depth,
                                   Object::_type_child_slots, Object::_type_child_slots_can_overflow,
                                   -1);
         // reserve the static types
@@ -237,7 +236,7 @@ private:
     }
 
     void ReserveBuiltinTypeIndex(const char* type_key, int32_t static_type_index) {
-        this->GetOrAllocTypeIndex(type_key, static_type_index, 0, 0, false, -1);
+        GetOrAllocTypeIndex(type_key, static_type_index, 0, 0, false, -1);
     }
 
     TVMFFIByteArray CopyString(TVMFFIByteArray str) {

@@ -375,12 +375,12 @@ private:
 
 /*! \brief Convert TVMFFIByteArray to std::string_view */
 TVM_FFI_INLINE std::string_view ToStringView(TVMFFIByteArray str) {
-    return std::string_view(str.data, str.size);
+    return {str.data, str.size};
 }
 
 // const char*, requirement: not nullable, do not retain ownership
 template<int N>
-struct TypeTraits<char[N]> : public TypeTraitsBase {
+struct TypeTraits<char[N]> : TypeTraitsBase {
     // NOTE: only enable implicit conversion into AnyView
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIRawStr;
     static constexpr bool storage_enabled = false;
@@ -397,7 +397,7 @@ struct TypeTraits<char[N]> : public TypeTraitsBase {
 };
 
 template<>
-struct TypeTraits<const char*> : public TypeTraitsBase {
+struct TypeTraits<const char*> : TypeTraitsBase {
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIRawStr;
     static constexpr bool storage_enabled = false;
 
@@ -424,7 +424,7 @@ struct TypeTraits<const char*> : public TypeTraitsBase {
 
 // TVMFFIByteArray, requirement: not nullable, do not retain ownership
 template<>
-struct TypeTraits<TVMFFIByteArray*> : public TypeTraitsBase {
+struct TypeTraits<TVMFFIByteArray*> : TypeTraitsBase {
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIByteArrayPtr;
     static constexpr bool storage_enabled = false;
 
@@ -455,7 +455,7 @@ inline constexpr bool use_default_type_traits_v<Bytes> = false;
 
 // specialize to enable implicit conversion from TVMFFIByteArray*
 template<>
-struct TypeTraits<Bytes> : public ObjectRefWithFallbackTraitsBase<Bytes, TVMFFIByteArray*> {
+struct TypeTraits<Bytes> : ObjectRefWithFallbackTraitsBase<Bytes, TVMFFIByteArray*> {
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIBytes;
     static TVM_FFI_INLINE Bytes ConvertFallbackValue(TVMFFIByteArray* src) { return Bytes(*src); }
 };
@@ -465,7 +465,7 @@ inline constexpr bool use_default_type_traits_v<String> = false;
 
 // specialize to enable implicit conversion from const char*
 template<>
-struct TypeTraits<String> : public ObjectRefWithFallbackTraitsBase<String, const char*> {
+struct TypeTraits<String> : ObjectRefWithFallbackTraitsBase<String, const char*> {
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIStr;
     static TVM_FFI_INLINE String ConvertFallbackValue(const char* src) { return String(src); }
 };
@@ -474,8 +474,7 @@ template<>
 inline constexpr bool use_default_type_traits_v<std::string> = false;
 
 template<>
-struct TypeTraits<std::string>
-    : public FallbackOnlyTraitsBase<std::string, const char*, TVMFFIByteArray*, Bytes, String> {
+struct TypeTraits<std::string> : FallbackOnlyTraitsBase<std::string, const char*, TVMFFIByteArray*, Bytes, String> {
     static TVM_FFI_INLINE void CopyToAnyView(const std::string& src, TVMFFIAny* result) {
         result->type_index = TypeIndex::kTVMFFIRawStr;
         result->v_c_str = src.c_str();
