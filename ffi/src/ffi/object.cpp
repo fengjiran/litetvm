@@ -108,15 +108,15 @@ public:
             int num_slots = num_child_slots + 1;
             if (parent->allocated_slots + num_slots <= parent->num_slots) {
                 // allocate the slot from parent's reserved pool
-                int32_t allocated_tindex = parent->type_index + parent->allocated_slots;
+                int32_t tindex = parent->type_index + parent->allocated_slots;
                 // update parent's state
                 parent->allocated_slots += num_slots;
-                return allocated_tindex;
+                return tindex;
             }
             // Step 2: allocate from overflow
-            TVM_FFI_ICHECK(parent->child_slots_can_overflow)<< "Reach maximum number of sub-classes for " << ToStringView(parent->type_key);
+            TVM_FFI_ICHECK(parent->child_slots_can_overflow) << "Reach maximum number of sub-classes for " << ToStringView(parent->type_key);
             // allocate new entries.
-            int32_t allocated_tindex = type_counter_;
+            int32_t tindex = type_counter_;
             type_counter_ += num_slots;
             TVM_FFI_ICHECK_LE(type_table_.size(), type_counter_);
             type_table_.reserve(type_counter_);
@@ -124,11 +124,11 @@ public:
             while (static_cast<int32_t>(type_table_.size()) < type_counter_) {
                 type_table_.emplace_back(nullptr);
             }
-            return allocated_tindex;
+            return tindex;
         }();
 
         // if parent cannot overflow, then this class cannot.
-        if (parent != nullptr && !(parent->child_slots_can_overflow)) {
+        if (parent != nullptr && !parent->child_slots_can_overflow) {
             child_slots_can_overflow = false;
         }
         // total number of slots include the type itself.
@@ -137,9 +137,9 @@ public:
             TVM_FFI_ICHECK_GT(allocated_tindex, parent->type_index);
         }
 
-        type_table_[allocated_tindex] =
-                std::make_unique<Entry>(allocated_tindex, type_depth, type_key, num_child_slots + 1,
-                                        child_slots_can_overflow, parent);
+        type_table_[allocated_tindex] = std::make_unique<Entry>(allocated_tindex, type_depth,
+                                                                type_key, num_child_slots + 1,
+                                                                child_slots_can_overflow, parent);
         // update the key2index mapping.
         type_key2index_[type_key] = allocated_tindex;
         return allocated_tindex;
@@ -219,8 +219,8 @@ private:
         }
         // initialize the entry for object
         GetOrAllocTypeIndex(Object::_type_key, Object::_type_index, Object::_type_depth,
-                                  Object::_type_child_slots, Object::_type_child_slots_can_overflow,
-                                  -1);
+                            Object::_type_child_slots, Object::_type_child_slots_can_overflow,
+                            -1);
         // reserve the static types
         ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFINone, kTVMFFINone);
         ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIInt, kTVMFFIInt);
