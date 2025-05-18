@@ -89,6 +89,14 @@
 #define TVM_FFI_FUNC_SIG __func__
 #endif
 
+#ifdef __has_cpp_attribute
+#if __has_cpp_attribute(nodiscard)
+#define NODISCARD [[nodiscard]]
+#else
+#define NODISCARD
+#endif
+#endif
+
 /*
  * \brief Define the default copy/move constructor and assign operator
  * \param TypeName The class typename.

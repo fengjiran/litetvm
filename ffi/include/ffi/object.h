@@ -72,7 +72,7 @@ TVM_FFI_INLINE bool IsObjectInstance(int32_t object_type_index);
 /*!
  * \brief base class of all object containers.
  *
- * Sub-class of objects should declare the following static constexpr fields:
+ * Subclass of objects should declare the following static constexpr fields:
  *
  * - _type_index:
  *      Static type index of the object, if assigned to TypeIndex::kTVMFFIDynObject
@@ -83,10 +83,10 @@ TVM_FFI_INLINE bool IsObjectInstance(int32_t object_type_index);
  * - _type_final:
  *       Whether the type is terminal type(there is no subclass of the type in the object system).
  *       This field is automatically set by macro TVM_DECLARE_FINAL_OBJECT_INFO
- *       It is still OK to sub-class a terminal object type T and construct it using make_object.
- *       But IsInstance check will only show that the object type is T(instead of the sub-class).
+ *       It is still OK to subclass a terminal object type T and construct it using make_object.
+ *       But IsInstance check will only show that the object type is T(instead of the subclass).
  *
- * The following two fields are necessary for base classes that can be sub-classed.
+ * The following two fields are necessary for base classes that can be subclassed.
  *
  * - _type_child_slots:
  *       Number of reserved type index slots for child classes.
@@ -124,27 +124,29 @@ public:
    * \return Whether the target type is true.
    */
     template<typename TargetType>
-    bool IsInstance() const {
+    NODISCARD bool IsInstance() const {
         return details::IsObjectInstance<TargetType>(header_.type_index);
     }
 
     /*! \return The internal runtime type index of the object. */
-    int32_t type_index() const { return header_.type_index; }
+    NODISCARD int32_t type_index() const {
+        return header_.type_index;
+    }
 
     /*!
    * \return the type key of the object.
    * \note this operation is expensive, can be used for error reporting.
    */
-    std::string GetTypeKey() const {
+    NODISCARD std::string GetTypeKey() const {
         // the function checks that the info exists
         const TypeInfo* type_info = TVMFFIGetTypeInfo(header_.type_index);
-        return std::string(type_info->type_key.data, type_info->type_key.size);
+        return {type_info->type_key.data, type_info->type_key.size};
     }
 
     /*!
    * \return A hash value of the return of GetTypeKey.
    */
-    uint64_t GetTypeKeyHash() const {
+    NODISCARD uint64_t GetTypeKeyHash() const {
         // the function checks that the info exists
         const TypeInfo* type_info = TVMFFIGetTypeInfo(header_.type_index);
         return type_info->type_key_hash;
@@ -157,10 +159,10 @@ public:
    */
     static std::string TypeIndex2Key(int32_t tindex) {
         const TypeInfo* type_info = TVMFFIGetTypeInfo(tindex);
-        return std::string(type_info->type_key.data, type_info->type_key.size);
+        return {type_info->type_key.data, type_info->type_key.size};
     }
 
-    bool unique() const {
+    NODISCARD bool unique() const {
         return use_count() == 1;
     }
 
@@ -168,8 +170,8 @@ public:
    * \return The usage count of the cell.
    * \note We use stl style naming to be consistent with known API in shared_ptr.
    */
-    int32_t use_count() const {
-        return details::AtomicLoadRelaxed(&(header_.ref_counter));
+    NODISCARD int32_t use_count() const {
+        return details::AtomicLoadRelaxed(&header_.ref_counter);
     }
 
     // Information about the object
@@ -180,7 +182,7 @@ public:
     static constexpr uint32_t _type_child_slots = 0;
     static constexpr bool _type_child_slots_can_overflow = true;
     // NOTE: static type index field of the class
-    static constexpr int32_t _type_index = TypeIndex::kTVMFFIObject;
+    static constexpr int32_t _type_index = kTVMFFIObject;
     // the static type depth of the class
     static constexpr int32_t _type_depth = 0;
     // extra fields used by plug-ins for attribute visiting
@@ -188,27 +190,35 @@ public:
     static constexpr bool _type_has_method_visit_attrs = true;
     static constexpr bool _type_has_method_sequal_reduce = false;
     static constexpr bool _type_has_method_shash_reduce = false;
+
     // The following functions are provided by macro
     // TVM_FFI_DECLARE_BASE_OBJECT_INFO and TVM_DECLARE_FINAL_OBJECT_INFO
     /*!
    * \brief Get the runtime allocated type index of the type
    * \note Getting this information may need dynamic calls into a global table.
    */
-    static int32_t RuntimeTypeIndex() { return TypeIndex::kTVMFFIObject; }
+    static int32_t RuntimeTypeIndex() {
+        return kTVMFFIObject;
+    }
+
     /*!
    * \brief Internal function to get or allocate a runtime index.
    */
-    static int32_t _GetOrAllocRuntimeTypeIndex() { return TypeIndex::kTVMFFIObject; }
+    static int32_t _GetOrAllocRuntimeTypeIndex() {
+        return kTVMFFIObject;
+    }
 
 private:
     /*! \brief increase reference count */
-    void IncRef() { details::AtomicIncrementRelaxed(&(header_.ref_counter)); }
+    void IncRef() {
+        details::AtomicIncrementRelaxed(&header_.ref_counter);
+    }
 
     /*! \brief decrease reference count and delete the object */
     void DecRef() {
         if (details::AtomicDecrementRelAcq(&(header_.ref_counter)) == 1) {
             if (header_.deleter != nullptr) {
-                header_.deleter(&(this->header_));
+                header_.deleter(&this->header_);
             }
         }
     }
@@ -228,61 +238,71 @@ template<typename T>
 class ObjectPtr {
 public:
     /*! \brief default constructor */
-    ObjectPtr() {}
+    ObjectPtr() = default;
+
     /*! \brief default constructor */
     ObjectPtr(std::nullptr_t) {}// NOLINT(*)
+
     /*!
    * \brief copy constructor
    * \param other The value to be moved
    */
-    ObjectPtr(const ObjectPtr<T>& other)// NOLINT(*)
-        : ObjectPtr(other.data_) {}
+    ObjectPtr(const ObjectPtr& other) : ObjectPtr(other.data_) {}
+
     /*!
    * \brief copy constructor
    * \param other The value to be moved
    */
     template<typename U>
-    ObjectPtr(const ObjectPtr<U>& other)// NOLINT(*)
-        : ObjectPtr(other.data_) {
-        static_assert(std::is_base_of<T, U>::value,
-                      "can only assign of child class ObjectPtr to parent");
+    ObjectPtr(const ObjectPtr<U>& other) : ObjectPtr(other.data_) {// NOLINT(*)
+        static_assert(std::is_base_of_v<T, U>, "can only assign of child class ObjectPtr to parent");
     }
+
     /*!
    * \brief move constructor
    * \param other The value to be moved
    */
-    ObjectPtr(ObjectPtr<T>&& other)// NOLINT(*)
-        : data_(other.data_) {
+    ObjectPtr(ObjectPtr&& other) noexcept : data_(other.data_) {
         other.data_ = nullptr;
     }
+
     /*!
    * \brief move constructor
    * \param other The value to be moved
    */
     template<typename Y>
-    ObjectPtr(ObjectPtr<Y>&& other)// NOLINT(*)
-        : data_(other.data_) {
-        static_assert(std::is_base_of<T, Y>::value,
-                      "can only assign of child class ObjectPtr to parent");
+    ObjectPtr(ObjectPtr<Y>&& other) : data_(other.data_) {// NOLINT(*)
+        static_assert(std::is_base_of_v<T, Y>, "can only assign of child class ObjectPtr to parent");
         other.data_ = nullptr;
     }
+
     /*! \brief destructor */
-    ~ObjectPtr() { this->reset(); }
+    ~ObjectPtr() {
+        this->reset();
+    }
+
     /*!
    * \brief Swap this array with another Object
    * \param other The other Object
    */
-    void swap(ObjectPtr<T>& other) {// NOLINT(*)
+    void swap(ObjectPtr& other) noexcept {// NOLINT(*)
         std::swap(data_, other.data_);
     }
+
     /*!
    * \return Get the content of the pointer
    */
-    T* get() const { return static_cast<T*>(data_); }
+    NODISCARD T* get() const {
+        return static_cast<T*>(data_);
+    }
+
     /*!
    * \return The pointer
    */
-    T* operator->() const { return get(); }
+    T* operator->() const {
+        return get();
+    }
+
     /*!
    * \return The reference
    */
@@ -294,27 +314,32 @@ public:
    * \param other The value to be assigned.
    * \return reference to self.
    */
-    ObjectPtr<T>& operator=(const ObjectPtr<T>& other) {// NOLINT(*)
+    ObjectPtr& operator=(const ObjectPtr& other) {// NOLINT(*)
         // takes in plane operator to enable copy elison.
         // copy-and-swap idiom
         ObjectPtr(other).swap(*this);// NOLINT(*)
         return *this;
     }
+
     /*!
    * \brief move assignment
    * \param other The value to be assigned.
    * \return reference to self.
    */
-    ObjectPtr<T>& operator=(ObjectPtr<T>&& other) {// NOLINT(*)
+    ObjectPtr& operator=(ObjectPtr&& other) noexcept {// NOLINT(*)
         // copy-and-swap idiom
         ObjectPtr(std::move(other)).swap(*this);// NOLINT(*)
         return *this;
     }
+
     /*!
    * \brief nullptr check
    * \return result of comparison of internal pointer with nullptr.
    */
-    explicit operator bool() const { return get() != nullptr; }
+    explicit operator bool() const {
+        return get() != nullptr;
+    }
+
     /*! \brief reset the content of ptr to be nullptr */
     void reset() {
         if (data_ != nullptr) {
@@ -322,22 +347,41 @@ public:
             data_ = nullptr;
         }
     }
+
     /*! \return The use count of the ptr, for debug purposes */
-    int use_count() const { return data_ != nullptr ? data_->use_count() : 0; }
+    NODISCARD int use_count() const {
+        return data_ != nullptr ? data_->use_count() : 0;
+    }
+
     /*! \return whether the reference is unique */
-    bool unique() const { return data_ != nullptr && data_->use_count() == 1; }
+    NODISCARD bool unique() const {
+        return data_ != nullptr && data_->use_count() == 1;
+    }
+
     /*! \return Whether two ObjectPtr do not equal each other */
-    bool operator==(const ObjectPtr<T>& other) const { return data_ == other.data_; }
+    bool operator==(const ObjectPtr& other) const {
+        return data_ == other.data_;
+    }
+
     /*! \return Whether two ObjectPtr equals each other */
-    bool operator!=(const ObjectPtr<T>& other) const { return data_ != other.data_; }
+    bool operator!=(const ObjectPtr& other) const {
+        return data_ != other.data_;
+    }
+
     /*! \return Whether the pointer is nullptr */
-    bool operator==(std::nullptr_t) const { return data_ == nullptr; }
+    bool operator==(std::nullptr_t) const {
+        return data_ == nullptr;
+    }
+
     /*! \return Whether the pointer is not nullptr */
-    bool operator!=(std::nullptr_t) const { return data_ != nullptr; }
+    bool operator!=(std::nullptr_t) const {
+        return data_ != nullptr;
+    }
 
 private:
     /*! \brief internal pointer field */
     Object* data_{nullptr};
+
     /*!
    * \brief constructor from Object
    * \param data The data pointer
@@ -347,6 +391,7 @@ private:
             data_->IncRef();
         }
     }
+
     // friend classes
     friend class Object;
     friend class ObjectRef;
@@ -380,43 +425,70 @@ public:
     /*! \brief move assignment */
     ObjectRef& operator=(ObjectRef&& other) = default;
     /*! \brief Constructor from existing object ptr */
-    explicit ObjectRef(ObjectPtr<Object> data) : data_(data) {}
+    explicit ObjectRef(ObjectPtr<Object> data) : data_(std::move(data)) {}
+
     /*!
    * \brief Comparator
    * \param other Another object ref.
    * \return the compare result.
    */
-    bool same_as(const ObjectRef& other) const { return data_ == other.data_; }
+    NODISCARD bool same_as(const ObjectRef& other) const {
+        return data_ == other.data_;
+    }
+
     /*!
    * \brief Comparator
    * \param other Another object ref.
    * \return the compare result.
    */
-    bool operator==(const ObjectRef& other) const { return data_ == other.data_; }
+    bool operator==(const ObjectRef& other) const {
+        return data_ == other.data_;
+    }
+
     /*!
    * \brief Comparator
    * \param other Another object ref.
    * \return the compare result.
    */
-    bool operator!=(const ObjectRef& other) const { return data_ != other.data_; }
+    bool operator!=(const ObjectRef& other) const {
+        return data_ != other.data_;
+    }
+
     /*!
    * \brief Comparator
    * \param other Another object ref by address.
    * \return the compare result.
    */
-    bool operator<(const ObjectRef& other) const { return data_.get() < other.data_.get(); }
+    bool operator<(const ObjectRef& other) const {
+        return data_.get() < other.data_.get();
+    }
+
     /*!
    * \return whether the object is defined.
    */
-    bool defined() const { return data_ != nullptr; }
+    NODISCARD bool defined() const {
+        return data_ != nullptr;
+    }
+
     /*! \return the internal object pointer */
-    const Object* get() const { return data_.get(); }
+    NODISCARD const Object* get() const {
+        return data_.get();
+    }
+
     /*! \return the internal object pointer */
-    const Object* operator->() const { return get(); }
+    const Object* operator->() const {
+        return get();
+    }
+
     /*! \return whether the reference is unique */
-    bool unique() const { return data_.unique(); }
+    NODISCARD bool unique() const {
+        return data_.unique();
+    }
+
     /*! \return The use count of the ptr, for debug purposes */
-    int use_count() const { return data_.use_count(); }
+    NODISCARD int use_count() const {
+        return data_.use_count();
+    }
 
     /*!
    * \brief Try to downcast the internal Object to a
@@ -431,13 +503,13 @@ public:
    * \tparam ObjectType the target type, must be a subtype of Object
    * \return The pointer to the requested type.
    */
-    template<typename ObjectType, typename = std::enable_if_t<std::is_base_of_v<Object, ObjectType>>>
+    template<typename ObjectType,
+             typename = std::enable_if_t<std::is_base_of_v<Object, ObjectType>>>
     const ObjectType* as() const {
         if (data_ != nullptr && data_->IsInstance<ObjectType>()) {
             return static_cast<ObjectType*>(data_.get());
-        } else {
-            return nullptr;
         }
+        return nullptr;
     }
 
     /*!
@@ -454,26 +526,25 @@ public:
         if (data_ != nullptr) {
             if (data_->IsInstance<typename ObjectRefType::ContainerType>()) {
                 return ObjectRefType(data_);
-            } else {
-                return std::nullopt;
             }
-        } else {
             return std::nullopt;
         }
+        return std::nullopt;
     }
+
     /*!
    * \brief Get the type index of the ObjectRef
    * \return The type index of the ObjectRef
    */
-    int32_t type_index() const {
-        return data_ != nullptr ? data_->type_index() : TypeIndex::kTVMFFINone;
+    NODISCARD int32_t type_index() const {
+        return data_ != nullptr ? data_->type_index() : kTVMFFINone;
     }
 
     /*!
    * \brief Get the type key of the ObjectRef
    * \return The type key of the ObjectRef
    */
-    std::string GetTypeKey() const {
+    NODISCARD std::string GetTypeKey() const {
         return data_ != nullptr ? data_->GetTypeKey() : StaticTypeKey::kTVMFFINone;
     }
 
@@ -485,8 +556,12 @@ public:
 protected:
     /*! \brief Internal pointer that backs the reference. */
     ObjectPtr<Object> data_;
-    /*! \return return a mutable internal ptr, can be used by sub-classes. */
-    Object* get_mutable() const { return data_.get(); }
+
+    /*! \return return a mutable internal ptr, can be used by subclasses. */
+    NODISCARD Object* get_mutable() const {
+        return data_.get();
+    }
+
     // friend classes.
     friend struct ObjectPtrHash;
     friend struct details::ObjectUnsafe;
@@ -498,7 +573,9 @@ class Variant;
 
 /*! \brief ObjectRef hash functor */
 struct ObjectPtrHash {
-    size_t operator()(const ObjectRef& a) const { return operator()(a.data_); }
+    size_t operator()(const ObjectRef& a) const {
+        return operator()(a.data_);
+    }
 
     template<typename T>
     size_t operator()(const ObjectPtr<T>& a) const {
@@ -511,7 +588,9 @@ struct ObjectPtrHash {
 
 /*! \brief ObjectRef equal functor */
 struct ObjectPtrEqual {
-    bool operator()(const ObjectRef& a, const ObjectRef& b) const { return a.same_as(b); }
+    bool operator()(const ObjectRef& a, const ObjectRef& b) const {
+        return a.same_as(b);
+    }
 
     template<typename T>
     bool operator()(const ObjectPtr<T>& a, const ObjectPtr<T>& b) const {
@@ -592,7 +671,7 @@ struct ObjectPtrEqual {
  */
 #define TVM_FFI_DEFINE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                      \
     TypeName() = default;                                                                        \
-    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}        \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}    \
     TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                        \
     const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); } \
     const ObjectName* get() const { return operator->(); }                                       \
@@ -606,7 +685,7 @@ struct ObjectPtrEqual {
  * \param ObjectName The type name of the object.
  */
 #define TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)          \
-    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}        \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}    \
     TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                        \
     const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); } \
     const ObjectName* get() const { return operator->(); }                                       \
@@ -648,7 +727,9 @@ template<typename TargetType>
 TVM_FFI_INLINE bool IsObjectInstance(int32_t object_type_index) {
     static_assert(std::is_base_of_v<Object, TargetType>);
     // Everything is a subclass of object.
-    if constexpr (std::is_same<TargetType, Object>::value) return true;
+    if constexpr (std::is_same_v<TargetType, Object>) {
+        return true;
+    }
 
     if constexpr (TargetType::_type_final) {
         // if the target type is a final type
@@ -656,7 +737,7 @@ TVM_FFI_INLINE bool IsObjectInstance(int32_t object_type_index) {
         return object_type_index == TargetType::RuntimeTypeIndex();
     }
 
-    // if target type is a non-leaf type
+    // if the target type is a non-leaf type
     // Check if type index falls into the range of reserved slots.
     int32_t target_type_index = TargetType::RuntimeTypeIndex();
     int32_t begin = target_type_index;
@@ -664,18 +745,28 @@ TVM_FFI_INLINE bool IsObjectInstance(int32_t object_type_index) {
     if constexpr (TargetType::_type_child_slots != 0) {
         // total_slots = child_slots + 1 (including self)
         int32_t end = begin + TargetType::_type_child_slots + 1;
-        if (object_type_index >= begin && object_type_index < end) return true;
+        if (object_type_index >= begin && object_type_index < end) {
+            return true;
+        }
     } else {
-        if (object_type_index == begin) return true;
+        if (object_type_index == begin) {
+            return true;
+        }
     }
-    if (!TargetType::_type_child_slots_can_overflow) return false;
+
+    if (!TargetType::_type_child_slots_can_overflow) {
+        return false;
+    }
+
     // Invariance: parent index is always smaller than the child.
-    if (object_type_index < target_type_index) return false;
+    if (object_type_index < target_type_index) {
+        return false;
+    }
+
     // Do a runtime lookup of type information
     // the function checks that the info exists
     const TypeInfo* type_info = TVMFFIGetTypeInfo(object_type_index);
-    return (type_info->type_depth > TargetType::_type_depth &&
-            type_info->type_acenstors[TargetType::_type_depth] == target_type_index);
+    return type_info->type_depth > TargetType::_type_depth && type_info->type_acenstors[TargetType::_type_depth] == target_type_index;
 }
 
 /*!
