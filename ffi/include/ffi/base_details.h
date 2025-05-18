@@ -25,7 +25,7 @@
 #ifndef LITETVM_FFI_BASE_DETAILS_H_
 #define LITETVM_FFI_BASE_DETAILS_H_
 
-#include "ffi/c_api.h"
+// #include "ffi/c_api.h"
 #include "ffi/endian.h"
 
 #include <cstddef>
@@ -193,7 +193,7 @@ template<typename F, typename... Args>
 void for_each(const F& f, Args&&... args) {
     using IntArray = int[];
     int i = 0;
-    (void) IntArray{(f(i++, std::forward<Args>(args)), 0)...};
+    (void) IntArray{1, (f(i++, std::forward<Args>(args)), 0)...};
 }
 
 /*!

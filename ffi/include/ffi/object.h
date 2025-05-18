@@ -631,21 +631,20 @@ struct ObjectPtrEqual {
  * \param TypeName The name of the current type.
  * \param ParentType The name of the ParentType
  */
-#define TVM_FFI_DECLARE_BASE_OBJECT_INFO(TypeName, ParentType)                                        \
-    static constexpr int32_t _type_depth = ParentType::_type_depth + 1;                               \
-    static int32_t _GetOrAllocRuntimeTypeIndex() {                                                    \
-        static_assert(!ParentType::_type_final, "ParentType marked as final");                        \
-        static_assert(TypeName::_type_child_slots == 0 || ParentType::_type_child_slots == 0 ||       \
-                              TypeName::_type_child_slots < ParentType::_type_child_slots,            \
-                      "Need to set _type_child_slots when parent specifies it.");                     \
-        TVMFFIByteArray type_key{TypeName::_type_key,                                                 \
-                                 std::char_traits<char>::length(TypeName::_type_key)};                \
-        static int32_t tindex = TVMFFIGetOrAllocTypeIndex(                                            \
-                &type_key, -1, TypeName::_type_depth, TypeName::_type_child_slots,                    \
-                TypeName::_type_child_slots_can_overflow, ParentType::_GetOrAllocRuntimeTypeIndex()); \
-        return tindex;                                                                                \
-    }                                                                                                 \
-    static int32_t RuntimeTypeIndex() { return _GetOrAllocRuntimeTypeIndex(); }                       \
+#define TVM_FFI_DECLARE_BASE_OBJECT_INFO(TypeName, ParentType)                                              \
+    static constexpr int32_t _type_depth = ParentType::_type_depth + 1;                                     \
+    static int32_t _GetOrAllocRuntimeTypeIndex() {                                                          \
+        static_assert(!ParentType::_type_final, "ParentType marked as final");                              \
+        static_assert(TypeName::_type_child_slots == 0 || ParentType::_type_child_slots == 0 ||             \
+                              TypeName::_type_child_slots < ParentType::_type_child_slots,                  \
+                      "Need to set _type_child_slots when parent specifies it.");                           \
+        TVMFFIByteArray type_key{TypeName::_type_key, std::char_traits<char>::length(TypeName::_type_key)}; \
+        static int32_t tindex = TVMFFIGetOrAllocTypeIndex(                                                  \
+                &type_key, -1, TypeName::_type_depth, TypeName::_type_child_slots,                          \
+                TypeName::_type_child_slots_can_overflow, ParentType::_GetOrAllocRuntimeTypeIndex());       \
+        return tindex;                                                                                      \
+    }                                                                                                       \
+    static int32_t RuntimeTypeIndex() { return _GetOrAllocRuntimeTypeIndex(); }                             \
     static inline int32_t _type_index = _GetOrAllocRuntimeTypeIndex()
 
 /*!
@@ -668,12 +667,12 @@ struct ObjectPtrEqual {
  * \note This macro also defines the default constructor that puts the ObjectRef
  *       in undefined state initially.
  */
-#define TVM_FFI_DEFINE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                      \
-    TypeName() = default;                                                                        \
-    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}    \
-    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                        \
-    const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); } \
-    const ObjectName* get() const { return operator->(); }                                       \
+#define TVM_FFI_DEFINE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                              \
+    TypeName() = default;                                                                                \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(std::move(n)) {} \
+    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                                \
+    const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); }         \
+    const ObjectName* get() const { return operator->(); }                                               \
     using ContainerType = ObjectName
 
 /*
@@ -683,12 +682,12 @@ struct ObjectPtrEqual {
  * \param ParentType The parent type of the objectref
  * \param ObjectName The type name of the object.
  */
-#define TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)          \
-    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}    \
-    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                        \
-    const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); } \
-    const ObjectName* get() const { return operator->(); }                                       \
-    static constexpr bool _type_is_nullable = false;                                             \
+#define TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                  \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(std::move(n)) {} \
+    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                                \
+    const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); }         \
+    const ObjectName* get() const { return operator->(); }                                               \
+    static constexpr bool _type_is_nullable = false;                                                     \
     using ContainerType = ObjectName
 
 /*
@@ -699,11 +698,11 @@ struct ObjectPtrEqual {
  * \note We recommend making objects immutable when possible.
  *       This macro is only reserved for objects that stores runtime states.
  */
-#define TVM_FFI_DEFINE_MUTABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)           \
-    TypeName() = default;                                                                     \
-    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                    \
-    explicit TypeName(::tvm::runtime::ObjectPtr<::tvm::runtime::Object> n) : ParentType(n) {} \
-    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }          \
+#define TVM_FFI_DEFINE_MUTABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                      \
+    TypeName() = default;                                                                                \
+    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                               \
+    explicit TypeName(::tvm::runtime::ObjectPtr<::tvm::runtime::Object> n) : ParentType(std::move(n)) {} \
+    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }                     \
     using ContainerType = ObjectName;
 
 /*
@@ -713,12 +712,12 @@ struct ObjectPtrEqual {
  * \param ParentType The parent type of the objectref
  * \param ObjectName The type name of the object.
  */
-#define TVM_FFI_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName) \
-    explicit TypeName(::litetvm::ffi::ObjectPtr<::tvm::ffi::Object> n) : ParentType(n) {}       \
-    TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                          \
-    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }            \
-    ObjectName* get() const { return operator->(); }                                            \
-    static constexpr bool _type_is_nullable = false;                                            \
+#define TVM_FFI_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)      \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::tvm::ffi::Object> n) : ParentType(std::move(n)) {} \
+    TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                               \
+    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }                 \
+    ObjectName* get() const { return operator->(); }                                                 \
+    static constexpr bool _type_is_nullable = false;                                                 \
     using ContainerType = ObjectName;
 
 namespace details {
@@ -776,7 +775,7 @@ TVM_FFI_INLINE bool IsObjectInstance(int32_t object_type_index) {
 struct ObjectUnsafe {
     // NOTE: get ffi header from an object
     static TVM_FFI_INLINE TVMFFIObject* GetHeader(const Object* src) {
-        return const_cast<TVMFFIObject*>(&(src->header_));
+        return const_cast<TVMFFIObject*>(&src->header_);
     }
 
     template<typename Class>

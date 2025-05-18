@@ -293,7 +293,7 @@ private:
    * \return The object created
    */
     static ObjectPtr<SmallMapObj> Empty(uint64_t n = kInitSize) {
-        using ::tvm::ffi::make_inplace_array_object;
+        using ::litetvm::ffi::make_inplace_array_object;
         ObjectPtr<SmallMapObj> p = make_inplace_array_object<SmallMapObj, KVType>(n);
         p->size_ = 0;
         p->slots_ = n;
