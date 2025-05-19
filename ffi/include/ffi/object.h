@@ -780,8 +780,8 @@ struct ObjectUnsafe {
 
     template<typename Class>
     static TVM_FFI_INLINE int64_t GetObjectOffsetToSubclass() {
-        return (reinterpret_cast<int64_t>(&(static_cast<Class*>(nullptr)->header_)) -
-                reinterpret_cast<int64_t>(&(static_cast<Object*>(nullptr)->header_)));
+        return reinterpret_cast<int64_t>(&static_cast<Class*>(nullptr)->header_) -
+               reinterpret_cast<int64_t>(&static_cast<Object*>(nullptr)->header_);
     }
 
     template<typename T>
@@ -804,9 +804,9 @@ struct ObjectUnsafe {
 
     template<typename T>
     static TVM_FFI_INLINE ObjectPtr<T> ObjectPtrFromOwned(Object* raw_ptr) {
-        ObjectPtr<T> ptr;
-        ptr.data_ = raw_ptr;
-        return ptr;
+        // ObjectPtr<T> ptr(raw_ptr);
+        // ptr.data_ = raw_ptr;
+        return ObjectPtr<T>(raw_ptr);
     }
 
     template<typename T>

@@ -38,7 +38,7 @@ ObjectPtr<T> make_object(Args&&... args);
 
 /*!
  * \brief Base class of object allocators that implements make.
- *  Use curiously recurring template pattern.
+ *  Use curiously recurring template pattern (CRTP).
  *
  * \tparam Derived The derived class.
  */
@@ -111,7 +111,9 @@ public:
             return reinterpret_cast<T*>(data);
         }
 
-        static FObjectDeleter Deleter() { return Deleter_; }
+        static FObjectDeleter Deleter() {
+            return Deleter_;
+        }
 
     private:
         static void Deleter_(TVMFFIObject* objptr) {
@@ -119,7 +121,7 @@ public:
             // It is important to do tptr->T::~T(),
             // so that we explicitly call the specific destructor
             // instead of tptr->~T(), which could mean the intention
-            // call a virtual destructor(which may not be available and is not required).
+            // calls a virtual destructor (which may not be available and is not required).
             tptr->T::~T();
             delete reinterpret_cast<StorageType*>(tptr);
         }
@@ -156,7 +158,9 @@ public:
             return reinterpret_cast<ArrayType*>(data);
         }
 
-        static FObjectDeleter Deleter() { return Deleter_; }
+        static FObjectDeleter Deleter() {
+            return Deleter_;
+        }
 
     private:
         static void Deleter_(TVMFFIObject* objptr) {
