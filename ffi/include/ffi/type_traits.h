@@ -77,7 +77,7 @@ struct TypeTraitsBase {
 
 template<typename T, typename = void>
 struct TypeToFieldStaticTypeIndex {
-    static constexpr int32_t value = TypeIndex::kTVMFFIAny;
+    static constexpr int32_t value = kTVMFFIAny;
 };
 
 template<typename T>
@@ -97,25 +97,25 @@ struct TypeToRuntimeTypeIndex<T, std::enable_if_t<std::is_base_of_v<ObjectRef, T
 
 // None
 template<>
-struct TypeTraits<std::nullptr_t> : public TypeTraitsBase {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFINone;
+struct TypeTraits<std::nullptr_t> : TypeTraitsBase {
+    static constexpr int32_t field_static_type_index = kTVMFFINone;
 
     static TVM_FFI_INLINE void CopyToAnyView(const std::nullptr_t&, TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFINone;
+        result->type_index = kTVMFFINone;
         // invariant: the pointer field also equals nullptr
         // this will simplify same_as comparisons and hash
         result->v_int64 = 0;
     }
 
     static TVM_FFI_INLINE void MoveToAny(std::nullptr_t, TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFINone;
+        result->type_index = kTVMFFINone;
         // invariant: the pointer field also equals nullptr
         // this will simplify same_as comparisons and hash
         result->v_int64 = 0;
     }
 
     static TVM_FFI_INLINE bool CheckAnyStorage(const TVMFFIAny* src) {
-        return src->type_index == TypeIndex::kTVMFFINone;
+        return src->type_index == kTVMFFINone;
     }
 
     static TVM_FFI_INLINE std::nullptr_t CopyFromAnyStorageAfterCheck(const TVMFFIAny*) {
@@ -125,13 +125,15 @@ struct TypeTraits<std::nullptr_t> : public TypeTraitsBase {
     static TVM_FFI_INLINE std::nullptr_t MoveFromAnyStorageAfterCheck(TVMFFIAny*) { return nullptr; }
 
     static TVM_FFI_INLINE std::optional<std::nullptr_t> TryConvertFromAnyView(const TVMFFIAny* src) {
-        if (src->type_index == TypeIndex::kTVMFFINone) {
+        if (src->type_index == kTVMFFINone) {
             return nullptr;
         }
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return StaticTypeKey::kTVMFFINone; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return StaticTypeKey::kTVMFFINone;
+    }
 };
 
 /**

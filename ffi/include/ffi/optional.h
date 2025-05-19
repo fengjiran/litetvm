@@ -43,7 +43,7 @@ public:
     // normal value handling.
     Optional(T other) : data_(std::move(other)) {}
 
-    TVM_FFI_INLINE Optional<T>& operator=(const Optional<T>& other) {
+    TVM_FFI_INLINE Optional& operator=(const Optional& other) {
         data_ = other.data_;
         return *this;
     }
@@ -82,18 +82,27 @@ public:
         return data_.value_or(std::forward<U>(default_value));
     }
 
-    TVM_FFI_INLINE explicit operator bool() const noexcept { return data_.has_value(); }
+    TVM_FFI_INLINE explicit operator bool() const noexcept {
+        return data_.has_value();
+    }
 
-    TVM_FFI_INLINE bool has_value() const noexcept { return data_.has_value(); }
+    TVM_FFI_INLINE bool has_value() const noexcept {
+        return data_.has_value();
+    }
 
-    TVM_FFI_INLINE bool operator==(const Optional<T>& other) const { return data_ == other.data_; }
+    TVM_FFI_INLINE bool operator==(const Optional<T>& other) const {
+        return data_ == other.data_;
+    }
 
-    TVM_FFI_INLINE bool operator!=(const Optional<T>& other) const { return data_ != other.data_; }
+    TVM_FFI_INLINE bool operator!=(const Optional<T>& other) const {
+        return data_ != other.data_;
+    }
 
     template<typename U>
     TVM_FFI_INLINE bool operator==(const U& other) const {
         return data_ == other;
     }
+
     template<typename U>
     TVM_FFI_INLINE bool operator!=(const U& other) const {
         return data_ != other;
@@ -104,7 +113,10 @@ public:
    * \return the xvalue reference to the stored value.
    * \note only use this function after checking has_value()
    */
-    TVM_FFI_INLINE T&& operator*() && noexcept { return *std::move(data_); }
+    TVM_FFI_INLINE T&& operator*() && noexcept {
+        return *std::move(data_);
+    }
+
     /*!
    * \brief Direct access to the value.
    * \return the const reference to the stored value.
@@ -123,9 +135,9 @@ class Optional<T, std::enable_if_t<use_ptr_based_optional_v<T>>> : public Object
 public:
     using ContainerType = typename T::ContainerType;
     Optional() = default;
-    Optional(const Optional<T>& other) : ObjectRef(other.data_) {}
-    Optional(Optional<T>&& other) : ObjectRef(std::move(other.data_)) {}
-    explicit Optional(ObjectPtr<Object> ptr) : ObjectRef(ptr) {}
+    Optional(const Optional& other) : ObjectRef(other.data_) {}
+    Optional(Optional&& other) noexcept : ObjectRef(std::move(other.data_)) {}
+    explicit Optional(ObjectPtr<Object> ptr) : ObjectRef(std::move(ptr)) {}
     // nullopt hanlding
     Optional(std::nullopt_t) {}// NOLINT(*)
 
@@ -135,26 +147,26 @@ public:
             *this = *std::move(other);
         }
     }
-    // normal value handling.
-    Optional(T other)// NOLINT(*)
-        : ObjectRef(std::move(other)) {}
 
-    TVM_FFI_INLINE Optional<T>& operator=(T other) {
+    // normal value handling.
+    Optional(T other) : ObjectRef(std::move(other)) {}
+
+    TVM_FFI_INLINE Optional& operator=(T other) {
         ObjectRef::operator=(std::move(other));
         return *this;
     }
 
-    TVM_FFI_INLINE Optional<T>& operator=(const Optional<T>& other) {
+    TVM_FFI_INLINE Optional& operator=(const Optional& other) {
         data_ = other.data_;
         return *this;
     }
 
-    TVM_FFI_INLINE Optional<T>& operator=(std::nullptr_t) {
+    TVM_FFI_INLINE Optional& operator=(std::nullptr_t) {
         data_ = nullptr;
         return *this;
     }
 
-    TVM_FFI_INLINE Optional<T>& operator=(Optional<T>&& other) {
+    TVM_FFI_INLINE Optional& operator=(Optional&& other) noexcept {
         data_ = std::move(other.data_);
         return *this;
     }
@@ -178,38 +190,54 @@ public:
         return data_ != nullptr ? T(data_) : T(std::forward<U>(default_value));
     }
 
-    TVM_FFI_INLINE explicit operator bool() const { return data_ != nullptr; }
+    TVM_FFI_INLINE explicit operator bool() const {
+        return data_ != nullptr;
+    }
 
-    TVM_FFI_INLINE bool has_value() const { return data_ != nullptr; }
+    TVM_FFI_INLINE bool has_value() const {
+        return data_ != nullptr;
+    }
 
     /*!
    * \brief Direct access to the value.
    * \return the const reference to the stored value.
    * \note only use this function after checking has_value()
    */
-    TVM_FFI_INLINE T operator*() const& noexcept { return T(data_); }
+    TVM_FFI_INLINE T operator*() const& noexcept {
+        return T(data_);
+    }
 
     /*!
    * \brief Direct access to the value.
    * \return the const reference to the stored value.
    * \note only use this function  after checking has_value()
    */
-    TVM_FFI_INLINE T operator*() && noexcept { return T(std::move(data_)); }
+    TVM_FFI_INLINE T operator*() && noexcept {
+        return T(std::move(data_));
+    }
 
-    TVM_FFI_INLINE bool operator==(std::nullptr_t) const noexcept { return !has_value(); }
-    TVM_FFI_INLINE bool operator!=(std::nullptr_t) const noexcept { return has_value(); }
+    TVM_FFI_INLINE bool operator==(std::nullptr_t) const noexcept {
+        return !has_value();
+    }
+
+    TVM_FFI_INLINE bool operator!=(std::nullptr_t) const noexcept {
+        return has_value();
+    }
 
     // operator overloadings
-    TVM_FFI_INLINE auto operator==(const Optional<T>& other) const {
+    TVM_FFI_INLINE auto operator==(const Optional& other) const {
         // support case where sub-class returns a symbolic ref type.
         return EQToOptional(other);
     }
-    TVM_FFI_INLINE auto operator!=(const Optional<T>& other) const { return NEToOptional(other); }
+    TVM_FFI_INLINE auto operator!=(const Optional& other) const {
+        return NEToOptional(other);
+    }
 
     TVM_FFI_INLINE auto operator==(const std::optional<T>& other) const {
         // support case where sub-class returns a symbolic ref type.
         return EQToOptional(other);
     }
+
     TVM_FFI_INLINE auto operator!=(const std::optional<T>& other) const {
         return NEToOptional(other);
     }
@@ -221,7 +249,9 @@ public:
         return RetType(false);
     }
 
-    TVM_FFI_INLINE auto operator!=(const T& other) const { return !(*this == other); }
+    TVM_FFI_INLINE auto operator!=(const T& other) const {
+        return !(*this == other);
+    }
 
     template<typename U>
     TVM_FFI_INLINE auto operator==(const U& other) const {
