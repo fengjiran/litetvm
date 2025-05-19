@@ -11,12 +11,9 @@
 #include "ffi/object.h"
 #include "ffi/type_traits.h"
 
-#include <cstddef>
 #include <cstring>
-#include <initializer_list>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <utility>
 
 // Note: We place string in tvm/ffi instead of tvm/ffi/container
@@ -39,18 +36,18 @@ class BytesObjBase : public Object, public TVMFFIByteArray {};
  */
 class BytesObj : public BytesObjBase {
 public:
-    static constexpr const uint32_t _type_index = TypeIndex::kTVMFFIBytes;
+    static constexpr uint32_t _type_index = kTVMFFIBytes;
     static constexpr const char* _type_key = StaticTypeKey::kTVMFFIBytes;
-    static const constexpr bool _type_final = true;
+    static constexpr bool _type_final = true;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(BytesObj, Object);
 };
 
 /*! \brief An object representing string. It's POD type. */
 class StringObj : public BytesObjBase {
 public:
-    static constexpr const uint32_t _type_index = TypeIndex::kTVMFFIStr;
+    static constexpr uint32_t _type_index = kTVMFFIStr;
     static constexpr const char* _type_key = StaticTypeKey::kTVMFFIStr;
-    static const constexpr bool _type_final = true;
+    static constexpr bool _type_final = true;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(StringObj, Object);
 };
 
@@ -61,7 +58,7 @@ namespace details {
 template<typename Base>
 class BytesObjStdImpl : public Base {
 public:
-    explicit BytesObjStdImpl(std::string other) : data_{other} {
+    explicit BytesObjStdImpl(std::string other) : data_{std::move(other)} {
         this->data = data_.data();
         this->size = data_.size();
     }
@@ -86,36 +83,36 @@ TVM_FFI_INLINE ObjectPtr<Base> MakeInplaceBytes(const char* data, size_t length)
 }// namespace details
 
 /*!
- * \brief Managed reference of byte array.
+ * \brief Managed reference of a byte array.
  */
 class Bytes : public ObjectRef {
 public:
     /*!
    * \brief constructor from char [N]
    *
-   * \param other a char array.
+   * \param data a char array.
    */
-    Bytes(const char* data, size_t size)// NOLINT(*)
-        : ObjectRef(details::MakeInplaceBytes<BytesObj>(data, size)) {}
+    Bytes(const char* data, size_t size) : ObjectRef(details::MakeInplaceBytes<BytesObj>(data, size)) {}
+
+    /*!
+   * \brief constructor from char [N]
+   *
+   * \param bytes a char array.
+   */
+    Bytes(const TVMFFIByteArray& bytes) : ObjectRef(details::MakeInplaceBytes<BytesObj>(bytes.data, bytes.size)) {}
+
     /*!
    * \brief constructor from char [N]
    *
    * \param other a char array.
    */
-    Bytes(TVMFFIByteArray bytes)// NOLINT(*)
-        : ObjectRef(details::MakeInplaceBytes<BytesObj>(bytes.data, bytes.size)) {}
-    /*!
-   * \brief constructor from char [N]
-   *
-   * \param other a char array.
-   */
-    Bytes(std::string other)// NOLINT(*)
-        : ObjectRef(make_object<details::BytesObjStdImpl<BytesObj>>(std::move(other))) {}
+    Bytes(std::string other) : ObjectRef(make_object<details::BytesObjStdImpl<BytesObj>>(std::move(other))) {}
+
     /*!
    * \brief Swap this String with another string
    * \param other The other string
    */
-    void swap(Bytes& other) {// NOLINT(*)
+    void swap(Bytes& other) noexcept {
         std::swap(data_, other.data_);
     }
 
@@ -125,24 +122,33 @@ public:
         Bytes(std::forward<T>(other)).swap(*this);// NOLINT(*)
         return *this;
     }
+
     /*!
    * \brief Return the length of the string
    *
    * \return size_t string length
    */
-    size_t size() const { return get()->size; }
+    size_t size() const {
+        return get()->size;
+    }
+
     /*!
    * \brief Return the data pointer
    *
    * \return const char* data pointer
    */
-    const char* data() const { return get()->data; }
+    const char* data() const {
+        return get()->data;
+    }
+
     /*!
    * \brief Convert String to an std::string object
    *
    * \return std::string
    */
-    operator std::string() const { return std::string{get()->data, size()}; }
+    operator std::string() const {
+        return std::string{get()->data, size()};
+    }
 
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(Bytes, ObjectRef, BytesObj);
 
@@ -191,7 +197,7 @@ private:
  */
 class String : public ObjectRef {
 public:
-    String(std::nullptr_t) = delete;// NOLINT(*)
+    String(std::nullptr_t) = delete;
 
     /*!
    * \brief constructor from char [N]
@@ -199,8 +205,7 @@ public:
    * \param other a char array.
    */
     template<size_t N>
-    String(const char other[N])// NOLINT(*)
-        : ObjectRef(details::MakeInplaceBytes<StringObj>(other, N)) {}
+    String(const char other[N]) : ObjectRef(details::MakeInplaceBytes<StringObj>(other, N)) {}
 
     /*!
    * \brief constructor
@@ -212,35 +217,32 @@ public:
    *
    * \param other a char array.
    */
-    String(const char* other)// NOLINT(*)
-        : ObjectRef(details::MakeInplaceBytes<StringObj>(other, std::strlen(other))) {}
+    String(const char* other) : ObjectRef(details::MakeInplaceBytes<StringObj>(other, std::strlen(other))) {}
 
     /*!
    * \brief constructor from raw string
    *
    * \param other a char array.
    */
-    String(const char* other, size_t size)// NOLINT(*)
-        : ObjectRef(details::MakeInplaceBytes<StringObj>(other, size)) {}
+    String(const char* other, size_t size) : ObjectRef(details::MakeInplaceBytes<StringObj>(other, size)) {}
 
     /*!
    * \brief Construct a new string object
    * \param other The std::string object to be copied
    */
-    String(const std::string& other)// NOLINT(*)
-        : ObjectRef(details::MakeInplaceBytes<StringObj>(other.data(), other.size())) {}
+    String(const std::string& other) : ObjectRef(details::MakeInplaceBytes<StringObj>(other.data(), other.size())) {}
 
     /*!
    * \brief Construct a new string object
    * \param other The std::string object to be moved
    */
-    String(std::string&& other)// NOLINT(*)
-        : ObjectRef(make_object<details::BytesObjStdImpl<StringObj>>(std::move(other))) {}
+    String(std::string&& other) : ObjectRef(make_object<details::BytesObjStdImpl<StringObj>>(std::move(other))) {}
+
     /*!
    * \brief Swap this String with another string
    * \param other The other string
    */
-    void swap(String& other) {// NOLINT(*)
+    void swap(String& other) noexcept {
         std::swap(data_, other.data_);
     }
 
@@ -292,7 +294,9 @@ public:
    *
    * \return const char*
    */
-    const char* c_str() const { return get()->data; }
+    const char* c_str() const {
+        return get()->data;
+    }
 
     /*!
    * \brief Return the length of the string
@@ -309,14 +313,18 @@ public:
    *
    * \return size_t string length
    */
-    size_t length() const { return size(); }
+    size_t length() const {
+        return size();
+    }
 
     /*!
    * \brief Retun if the string is empty
    *
    * \return true if empty, false otherwise.
    */
-    bool empty() const { return size() == 0; }
+    bool empty() const {
+        return size() == 0;
+    }
 
     /*!
    * \brief Read an element.
@@ -327,9 +335,8 @@ public:
     char at(size_t pos) const {
         if (pos < size()) {
             return data()[pos];
-        } else {
-            throw std::out_of_range("tvm::String index out of bounds");
         }
+        throw std::out_of_range("tvm::String index out of bounds");
     }
 
     /*!
@@ -337,14 +344,18 @@ public:
    *
    * \return const char* data pointer
    */
-    const char* data() const { return get()->data; }
+    const char* data() const {
+        return get()->data;
+    }
 
     /*!
    * \brief Convert String to an std::string object
    *
    * \return std::string
    */
-    operator std::string() const { return std::string{get()->data, size()}; }
+    operator std::string() const {
+        return std::string{get()->data, size()};
+    }
 
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(String, ObjectRef, StringObj);
 
@@ -382,11 +393,11 @@ TVM_FFI_INLINE std::string_view ToStringView(TVMFFIByteArray str) {
 template<int N>
 struct TypeTraits<char[N]> : TypeTraitsBase {
     // NOTE: only enable implicit conversion into AnyView
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIRawStr;
+    static constexpr int32_t field_static_type_index = kTVMFFIRawStr;
     static constexpr bool storage_enabled = false;
 
     static TVM_FFI_INLINE void CopyToAnyView(const char src[N], TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFIRawStr;
+        result->type_index = kTVMFFIRawStr;
         result->v_c_str = src;
     }
 
@@ -398,12 +409,12 @@ struct TypeTraits<char[N]> : TypeTraitsBase {
 
 template<>
 struct TypeTraits<const char*> : TypeTraitsBase {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIRawStr;
+    static constexpr int32_t field_static_type_index = kTVMFFIRawStr;
     static constexpr bool storage_enabled = false;
 
     static TVM_FFI_INLINE void CopyToAnyView(const char* src, TVMFFIAny* result) {
         TVM_FFI_ICHECK_NOTNULL(src);
-        result->type_index = TypeIndex::kTVMFFIRawStr;
+        result->type_index = kTVMFFIRawStr;
         result->v_c_str = src;
     }
 
@@ -413,13 +424,15 @@ struct TypeTraits<const char*> : TypeTraitsBase {
     }
     // Do not allow const char* in a container, so we do not need CheckAnyStorage
     static TVM_FFI_INLINE std::optional<const char*> TryConvertFromAnyView(const TVMFFIAny* src) {
-        if (src->type_index == TypeIndex::kTVMFFIRawStr) {
-            return static_cast<const char*>(src->v_c_str);
+        if (src->type_index == kTVMFFIRawStr) {
+            return src->v_c_str;
         }
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return "const char*"; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return "const char*";
+    }
 };
 
 // TVMFFIByteArray, requirement: not nullable, do not retain ownership
@@ -606,19 +619,29 @@ inline std::ostream& operator<<(std::ostream& out, const String& input) {
 }
 
 inline int Bytes::memncmp(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count) {
-    if (lhs == rhs && lhs_count == rhs_count) return 0;
-
-    for (size_t i = 0; i < lhs_count && i < rhs_count; ++i) {
-        if (lhs[i] < rhs[i]) return -1;
-        if (lhs[i] > rhs[i]) return 1;
-    }
-    if (lhs_count < rhs_count) {
-        return -1;
-    } else if (lhs_count > rhs_count) {
-        return 1;
-    } else {
+    if (lhs == rhs && lhs_count == rhs_count) {
         return 0;
     }
+
+    for (size_t i = 0; i < lhs_count && i < rhs_count; ++i) {
+        if (lhs[i] < rhs[i]) {
+            return -1;
+        }
+
+        if (lhs[i] > rhs[i]) {
+            return 1;
+        }
+    }
+
+    if (lhs_count < rhs_count) {
+        return -1;
+    }
+
+    if (lhs_count > rhs_count) {
+        return 1;
+    }
+
+    return 0;
 }
 }// namespace ffi
 

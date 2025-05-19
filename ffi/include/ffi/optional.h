@@ -24,11 +24,10 @@ inline constexpr bool is_optional_type_v = false;
 template<typename T>
 inline constexpr bool is_optional_type_v<Optional<T>> = true;
 
-// we can safely used ptr based optional for ObjectRef types
+// we can safely use ptr based optional for ObjectRef types
 // that do not have additional data members and virtual functions.
 template<typename T>
-inline constexpr bool use_ptr_based_optional_v =
-        (std::is_base_of_v<ObjectRef, T> && !is_optional_type_v<T>);
+inline constexpr bool use_ptr_based_optional_v = std::is_base_of_v<ObjectRef, T> && !is_optional_type_v<T>;
 
 // Specialization for non-ObjectRef types.
 // simply fallback to std::optional
@@ -42,8 +41,7 @@ public:
     Optional(std::optional<T> other) : data_(std::move(other)) {}// NOLINT(*)
     Optional(std::nullopt_t) {}                                  // NOLINT(*)
     // normal value handling.
-    Optional(T other)// NOLINT(*)
-        : data_(std::move(other)) {}
+    Optional(T other) : data_(std::move(other)) {}
 
     TVM_FFI_INLINE Optional<T>& operator=(const Optional<T>& other) {
         data_ = other.data_;
@@ -255,10 +253,9 @@ private:
         if (same_as(other)) return RetType(true);
         if (has_value() && other.has_value()) {
             return operator*() == *other;
-        } else {
-            // one of them is nullptr.
-            return RetType(false);
         }
+        // one of them is nullptr.
+        return RetType(false);
     }
 
     template<typename U>
@@ -268,10 +265,9 @@ private:
         if (same_as(other)) return RetType(false);
         if (has_value() && other.has_value()) {
             return operator*() != *other;
-        } else {
-            // one of them is nullptr.
-            return RetType(true);
         }
+        // one of them is nullptr.
+        return RetType(true);
     }
 };
 }// namespace ffi
