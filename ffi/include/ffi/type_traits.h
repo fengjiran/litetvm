@@ -126,7 +126,9 @@ struct TypeTraits<std::nullptr_t> : TypeTraitsBase {
         return nullptr;
     }
 
-    static TVM_FFI_INLINE std::nullptr_t MoveFromAnyStorageAfterCheck(TVMFFIAny*) { return nullptr; }
+    static TVM_FFI_INLINE std::nullptr_t MoveFromAnyStorageAfterCheck(TVMFFIAny*) {
+        return nullptr;
+    }
 
     static TVM_FFI_INLINE std::optional<std::nullptr_t> TryConvertFromAnyView(const TVMFFIAny* src) {
         if (src->type_index == kTVMFFINone) {
@@ -396,7 +398,9 @@ struct TypeTraits<DLDevice> : TypeTraitsBase {
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return StaticTypeKey::kTVMFFIDevice; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return StaticTypeKey::kTVMFFIDevice;
+    }
 };
 
 // DLTensor*, requirement: not nullable, do not retain ownership
