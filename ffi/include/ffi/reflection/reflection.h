@@ -67,14 +67,14 @@ private:
     template<typename T>
     static int FieldGetter(void* field, TVMFFIAny* result) {
         TVM_FFI_SAFE_CALL_BEGIN();
-        *result = details::AnyUnsafe::MoveAnyToTVMFFIAny(Any(*reinterpret_cast<T*>(field)));
+        *result = AnyUnsafe::MoveAnyToTVMFFIAny(Any(*reinterpret_cast<T*>(field)));
         TVM_FFI_SAFE_CALL_END();
     }
 
     template<typename T>
     static int FieldSetter(void* field, const TVMFFIAny* value) {
         TVM_FFI_SAFE_CALL_BEGIN();
-        *reinterpret_cast<T*>(field) = AnyView::CopyFromTVMFFIAny(*value).cast<T>();
+        *static_cast<T*>(field) = AnyView::CopyFromTVMFFIAny(*value).cast<T>();
         TVM_FFI_SAFE_CALL_END();
     }
 
