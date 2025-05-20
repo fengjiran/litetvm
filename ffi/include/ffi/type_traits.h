@@ -514,7 +514,9 @@ struct ObjectRefTypeTraitsBase : TypeTraitsBase {
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return ContainerType::_type_key; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return ContainerType::_type_key;
+    }
 };
 
 template<typename TObjRef>
@@ -621,11 +623,15 @@ struct TypeTraits<const TObject*, std::enable_if_t<std::is_base_of_v<Object, TOb
     }
 
     static TVM_FFI_INLINE std::optional<const TObject*> TryConvertFromAnyView(const TVMFFIAny* src) {
-        if (CheckAnyStorage(src)) return CopyFromAnyStorageAfterCheck(src);
+        if (CheckAnyStorage(src)) {
+            return CopyFromAnyStorageAfterCheck(src);
+        }
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return TObject::_type_key; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return TObject::_type_key;
+    }
 };
 
 template<typename T>

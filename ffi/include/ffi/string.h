@@ -438,12 +438,12 @@ struct TypeTraits<const char*> : TypeTraitsBase {
 // TVMFFIByteArray, requirement: not nullable, do not retain ownership
 template<>
 struct TypeTraits<TVMFFIByteArray*> : TypeTraitsBase {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIByteArrayPtr;
+    static constexpr int32_t field_static_type_index = kTVMFFIByteArrayPtr;
     static constexpr bool storage_enabled = false;
 
     static TVM_FFI_INLINE void CopyToAnyView(TVMFFIByteArray* src, TVMFFIAny* result) {
         TVM_FFI_ICHECK_NOTNULL(src);
-        result->type_index = TypeIndex::kTVMFFIByteArrayPtr;
+        result->type_index = kTVMFFIByteArrayPtr;
         TVM_FFI_CLEAR_PTR_PADDING_IN_FFI_ANY(result);
         result->v_ptr = src;
     }
@@ -454,7 +454,7 @@ struct TypeTraits<TVMFFIByteArray*> : TypeTraitsBase {
 
     static TVM_FFI_INLINE std::optional<TVMFFIByteArray*> TryConvertFromAnyView(
             const TVMFFIAny* src) {
-        if (src->type_index == TypeIndex::kTVMFFIByteArrayPtr) {
+        if (src->type_index == kTVMFFIByteArrayPtr) {
             return static_cast<TVMFFIByteArray*>(src->v_ptr);
         }
         return std::nullopt;
@@ -469,8 +469,10 @@ inline constexpr bool use_default_type_traits_v<Bytes> = false;
 // specialize to enable implicit conversion from TVMFFIByteArray*
 template<>
 struct TypeTraits<Bytes> : ObjectRefWithFallbackTraitsBase<Bytes, TVMFFIByteArray*> {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIBytes;
-    static TVM_FFI_INLINE Bytes ConvertFallbackValue(TVMFFIByteArray* src) { return Bytes(*src); }
+    static constexpr int32_t field_static_type_index = kTVMFFIBytes;
+    static TVM_FFI_INLINE Bytes ConvertFallbackValue(TVMFFIByteArray* src) {
+        return Bytes(*src);
+    }
 };
 
 template<>
@@ -479,8 +481,10 @@ inline constexpr bool use_default_type_traits_v<String> = false;
 // specialize to enable implicit conversion from const char*
 template<>
 struct TypeTraits<String> : ObjectRefWithFallbackTraitsBase<String, const char*> {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIStr;
-    static TVM_FFI_INLINE String ConvertFallbackValue(const char* src) { return String(src); }
+    static constexpr int32_t field_static_type_index = kTVMFFIStr;
+    static TVM_FFI_INLINE String ConvertFallbackValue(const char* src) {
+        return String(src);
+    }
 };
 
 template<>
@@ -489,7 +493,7 @@ inline constexpr bool use_default_type_traits_v<std::string> = false;
 template<>
 struct TypeTraits<std::string> : FallbackOnlyTraitsBase<std::string, const char*, TVMFFIByteArray*, Bytes, String> {
     static TVM_FFI_INLINE void CopyToAnyView(const std::string& src, TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFIRawStr;
+        result->type_index = kTVMFFIRawStr;
         result->v_c_str = src.c_str();
     }
 
@@ -498,7 +502,9 @@ struct TypeTraits<std::string> : FallbackOnlyTraitsBase<std::string, const char*
         ObjectRefTypeTraitsBase<String>::MoveToAny(String(std::move(src)), result);
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return "std::string"; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return "std::string";
+    }
 
     static TVM_FFI_INLINE std::string ConvertFallbackValue(const char* src) {
         return std::string(src);
@@ -548,70 +554,130 @@ inline String operator+(const String& lhs, const char* rhs) {
 }
 
 // Overload < operator
-inline bool operator<(const String& lhs, const std::string& rhs) { return lhs.compare(rhs) < 0; }
+inline bool operator<(const String& lhs, const std::string& rhs) {
+    return lhs.compare(rhs) < 0;
+}
 
-inline bool operator<(const std::string& lhs, const String& rhs) { return rhs.compare(lhs) > 0; }
+inline bool operator<(const std::string& lhs, const String& rhs) {
+    return rhs.compare(lhs) > 0;
+}
 
-inline bool operator<(const String& lhs, const String& rhs) { return lhs.compare(rhs) < 0; }
+inline bool operator<(const String& lhs, const String& rhs) {
+    return lhs.compare(rhs) < 0;
+}
 
-inline bool operator<(const String& lhs, const char* rhs) { return lhs.compare(rhs) < 0; }
+inline bool operator<(const String& lhs, const char* rhs) {
+    return lhs.compare(rhs) < 0;
+}
 
-inline bool operator<(const char* lhs, const String& rhs) { return rhs.compare(lhs) > 0; }
+inline bool operator<(const char* lhs, const String& rhs) {
+    return rhs.compare(lhs) > 0;
+}
 
 // Overload > operator
-inline bool operator>(const String& lhs, const std::string& rhs) { return lhs.compare(rhs) > 0; }
+inline bool operator>(const String& lhs, const std::string& rhs) {
+    return lhs.compare(rhs) > 0;
+}
 
-inline bool operator>(const std::string& lhs, const String& rhs) { return rhs.compare(lhs) < 0; }
+inline bool operator>(const std::string& lhs, const String& rhs) {
+    return rhs.compare(lhs) < 0;
+}
 
-inline bool operator>(const String& lhs, const String& rhs) { return lhs.compare(rhs) > 0; }
+inline bool operator>(const String& lhs, const String& rhs) {
+    return lhs.compare(rhs) > 0;
+}
 
-inline bool operator>(const String& lhs, const char* rhs) { return lhs.compare(rhs) > 0; }
+inline bool operator>(const String& lhs, const char* rhs) {
+    return lhs.compare(rhs) > 0;
+}
 
-inline bool operator>(const char* lhs, const String& rhs) { return rhs.compare(lhs) < 0; }
+inline bool operator>(const char* lhs, const String& rhs) {
+    return rhs.compare(lhs) < 0;
+}
 
 // Overload <= operator
-inline bool operator<=(const String& lhs, const std::string& rhs) { return lhs.compare(rhs) <= 0; }
+inline bool operator<=(const String& lhs, const std::string& rhs) {
+    return lhs.compare(rhs) <= 0;
+}
 
-inline bool operator<=(const std::string& lhs, const String& rhs) { return rhs.compare(lhs) >= 0; }
+inline bool operator<=(const std::string& lhs, const String& rhs) {
+    return rhs.compare(lhs) >= 0;
+}
 
-inline bool operator<=(const String& lhs, const String& rhs) { return lhs.compare(rhs) <= 0; }
+inline bool operator<=(const String& lhs, const String& rhs) {
+    return lhs.compare(rhs) <= 0;
+}
 
-inline bool operator<=(const String& lhs, const char* rhs) { return lhs.compare(rhs) <= 0; }
+inline bool operator<=(const String& lhs, const char* rhs) {
+    return lhs.compare(rhs) <= 0;
+}
 
-inline bool operator<=(const char* lhs, const String& rhs) { return rhs.compare(lhs) >= 0; }
+inline bool operator<=(const char* lhs, const String& rhs) {
+    return rhs.compare(lhs) >= 0;
+}
 
 // Overload >= operator
-inline bool operator>=(const String& lhs, const std::string& rhs) { return lhs.compare(rhs) >= 0; }
+inline bool operator>=(const String& lhs, const std::string& rhs) {
+    return lhs.compare(rhs) >= 0;
+}
 
-inline bool operator>=(const std::string& lhs, const String& rhs) { return rhs.compare(lhs) <= 0; }
+inline bool operator>=(const std::string& lhs, const String& rhs) {
+    return rhs.compare(lhs) <= 0;
+}
 
-inline bool operator>=(const String& lhs, const String& rhs) { return lhs.compare(rhs) >= 0; }
+inline bool operator>=(const String& lhs, const String& rhs) {
+    return lhs.compare(rhs) >= 0;
+}
 
-inline bool operator>=(const String& lhs, const char* rhs) { return lhs.compare(rhs) >= 0; }
+inline bool operator>=(const String& lhs, const char* rhs) {
+    return lhs.compare(rhs) >= 0;
+}
 
-inline bool operator>=(const char* lhs, const String& rhs) { return rhs.compare(lhs) <= 0; }
+inline bool operator>=(const char* lhs, const String& rhs) {
+    return rhs.compare(lhs) <= 0;
+}
 
 // Overload == operator
-inline bool operator==(const String& lhs, const std::string& rhs) { return lhs.compare(rhs) == 0; }
+inline bool operator==(const String& lhs, const std::string& rhs) {
+    return lhs.compare(rhs) == 0;
+}
 
-inline bool operator==(const std::string& lhs, const String& rhs) { return rhs.compare(lhs) == 0; }
+inline bool operator==(const std::string& lhs, const String& rhs) {
+    return rhs.compare(lhs) == 0;
+}
 
-inline bool operator==(const String& lhs, const String& rhs) { return lhs.compare(rhs) == 0; }
+inline bool operator==(const String& lhs, const String& rhs) {
+    return lhs.compare(rhs) == 0;
+}
 
-inline bool operator==(const String& lhs, const char* rhs) { return lhs.compare(rhs) == 0; }
+inline bool operator==(const String& lhs, const char* rhs) {
+    return lhs.compare(rhs) == 0;
+}
 
-inline bool operator==(const char* lhs, const String& rhs) { return rhs.compare(lhs) == 0; }
+inline bool operator==(const char* lhs, const String& rhs) {
+    return rhs.compare(lhs) == 0;
+}
 
 // Overload != operator
-inline bool operator!=(const String& lhs, const std::string& rhs) { return lhs.compare(rhs) != 0; }
+inline bool operator!=(const String& lhs, const std::string& rhs) {
+    return lhs.compare(rhs) != 0;
+}
 
-inline bool operator!=(const std::string& lhs, const String& rhs) { return rhs.compare(lhs) != 0; }
+inline bool operator!=(const std::string& lhs, const String& rhs) {
+    return rhs.compare(lhs) != 0;
+}
 
-inline bool operator!=(const String& lhs, const String& rhs) { return lhs.compare(rhs) != 0; }
+inline bool operator!=(const String& lhs, const String& rhs) {
+    return lhs.compare(rhs) != 0;
+}
 
-inline bool operator!=(const String& lhs, const char* rhs) { return lhs.compare(rhs) != 0; }
+inline bool operator!=(const String& lhs, const char* rhs) {
+    return lhs.compare(rhs) != 0;
+}
 
-inline bool operator!=(const char* lhs, const String& rhs) { return rhs.compare(lhs) != 0; }
+inline bool operator!=(const char* lhs, const String& rhs) {
+    return rhs.compare(lhs) != 0;
+}
 
 inline std::ostream& operator<<(std::ostream& out, const String& input) {
     out.write(input.data(), input.size());
