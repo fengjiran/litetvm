@@ -43,7 +43,7 @@ public:
 
     TIntObj(int64_t value) : value(value) {}
 
-    int64_t GetValue() const {
+    NODISCARD int64_t GetValue() const {
         return value;
     }
 
@@ -120,7 +120,7 @@ struct TypeTraits<testing::TPrimExpr> : ObjectRefWithFallbackTraitsBase<testing:
     }
 
     static TVM_FFI_INLINE testing::TPrimExpr ConvertFallbackValue(double value) {
-        return testing::TPrimExpr("float32", static_cast<double>(value));
+        return testing::TPrimExpr("float32", value);
     }
     // hack into the dtype to store string
     static TVM_FFI_INLINE testing::TPrimExpr ConvertFallbackValue(String value) {

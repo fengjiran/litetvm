@@ -261,7 +261,7 @@ public:
    * \return zero if both char sequences compare equal. negative if this appear
    * before other, positive otherwise.
    */
-    int compare(const String& other) const {
+    NODISCARD int compare(const String& other) const {
         return Bytes::memncmp(data(), other.data(), size(), other.size());
     }
 
@@ -273,7 +273,7 @@ public:
    * \return zero if both char sequences compare equal. negative if this appear
    * before other, positive otherwise.
    */
-    int compare(const std::string& other) const {
+    NODISCARD int compare(const std::string& other) const {
         return Bytes::memncmp(data(), other.data(), size(), other.size());
     }
 
@@ -294,7 +294,7 @@ public:
    *
    * \return const char*
    */
-    const char* c_str() const {
+    NODISCARD const char* c_str() const {
         return get()->data;
     }
 
@@ -303,7 +303,7 @@ public:
    *
    * \return size_t string length
    */
-    size_t size() const {
+    NODISCARD size_t size() const {
         const auto* ptr = get();
         return ptr->size;
     }
@@ -313,7 +313,7 @@ public:
    *
    * \return size_t string length
    */
-    size_t length() const {
+    NODISCARD size_t length() const {
         return size();
     }
 
@@ -322,7 +322,7 @@ public:
    *
    * \return true if empty, false otherwise.
    */
-    bool empty() const {
+    NODISCARD bool empty() const {
         return size() == 0;
     }
 
@@ -332,7 +332,7 @@ public:
    *
    * \return The char at position
    */
-    char at(size_t pos) const {
+    NODISCARD char at(size_t pos) const {
         if (pos < size()) {
             return data()[pos];
         }
@@ -344,7 +344,7 @@ public:
    *
    * \return const char* data pointer
    */
-    const char* data() const {
+    NODISCARD const char* data() const {
         return get()->data;
     }
 
@@ -373,7 +373,7 @@ private:
     static String Concat(const char* lhs, size_t lhs_size, const char* rhs, size_t rhs_size) {
         std::string ret(lhs, lhs_size);
         ret.append(rhs, rhs_size);
-        return String(ret);
+        return ret;
     }
 
     // Overload + operator
@@ -422,6 +422,7 @@ struct TypeTraits<const char*> : TypeTraitsBase {
         // when we need to move to any, convert to owned object first
         ObjectRefTypeTraitsBase<String>::MoveToAny(String(src), result);
     }
+
     // Do not allow const char* in a container, so we do not need CheckAnyStorage
     static TVM_FFI_INLINE std::optional<const char*> TryConvertFromAnyView(const TVMFFIAny* src) {
         if (src->type_index == kTVMFFIRawStr) {
@@ -460,7 +461,9 @@ struct TypeTraits<TVMFFIByteArray*> : TypeTraitsBase {
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return StaticTypeKey::kTVMFFIByteArrayPtr; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return StaticTypeKey::kTVMFFIByteArrayPtr;
+    }
 };
 
 template<>
@@ -471,7 +474,7 @@ template<>
 struct TypeTraits<Bytes> : ObjectRefWithFallbackTraitsBase<Bytes, TVMFFIByteArray*> {
     static constexpr int32_t field_static_type_index = kTVMFFIBytes;
     static TVM_FFI_INLINE Bytes ConvertFallbackValue(TVMFFIByteArray* src) {
-        return Bytes(*src);
+        return *src;
     }
 };
 
@@ -483,7 +486,7 @@ template<>
 struct TypeTraits<String> : ObjectRefWithFallbackTraitsBase<String, const char*> {
     static constexpr int32_t field_static_type_index = kTVMFFIStr;
     static TVM_FFI_INLINE String ConvertFallbackValue(const char* src) {
-        return String(src);
+        return src;
     }
 };
 
@@ -507,18 +510,18 @@ struct TypeTraits<std::string> : FallbackOnlyTraitsBase<std::string, const char*
     }
 
     static TVM_FFI_INLINE std::string ConvertFallbackValue(const char* src) {
-        return std::string(src);
+        return src;
     }
 
     static TVM_FFI_INLINE std::string ConvertFallbackValue(TVMFFIByteArray* src) {
-        return std::string(src->data, src->size);
+        return {src->data, src->size};
     }
 
-    static TVM_FFI_INLINE std::string ConvertFallbackValue(Bytes src) {
+    static TVM_FFI_INLINE std::string ConvertFallbackValue(const Bytes& src) {
         return src.operator std::string();
     }
 
-    static TVM_FFI_INLINE std::string ConvertFallbackValue(String src) {
+    static TVM_FFI_INLINE std::string ConvertFallbackValue(const String& src) {
         return src.operator std::string();
     }
 };

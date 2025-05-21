@@ -85,6 +85,9 @@ struct TypeToFieldStaticTypeIndex<T, std::enable_if_t<TypeTraits<T>::convert_ena
     static constexpr int32_t value = TypeTraits<T>::field_static_type_index;
 };
 
+template<typename T>
+constexpr int32_t TypeToFieldStaticTypeIndex_v = TypeToFieldStaticTypeIndex<T>::value;
+
 template<typename T, typename = void>
 struct TypeToRuntimeTypeIndex {
     static int32_t v() {
@@ -98,6 +101,9 @@ struct TypeToRuntimeTypeIndex<T, std::enable_if_t<std::is_base_of_v<ObjectRef, T
         return T::ContainerType::RuntimeTypeIndex();
     }
 };
+
+template<typename T>
+constexpr int32_t TypeToRuntimeTypeIndex_v = TypeToRuntimeTypeIndex<T>::v();
 
 // None
 template<>
@@ -167,7 +173,7 @@ struct TypeTraits<StrictBool> : TypeTraitsBase {
         result->v_int64 = static_cast<bool>(src);
     }
 
-    static TVM_FFI_INLINE void MoveToAny(StrictBool src, TVMFFIAny* result) {
+    static TVM_FFI_INLINE void MoveToAny(const StrictBool& src, TVMFFIAny* result) {
         CopyToAnyView(src, result);
     }
 
@@ -439,7 +445,7 @@ struct TypeTraits<DLTensor*> : TypeTraitsBase {
 };
 
 // Traits for ObjectRef, None to ObjectRef will always fail.
-// use std::optional<ObjectRef> instead for nullable references.
+// use std::optional<ObjectRef> instead of nullable references.
 template<typename TObjRef>
 struct ObjectRefTypeTraitsBase : TypeTraitsBase {
     static constexpr int32_t field_static_type_index = kTVMFFIObject;
@@ -473,7 +479,9 @@ struct ObjectRefTypeTraitsBase : TypeTraitsBase {
 
     static TVM_FFI_INLINE bool CheckAnyStorage(const TVMFFIAny* src) {
         if constexpr (TObjRef::_type_is_nullable) {
-            if (src->type_index == kTVMFFINone) return true;
+            if (src->type_index == kTVMFFINone) {
+                return true;
+            }
         }
         return src->type_index >= kTVMFFIStaticObjectBegin && details::IsObjectInstance<ContainerType>(src->type_index);
     }

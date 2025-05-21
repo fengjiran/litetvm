@@ -3,3 +3,9 @@
 //
 
 #include "testing_object.h"
+
+using namespace litetvm::ffi;
+
+void test() {
+    String str;
+}

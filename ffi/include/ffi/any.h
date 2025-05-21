@@ -48,7 +48,10 @@ public:
    * \brief Swap this array with another Object
    * \param other The other Object
    */
-    TVM_FFI_INLINE void swap(AnyView& other) noexcept { std::swap(data_, other.data_); }
+    TVM_FFI_INLINE void swap(AnyView& other) noexcept {
+        std::swap(data_, other.data_);
+    }
+
     /*! \return the internal type index */
     TVM_FFI_INLINE int32_t type_index() const noexcept { return data_.type_index; }
     // default constructors
@@ -189,7 +192,7 @@ public:
    * \brief Reset any to None
    */
     TVM_FFI_INLINE void reset() {
-        if (data_.type_index >= TVMFFITypeIndex::kTVMFFIStaticObjectBegin) {
+        if (data_.type_index >= kTVMFFIStaticObjectBegin) {
             details::ObjectUnsafe::DecRefObjectHandle(data_.v_obj);
         }
         data_.type_index = TVMFFITypeIndex::kTVMFFINone;

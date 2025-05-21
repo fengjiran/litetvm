@@ -82,15 +82,14 @@ public:
 
 protected:
     /*! \brief Make default constructor protected. */
-    FunctionObj() {}
+    FunctionObj() = default;
 
     // Implementing safe call style
     static int SafeCall(void* func, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* result) {
         TVM_FFI_SAFE_CALL_BEGIN();
         TVM_FFI_ICHECK_LT(result->type_index, TypeIndex::kTVMFFIStaticObjectBegin);
-        FunctionObj* self = static_cast<FunctionObj*>(func);
-        self->call(self, reinterpret_cast<const AnyView*>(args), num_args,
-                   reinterpret_cast<Any*>(result));
+        auto* self = static_cast<FunctionObj*>(func);
+        self->call(self, reinterpret_cast<const AnyView*>(args), num_args,reinterpret_cast<Any*>(result));
         TVM_FFI_SAFE_CALL_END();
     }
 
@@ -152,7 +151,7 @@ struct RedirectCallToSafeCall {
 class ExternCFunctionObjImpl : public FunctionObj,
                                public RedirectCallToSafeCall<ExternCFunctionObjImpl> {
 public:
-    using RedirectCallToSafeCall<ExternCFunctionObjImpl>::SafeCall;
+    using RedirectCallToSafeCall::SafeCall;
 
     ExternCFunctionObjImpl(void* self, TVMFFISafeCallType safe_call, void (*deleter)(void* self))
         : self_(self), safe_call_(safe_call), deleter_(deleter) {
