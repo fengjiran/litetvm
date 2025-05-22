@@ -3,9 +3,14 @@
 //
 
 #include "testing_object.h"
+#include "ffi/object.h"
+#include "ffi/memory.h"
+#include "ffi/function.h"
+
+#include <gtest/gtest.h>
 
 using namespace litetvm::ffi;
 
-void test() {
-    String str;
+TEST(Object, for_each) {
+
 }

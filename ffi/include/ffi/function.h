@@ -23,7 +23,7 @@ namespace ffi {
 /**
  * Helper macro to construct a safe call
  *
- * \brief Marks the begining of the safe call that catches exception explicitly
+ * \brief Marks the beginning of the safe call that catches exception explicitly
  *
  */
 #define TVM_FFI_SAFE_CALL_BEGIN() \
@@ -66,8 +66,10 @@ namespace ffi {
  */
 class FunctionObj : public Object, public TVMFFIFunctionCell {
 public:
-    typedef void (*FCall)(const FunctionObj*, const AnyView*, int32_t, Any*);
+    // typedef void (*FCall)(const FunctionObj*, const AnyView*, int32_t, Any*);
+    using FCall = void (*)(const FunctionObj*, const AnyView*, int32_t, Any*);
     using TVMFFIFunctionCell::safe_call;
+
     /*! \brief A C++ style call implementation, with exception propagation in c++ style. */
     FCall call;
 
@@ -75,7 +77,7 @@ public:
         this->call(this, args, num_args, result);
     }
 
-    static constexpr const uint32_t _type_index = TypeIndex::kTVMFFIFunction;
+    static constexpr uint32_t _type_index = kTVMFFIFunction;
     static constexpr const char* _type_key = "object.Function";
 
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(FunctionObj, Object);
@@ -89,7 +91,7 @@ protected:
         TVM_FFI_SAFE_CALL_BEGIN();
         TVM_FFI_ICHECK_LT(result->type_index, TypeIndex::kTVMFFIStaticObjectBegin);
         auto* self = static_cast<FunctionObj*>(func);
-        self->call(self, reinterpret_cast<const AnyView*>(args), num_args,reinterpret_cast<Any*>(result));
+        self->call(self, reinterpret_cast<const AnyView*>(args), num_args, reinterpret_cast<Any*>(result));
         TVM_FFI_SAFE_CALL_END();
     }
 
@@ -105,9 +107,9 @@ namespace details {
 template<typename TCallable>
 class FunctionObjImpl : public FunctionObj {
 public:
-    using TStorage = typename std::remove_cv<typename std::remove_reference<TCallable>::type>::type;
+    using TStorage = std::remove_cv_t<std::remove_reference_t<TCallable>>;
     /*! \brief The type of derived object class */
-    using TSelf = FunctionObjImpl<TCallable>;
+    using TSelf = FunctionObjImpl;
     /*!
    * \brief Derived object class for constructing ffi::FunctionObj.
    * \param callable The type-erased callable object.
@@ -120,7 +122,7 @@ public:
 private:
     // implementation of call
     static void Call(const FunctionObj* func, const AnyView* args, int32_t num_args, Any* result) {
-        (static_cast<const TSelf*>(func))->callable_(args, num_args, result);
+        static_cast<const TSelf*>(func)->callable_(args, num_args, result);
     }
 
     /*! \brief Type-erased filed for storing callable object*/
@@ -140,7 +142,7 @@ struct RedirectCallToSafeCall {
     }
 
     static int32_t SafeCall(void* func, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* rv) {
-        Derived* self = reinterpret_cast<Derived*>(func);
+        Derived* self = static_cast<Derived*>(func);
         return self->RedirectSafeCall(args, num_args, rv);
     }
 };
@@ -155,14 +157,15 @@ public:
 
     ExternCFunctionObjImpl(void* self, TVMFFISafeCallType safe_call, void (*deleter)(void* self))
         : self_(self), safe_call_(safe_call), deleter_(deleter) {
-        this->call = RedirectCallToSafeCall<ExternCFunctionObjImpl>::Call;
-        this->safe_call = RedirectCallToSafeCall<ExternCFunctionObjImpl>::SafeCall;
+        this->call = Call;
+        this->safe_call = RedirectCallToSafeCall::SafeCall;
     }
 
-    ~ExternCFunctionObjImpl() { deleter_(self_); }
+    ~ExternCFunctionObjImpl() {
+        deleter_(self_);
+    }
 
-    TVM_FFI_INLINE int32_t RedirectSafeCall(const TVMFFIAny* args, int32_t num_args,
-                                            TVMFFIAny* rv) const {
+    TVM_FFI_INLINE int32_t RedirectSafeCall(const TVMFFIAny* args, int32_t num_args, TVMFFIAny* rv) const {
         return safe_call_(self_, args, num_args, rv);
     }
 
@@ -178,15 +181,14 @@ private:
 class ImportedFunctionObjImpl : public FunctionObj,
                                 public RedirectCallToSafeCall<ImportedFunctionObjImpl> {
 public:
-    using RedirectCallToSafeCall<ImportedFunctionObjImpl>::SafeCall;
+    using RedirectCallToSafeCall::SafeCall;
 
     explicit ImportedFunctionObjImpl(ObjectPtr<Object> data) : data_(data) {
-        this->call = RedirectCallToSafeCall<ImportedFunctionObjImpl>::Call;
-        this->safe_call = RedirectCallToSafeCall<ImportedFunctionObjImpl>::SafeCall;
+        this->call = Call;
+        this->safe_call = RedirectCallToSafeCall::SafeCall;
     }
 
-    TVM_FFI_INLINE int32_t RedirectSafeCall(const TVMFFIAny* args, int32_t num_args,
-                                            TVMFFIAny* rv) const {
+    TVM_FFI_INLINE int32_t RedirectSafeCall(const TVMFFIAny* args, int32_t num_args,TVMFFIAny* rv) const {
         FunctionObj* func = const_cast<FunctionObj*>(static_cast<const FunctionObj*>(data_.get()));
         return func->safe_call(func, args, num_args, rv);
     }
@@ -227,10 +229,14 @@ public:
     PackedArgs(const AnyView* data, int32_t size) : data_(data), size_(size) {}
 
     /*! \return size of the arguments */
-    int size() const { return size_; }
+    int size() const {
+        return size_;
+    }
 
     /*! \return The arguments */
-    const AnyView* data() const { return data_; }
+    const AnyView* data() const {
+        return data_;
+    }
 
     /*!
    * \brief Slice the arguments
@@ -250,7 +256,9 @@ public:
    * \param i the index.
    * \return the ith argument.
    */
-    AnyView operator[](int i) const { return data_[i]; }
+    AnyView operator[](int i) const {
+        return data_[i];
+    }
 
     /*!
    * \brief Fill the arguments into the AnyView array

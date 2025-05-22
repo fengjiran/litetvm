@@ -34,13 +34,13 @@ protected:
     friend class Any;
 
 public:
-    // NOTE: the following two functions uses styl style
+    // NOTE: the following two functions use styl style
     // since they are common functions appearing in FFI.
     /*!
    * \brief Reset any view to None
    */
     void reset() {
-        data_.type_index = TypeIndex::kTVMFFINone;
+        data_.type_index = kTVMFFINone;
         // invariance: always set the union padding part to 0
         data_.v_int64 = 0;
     }
@@ -53,43 +53,55 @@ public:
     }
 
     /*! \return the internal type index */
-    TVM_FFI_INLINE int32_t type_index() const noexcept { return data_.type_index; }
+    TVM_FFI_INLINE int32_t type_index() const noexcept {
+        return data_.type_index;
+    }
+
     // default constructors
     AnyView() {
-        data_.type_index = TypeIndex::kTVMFFINone;
+        data_.type_index = kTVMFFINone;
         data_.v_int64 = 0;
     }
+
     ~AnyView() = default;
+
     // constructors from any view
     AnyView(const AnyView&) = default;
     AnyView& operator=(const AnyView&) = default;
-    AnyView(AnyView&& other) : data_(other.data_) {
-        other.data_.type_index = TypeIndex::kTVMFFINone;
+    AnyView(AnyView&& other) noexcept : data_(other.data_) {
+        other.data_.type_index = kTVMFFINone;
         other.data_.v_int64 = 0;
     }
-    TVM_FFI_INLINE AnyView& operator=(AnyView&& other) {
+
+    // constructor from general types
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+    AnyView(const T& other) {// NOLINT(*)
+        TypeTraits<T>::CopyToAnyView(other, &data_);
+    }
+
+    TVM_FFI_INLINE AnyView& operator=(AnyView&& other) noexcept {
         // copy-and-swap idiom
         AnyView(std::move(other)).swap(*this);// NOLINT(*)
         return *this;
     }
-    // constructor from general types
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
-    AnyView(const T& other) {// NOLINT(*)
-        TypeTraits<T>::CopyToAnyView(other, &data_);
-    }
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE AnyView& operator=(const T& other) {// NOLINT(*)
         // copy-and-swap idiom
         AnyView(other).swap(*this);// NOLINT(*)
         return *this;
     }
 
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE std::optional<T> as() const {
         return TypeTraits<T>::TryConvertFromAnyView(&data_);
     }
 
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE T cast() const {
         std::optional<T> opt = TypeTraits<T>::TryConvertFromAnyView(&data_);
         if (!opt.has_value()) {
@@ -104,30 +116,40 @@ public:
    * \brief Shortcut of as Object to cast to a const pointer when T is an Object.
    *
    * \tparam T The object type.
-   * \return The requested pointer, returns nullptr if type mismatches.
+   * \return The requested pointer, return nullptr if type mismatches.
    */
-    template<typename T, typename = std::enable_if_t<std::is_base_of_v<Object, T>>>
+    template<typename T,
+             typename = std::enable_if_t<std::is_base_of_v<Object, T>>>
     TVM_FFI_INLINE const T* as() const {
         return this->as<const T*>().value_or(nullptr);
     }
+
     // comparison with nullptr
     TVM_FFI_INLINE bool operator==(std::nullptr_t) const noexcept {
-        return data_.type_index == TypeIndex::kTVMFFINone;
+        return data_.type_index == kTVMFFINone;
     }
+
     TVM_FFI_INLINE bool operator!=(std::nullptr_t) const noexcept {
-        return data_.type_index != TypeIndex::kTVMFFINone;
+        return data_.type_index != kTVMFFINone;
     }
+
     /*!
    * \brief Get the type key of the Any
    * \return The type key of the Any
    */
-    TVM_FFI_INLINE std::string GetTypeKey() const { return TypeIndexToTypeKey(data_.type_index); }
+    TVM_FFI_INLINE std::string GetTypeKey() const {
+        return TypeIndexToTypeKey(data_.type_index);
+    }
+
     // The following functions are only used for testing purposes
     /*!
    * \return The underlying supporting data of any view
    * \note This function is used only for testing purposes.
    */
-    TVM_FFI_INLINE TVMFFIAny CopyToTVMFFIAny() const { return data_; }
+    TVM_FFI_INLINE TVMFFIAny CopyToTVMFFIAny() const {
+        return data_;
+    }
+
     /*!
    * \return Create an AnyView from TVMFFIAny
    * \param data the underlying ffi data.
@@ -147,30 +169,29 @@ namespace details {
  *  the TVMFFIAny data structure. This is reserved for future possible optimizations
  *  of small-string and extended any object.
  */
-TVM_FFI_INLINE void InplaceConvertAnyViewToAny(TVMFFIAny* data,
-                                               [[maybe_unused]] size_t extra_any_bytes = 0) {
-    if (data->type_index >= TVMFFITypeIndex::kTVMFFIStaticObjectBegin) {
-        details::ObjectUnsafe::IncRefObjectHandle(data->v_obj);
-    } else if (data->type_index >= TypeIndex::kTVMFFIRawStr) {
-        if (data->type_index == TypeIndex::kTVMFFIRawStr) {
+TVM_FFI_INLINE void InplaceConvertAnyViewToAny(TVMFFIAny* data, MAYBE_UNUSED size_t extra_any_bytes = 0) {
+    if (data->type_index >= kTVMFFIStaticObjectBegin) {
+        ObjectUnsafe::IncRefObjectHandle(data->v_obj);
+    } else if (data->type_index >= kTVMFFIRawStr) {
+        if (data->type_index == kTVMFFIRawStr) {
             // convert raw string to owned string object
             String temp(data->v_c_str);
-            data->type_index = TypeIndex::kTVMFFIStr;
-            data->v_obj = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
-        } else if (data->type_index == TypeIndex::kTVMFFIByteArrayPtr) {
+            data->type_index = kTVMFFIStr;
+            data->v_obj = ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
+        } else if (data->type_index == kTVMFFIByteArrayPtr) {
             // convert byte array to owned bytes object
             Bytes temp(*static_cast<TVMFFIByteArray*>(data->v_ptr));
-            data->type_index = TypeIndex::kTVMFFIBytes;
-            data->v_obj = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
-        } else if (data->type_index == TypeIndex::kTVMFFIObjectRValueRef) {
+            data->type_index = kTVMFFIBytes;
+            data->v_obj = ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
+        } else if (data->type_index == kTVMFFIObjectRValueRef) {
             // convert rvalue ref to owned object
             Object** obj_addr = static_cast<Object**>(data->v_ptr);
             TVM_FFI_ICHECK(obj_addr[0] != nullptr) << "RValueRef already moved";
-            ObjectRef temp(details::ObjectUnsafe::ObjectPtrFromOwned<Object>(obj_addr[0]));
+            ObjectRef temp(ObjectUnsafe::ObjectPtrFromOwned<Object>(obj_addr[0]));
             // set the rvalue ref to nullptr to avoid double move
             obj_addr[0] = nullptr;
             data->type_index = temp->type_index();
-            data->v_obj = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
+            data->v_obj = ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
         }
     }
 }
@@ -179,7 +200,7 @@ TVM_FFI_INLINE void InplaceConvertAnyViewToAny(TVMFFIAny* data,
 /*!
  * \brief Managed Any that takes strong reference to a value.
  *
- * \note Develooper invariance: the TVMFFIAny data_
+ * \note Developer invariance: the TVMFFIAny data_
  *       in the Any can be safely used in AnyView.
  */
 class Any {
@@ -195,59 +216,82 @@ public:
         if (data_.type_index >= kTVMFFIStaticObjectBegin) {
             details::ObjectUnsafe::DecRefObjectHandle(data_.v_obj);
         }
-        data_.type_index = TVMFFITypeIndex::kTVMFFINone;
+        data_.type_index = kTVMFFINone;
         data_.v_int64 = 0;
     }
+
     /*!
    * \brief Swap this array with another Object
    * \param other The other Object
    */
-    TVM_FFI_INLINE void swap(Any& other) noexcept { std::swap(data_, other.data_); }
+    TVM_FFI_INLINE void swap(Any& other) noexcept {
+        std::swap(data_, other.data_);
+    }
+
     /*! \return the internal type index */
-    TVM_FFI_INLINE int32_t type_index() const noexcept { return data_.type_index; }
+    TVM_FFI_INLINE int32_t type_index() const noexcept {
+        return data_.type_index;
+    }
+
     // default constructors
     Any() {
-        data_.type_index = TypeIndex::kTVMFFINone;
+        data_.type_index = kTVMFFINone;
         data_.v_int64 = 0;
     }
-    ~Any() { this->reset(); }
+
+    ~Any() {
+        this->reset();
+    }
+
     // constructors from Any
     Any(const Any& other) : data_(other.data_) {
-        if (data_.type_index >= TypeIndex::kTVMFFIStaticObjectBegin) {
+        if (data_.type_index >= kTVMFFIStaticObjectBegin) {
             details::ObjectUnsafe::IncRefObjectHandle(data_.v_obj);
         }
     }
-    Any(Any&& other) : data_(other.data_) {
-        other.data_.type_index = TypeIndex::kTVMFFINone;
+
+    Any(Any&& other) noexcept : data_(other.data_) {
+        other.data_.type_index = kTVMFFINone;
         other.data_.v_int64 = 0;
     }
+
     TVM_FFI_INLINE Any& operator=(const Any& other) {
         // copy-and-swap idiom
         Any(other).swap(*this);// NOLINT(*)
         return *this;
     }
-    TVM_FFI_INLINE Any& operator=(Any&& other) {
+
+    TVM_FFI_INLINE Any& operator=(Any&& other) noexcept {
         // copy-and-swap idiom
         Any(std::move(other)).swap(*this);// NOLINT(*)
         return *this;
     }
+
     // convert from/to AnyView
     Any(const AnyView& other) : data_(other.data_) {// NOLINT(*)
         details::InplaceConvertAnyViewToAny(&data_);
     }
+
     TVM_FFI_INLINE Any& operator=(const AnyView& other) {
         // copy-and-swap idiom
         Any(other).swap(*this);// NOLINT(*)
         return *this;
     }
+
     /*! \brief Any can be converted to AnyView in zero cost. */
-    operator AnyView() const { return AnyView::CopyFromTVMFFIAny(data_); }
+    operator AnyView() const {
+        return AnyView::CopyFromTVMFFIAny(data_);
+    }
+
     // constructor from general types
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     Any(T other) {// NOLINT(*)
         TypeTraits<T>::MoveToAny(std::move(other), &data_);
     }
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE Any& operator=(T other) {// NOLINT(*)
         // copy-and-swap idiom
         Any(std::move(other)).swap(*this);// NOLINT(*)
@@ -275,7 +319,8 @@ public:
         return this->as<const T*>().value_or(nullptr);
     }
 
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE T cast() const& {
         std::optional<T> opt = TypeTraits<T>::TryConvertFromAnyView(&data_);
         if (!opt.has_value()) {
@@ -286,7 +331,8 @@ public:
         return *std::move(opt);
     }
 
-    template<typename T, typename = std::enable_if_t<TypeTraits<T>::storage_enabled>>
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::storage_enabled>>
     TVM_FFI_INLINE T cast() && {
         if (TypeTraits<T>::CheckAnyStorage(&data_)) {
             return TypeTraits<T>::MoveFromAnyStorageAfterCheck(&data_);
@@ -319,23 +365,25 @@ public:
         if (other.get() != nullptr) {
             return (data_.type_index == other->type_index() &&
                     reinterpret_cast<Object*>(data_.v_obj) == other.get());
-        } else {
-            return data_.type_index == TypeIndex::kTVMFFINone;
         }
+        return data_.type_index == kTVMFFINone;
     }
 
     TVM_FFI_INLINE bool operator==(std::nullptr_t) const noexcept {
-        return data_.type_index == TypeIndex::kTVMFFINone;
+        return data_.type_index == kTVMFFINone;
     }
+
     TVM_FFI_INLINE bool operator!=(std::nullptr_t) const noexcept {
-        return data_.type_index != TypeIndex::kTVMFFINone;
+        return data_.type_index != kTVMFFINone;
     }
 
     /*!
    * \brief Get the type key of the Any
    * \return The type key of the Any
    */
-    TVM_FFI_INLINE std::string GetTypeKey() const { return TypeIndexToTypeKey(data_.type_index); }
+    TVM_FFI_INLINE std::string GetTypeKey() const {
+        return TypeIndexToTypeKey(data_.type_index);
+    }
 
     friend struct details::AnyUnsafe;
     friend struct AnyHash;
@@ -350,40 +398,52 @@ namespace details {
 
 template<typename Type>
 struct Type2Str {
-    static std::string v() { return TypeTraitsNoCR<Type>::TypeStr(); }
+    static std::string v() {
+        return TypeTraitsNoCR<Type>::TypeStr();
+    }
 };
 
 template<>
 struct Type2Str<Any> {
-    static std::string v() { return "Any"; }
+    static std::string v() {
+        return "Any";
+    }
 };
 
 template<>
 struct Type2Str<const Any&> {
-    static std::string v() { return "Any"; }
+    static std::string v() {
+        return "Any";
+    }
 };
 
 template<>
 struct Type2Str<AnyView> {
-    static std::string v() { return "AnyView"; }
+    static std::string v() {
+        return "AnyView";
+    }
 };
 
 template<>
 struct Type2Str<const AnyView&> {
-    static std::string v() { return "AnyView"; }
+    static std::string v() {
+        return "AnyView";
+    }
 };
 
 template<>
 struct Type2Str<void> {
-    static std::string v() { return "void"; }
+    static std::string v() {
+        return "void";
+    }
 };
 
 // Extra unsafe method to help any manipulation
-struct AnyUnsafe : public ObjectUnsafe {
+struct AnyUnsafe : ObjectUnsafe {
     // FFI related operations
     static TVM_FFI_INLINE TVMFFIAny MoveAnyToTVMFFIAny(Any&& any) {
         TVMFFIAny result = any.data_;
-        any.data_.type_index = TypeIndex::kTVMFFINone;
+        any.data_.type_index = kTVMFFINone;
         any.data_.v_int64 = 0;
         return result;
     }
@@ -391,7 +451,7 @@ struct AnyUnsafe : public ObjectUnsafe {
     static TVM_FFI_INLINE Any MoveTVMFFIAnyToAny(TVMFFIAny&& data) {
         Any any;
         any.data_ = data;
-        data.type_index = TypeIndex::kTVMFFINone;
+        data.type_index = kTVMFFINone;
         data.v_int64 = 0;
         return any;
     }
@@ -443,14 +503,13 @@ struct AnyHash {
    */
     uint64_t operator()(const Any& src) const {
         uint64_t val_hash = [&]() -> uint64_t {
-            if (src.data_.type_index == TypeIndex::kTVMFFIStr ||
-                src.data_.type_index == TypeIndex::kTVMFFIBytes) {
+            if (src.data_.type_index == kTVMFFIStr ||
+                src.data_.type_index == kTVMFFIBytes) {
                 const BytesObjBase* src_str =
                         details::AnyUnsafe::CopyFromAnyStorageAfterCheck<const BytesObjBase*>(src);
                 return details::StableHashBytes(src_str->data, src_str->size);
-            } else {
-                return src.data_.v_uint64;
             }
+            return src.data_.v_uint64;
         }();
         return details::StableHashCombine(src.data_.type_index, val_hash);
     }
@@ -469,8 +528,8 @@ struct AnyEqual {
         // byte equivalence
         if (lhs.data_.v_int64 == rhs.data_.v_int64) return true;
         // specialy handle string hash
-        if (lhs.data_.type_index == TypeIndex::kTVMFFIStr ||
-            lhs.data_.type_index == TypeIndex::kTVMFFIBytes) {
+        if (lhs.data_.type_index == kTVMFFIStr ||
+            lhs.data_.type_index == kTVMFFIBytes) {
             const BytesObjBase* lhs_str =
                     details::AnyUnsafe::CopyFromAnyStorageAfterCheck<const BytesObjBase*>(lhs);
             const BytesObjBase* rhs_str =
