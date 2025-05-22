@@ -28,6 +28,7 @@ struct Arg2Str {
         }
         os << i << ": " << Type2Str<Arg>::v();
     }
+
     template<size_t... I>
     static TVM_FFI_INLINE void Run(std::ostream& os, std::index_sequence<I...>) {
         using TExpander = int[];
@@ -37,14 +38,13 @@ struct Arg2Str {
 
 template<typename T>
 static constexpr bool ArgSupported =
-        (std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Any> ||
-         std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, AnyView> ||
-         TypeTraitsNoCR<T>::convert_enabled);
+        std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Any> ||
+        std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, AnyView> ||
+        TypeTraitsNoCR<T>::convert_enabled;
 
 // NOTE: return type can only support non-reference managed returns
 template<typename T>
-static constexpr bool RetSupported =
-        (std::is_same_v<T, Any> || std::is_void_v<T> || TypeTraits<T>::convert_enabled);
+static constexpr bool RetSupported = std::is_same_v<T, Any> || std::is_void_v<T> || TypeTraits<T>::convert_enabled;
 
 template<typename R, typename... Args>
 struct FuncFunctorImpl {
@@ -175,8 +175,7 @@ TVM_FFI_INLINE static Error MoveFromSafeCallRaised() {
     TVMFFIObjectHandle handle;
     TVMFFIErrorMoveFromRaised(&handle);
     // handle is owned by caller
-    return Error(
-            details::ObjectUnsafe::ObjectPtrFromOwned<Object>(static_cast<TVMFFIObject*>(handle)));
+    return Error(ObjectUnsafe::ObjectPtrFromOwned<Object>(static_cast<TVMFFIObject*>(handle)));
 }
 
 /*!
@@ -184,7 +183,7 @@ TVM_FFI_INLINE static Error MoveFromSafeCallRaised() {
  * \param error The error
  */
 TVM_FFI_INLINE static void SetSafeCallRaised(const Error& error) {
-    TVMFFIErrorSetRaised(details::ObjectUnsafe::TVMFFIObjectPtrFromObjectRef(error));
+    TVMFFIErrorSetRaised(ObjectUnsafe::TVMFFIObjectPtrFromObjectRef(error));
 }
 }// namespace details
 }// namespace ffi
