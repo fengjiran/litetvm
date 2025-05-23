@@ -16,7 +16,7 @@ using namespace litetvm::ffi;
 //     return os;
 // }
 
-TEST(Object, for_each) {
+TEST(Function, for_each) {
     int n = 5;
     std::vector<AnyView> anys(n);
     PackedArgs::Fill(anys.data(), 1, 1.5, "hello", 5, 3.14);

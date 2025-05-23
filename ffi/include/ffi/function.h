@@ -136,13 +136,13 @@ private:
 template<typename Derived>
 struct RedirectCallToSafeCall {
     static void Call(const FunctionObj* func, const AnyView* args, int32_t num_args, Any* rv) {
-        Derived* self = static_cast<Derived*>(const_cast<FunctionObj*>(func));
+        auto* self = static_cast<Derived*>(const_cast<FunctionObj*>(func));
         TVM_FFI_CHECK_SAFE_CALL(self->RedirectSafeCall(reinterpret_cast<const TVMFFIAny*>(args),
                                                        num_args, reinterpret_cast<TVMFFIAny*>(rv)));
     }
 
     static int32_t SafeCall(void* func, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* rv) {
-        Derived* self = static_cast<Derived*>(func);
+        auto* self = static_cast<Derived*>(func);
         return self->RedirectSafeCall(args, num_args, rv);
     }
 };
@@ -183,13 +183,13 @@ class ImportedFunctionObjImpl : public FunctionObj,
 public:
     using RedirectCallToSafeCall::SafeCall;
 
-    explicit ImportedFunctionObjImpl(ObjectPtr<Object> data) : data_(data) {
+    explicit ImportedFunctionObjImpl(ObjectPtr<Object> data) : data_(std::move(data)) {
         this->call = Call;
         this->safe_call = RedirectCallToSafeCall::SafeCall;
     }
 
     TVM_FFI_INLINE int32_t RedirectSafeCall(const TVMFFIAny* args, int32_t num_args,TVMFFIAny* rv) const {
-        FunctionObj* func = const_cast<FunctionObj*>(static_cast<const FunctionObj*>(data_.get()));
+        auto* func = const_cast<FunctionObj*>(static_cast<const FunctionObj*>(data_.get()));
         return func->safe_call(func, args, num_args, rv);
     }
 
@@ -229,12 +229,12 @@ public:
     PackedArgs(const AnyView* data, int32_t size) : data_(data), size_(size) {}
 
     /*! \return size of the arguments */
-    int size() const {
+    NODISCARD int size() const {
         return size_;
     }
 
     /*! \return The arguments */
-    const AnyView* data() const {
+    NODISCARD const AnyView* data() const {
         return data_;
     }
 
@@ -244,11 +244,11 @@ public:
    * \param end The end index
    * \return The sliced arguments
    */
-    PackedArgs Slice(int begin, int end = -1) const {
+    NODISCARD PackedArgs Slice(int begin, int end = -1) const {
         if (end == -1) {
             end = size_;
         }
-        return PackedArgs(data_ + begin, end - begin);
+        return {data_ + begin, end - begin};
     }
 
     /*!
@@ -281,23 +281,25 @@ private:
 };
 
 /*!
- * \brief ffi::Function  is a type-erased function.
+ * \brief ffi::Function is a type-erased function.
  *  The arguments are passed by "packed format" via AnyView
  */
 class Function : public ObjectRef {
 public:
     /*! \brief Constructor from null */
     Function(std::nullptr_t) : ObjectRef(nullptr) {}// NOLINT(*)
+
     /*!
    * \brief Constructing a packed function from a callable type
    *        whose signature is consistent with `ffi::Function`
    * \param packed_call The packed function signature
-   * \note legacy purpose, should change to Function::FromPacked for mostfuture use.
+   * \note legacy purpose, should change to Function::FromPacked for most future use.
    */
     template<typename TCallable>
     explicit Function(TCallable packed_call) {
         *this = FromPacked(packed_call);
     }
+
     /*!
    * \brief Constructing a packed function from a callable type
    *        whose signature is consistent with `ffi::Function`
@@ -321,6 +323,7 @@ public:
             return FromPackedInternal(packed_call);
         }
     }
+
     /*!
    * \brief Import a possibly externally defined function to this dll
    * \param other Function defined in another dynamic library.
@@ -332,7 +335,7 @@ public:
    * \return The imported function.
    */
     static Function ImportFromExternDLL(Function other) {
-        const FunctionObj* other_func = static_cast<const FunctionObj*>(other.get());
+        const auto* other_func = other.get();
         // the other function comes from the same dll, no action needed
         if (other_func->safe_call == &(FunctionObj::SafeCall) ||
             other_func->safe_call == &(details::ImportedFunctionObjImpl::SafeCall) ||
@@ -369,11 +372,9 @@ public:
         TVMFFIByteArray name_arr{name.data(), name.size()};
         TVM_FFI_CHECK_SAFE_CALL(TVMFFIFunctionGetGlobal(&name_arr, &handle));
         if (handle != nullptr) {
-            return Function(
-                    details::ObjectUnsafe::ObjectPtrFromOwned<Object>(static_cast<Object*>(handle)));
-        } else {
-            return std::nullopt;
+            return Function(details::ObjectUnsafe::ObjectPtrFromOwned<Object>(static_cast<Object*>(handle)));
         }
+        return std::nullopt;
     }
 
     static std::optional<Function> GetGlobal(const std::string& name) {

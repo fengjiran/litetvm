@@ -106,7 +106,7 @@ public:
             // class with non-virtual destructor.
             // We are fine here as we captured the right deleter during construction.
             // This is also the right way to get storage type for an object pool.
-            StorageType* data = new StorageType();
+            auto* data = new StorageType();
             new (data) T(std::forward<Args>(args)...);
             return reinterpret_cast<T*>(data);
         }
@@ -153,7 +153,7 @@ public:
             size_t unit = sizeof(StorageType);
             size_t requested_size = num_elems * sizeof(ElemType) + sizeof(ArrayType);
             size_t num_storage_slots = (requested_size + unit - 1) / unit;
-            StorageType* data = new StorageType[num_storage_slots];
+            auto* data = new StorageType[num_storage_slots];
             new (data) ArrayType(std::forward<Args>(args)...);
             return reinterpret_cast<ArrayType*>(data);
         }
@@ -170,7 +170,7 @@ public:
             // instead of tptr->~ArrayType(), which could mean the intention
             // call a virtual destructor(which may not be available and is not required).
             tptr->ArrayType::~ArrayType();
-            StorageType* p = reinterpret_cast<StorageType*>(tptr);
+            auto* p = reinterpret_cast<StorageType*>(tptr);
             delete[] p;
         }
     };

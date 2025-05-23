@@ -804,9 +804,9 @@ struct ObjectUnsafe {
 
     template<typename T>
     static TVM_FFI_INLINE ObjectPtr<T> ObjectPtrFromOwned(Object* raw_ptr) {
-        // ObjectPtr<T> ptr(raw_ptr);
-        // ptr.data_ = raw_ptr;
-        return ObjectPtr<T>(raw_ptr);
+        ObjectPtr<T> ptr;
+        ptr.data_ = raw_ptr;
+        return ptr;
     }
 
     template<typename T>

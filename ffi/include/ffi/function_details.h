@@ -51,12 +51,13 @@ struct FuncFunctorImpl {
     using FType = R(Args...);
     using ArgType = std::tuple<Args...>;
     using RetType = R;
+
     /*! \brief total number of arguments*/
     static constexpr size_t num_args = sizeof...(Args);
     // MSVC is not that friendly to in-template nested bool evaluation
 #ifndef _MSC_VER
     /*! \brief Whether this function can be converted to ffi::Function via FromTyped */
-    static constexpr bool unpacked_supported = (ArgSupported<Args> && ...) && (RetSupported<R>);
+    static constexpr bool unpacked_supported = (ArgSupported<Args> && ...) && RetSupported<R>;
 #endif
 
     static TVM_FFI_INLINE std::string Sig() {
@@ -74,6 +75,7 @@ struct FunctionInfoHelper;
 
 template<typename T, typename R, typename... Args>
 struct FunctionInfoHelper<R (T::*)(Args...)> : FuncFunctorImpl<R, Args...> {};
+
 template<typename T, typename R, typename... Args>
 struct FunctionInfoHelper<R (T::*)(Args...) const> : FuncFunctorImpl<R, Args...> {};
 
@@ -87,11 +89,13 @@ struct FunctionInfo : FunctionInfoHelper<decltype(&T::operator())> {};
 
 template<typename R, typename... Args>
 struct FunctionInfo<R(Args...)> : FuncFunctorImpl<R, Args...> {};
+
 template<typename R, typename... Args>
 struct FunctionInfo<R (*)(Args...)> : FuncFunctorImpl<R, Args...> {};
 
 /*! \brief Using static function to output typed function signature */
-typedef std::string (*FGetFuncSignature)();
+// typedef std::string (*FGetFuncSignature)();
+using FGetFuncSignature = std::string (*)();
 
 /*!
  * \brief Auxilary argument value with context for error reporting
@@ -143,8 +147,8 @@ private:
 
 template<typename R, std::size_t... Is, typename F>
 TVM_FFI_INLINE void unpack_call(std::index_sequence<Is...>, const std::string* optional_name,
-                                const F& f, [[maybe_unused]] const AnyView* args,
-                                [[maybe_unused]] int32_t num_args, [[maybe_unused]] Any* rv) {
+                                const F& f, MAYBE_UNUSED const AnyView* args,
+                                MAYBE_UNUSED int32_t num_args, MAYBE_UNUSED Any* rv) {
     using FuncInfo = FunctionInfo<F>;
     FGetFuncSignature f_sig = FuncInfo::Sig;
 

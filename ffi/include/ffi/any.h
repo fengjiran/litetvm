@@ -53,7 +53,7 @@ public:
     }
 
     /*! \return the internal type index */
-    TVM_FFI_INLINE int32_t type_index() const noexcept {
+    NODISCARD TVM_FFI_INLINE int32_t type_index() const noexcept {
         return data_.type_index;
     }
 
@@ -137,7 +137,7 @@ public:
    * \brief Get the type key of the Any
    * \return The type key of the Any
    */
-    TVM_FFI_INLINE std::string GetTypeKey() const {
+    NODISCARD TVM_FFI_INLINE std::string GetTypeKey() const {
         return TypeIndexToTypeKey(data_.type_index);
     }
 
@@ -146,7 +146,7 @@ public:
    * \return The underlying supporting data of any view
    * \note This function is used only for testing purposes.
    */
-    TVM_FFI_INLINE TVMFFIAny CopyToTVMFFIAny() const {
+    NODISCARD TVM_FFI_INLINE TVMFFIAny CopyToTVMFFIAny() const {
         return data_;
     }
 
@@ -185,7 +185,7 @@ TVM_FFI_INLINE void InplaceConvertAnyViewToAny(TVMFFIAny* data, MAYBE_UNUSED siz
             data->v_obj = ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(temp));
         } else if (data->type_index == kTVMFFIObjectRValueRef) {
             // convert rvalue ref to owned object
-            Object** obj_addr = static_cast<Object**>(data->v_ptr);
+            auto** obj_addr = static_cast<Object**>(data->v_ptr);
             TVM_FFI_ICHECK(obj_addr[0] != nullptr) << "RValueRef already moved";
             ObjectRef temp(ObjectUnsafe::ObjectPtrFromOwned<Object>(obj_addr[0]));
             // set the rvalue ref to nullptr to avoid double move
@@ -229,7 +229,7 @@ public:
     }
 
     /*! \return the internal type index */
-    TVM_FFI_INLINE int32_t type_index() const noexcept {
+    NODISCARD TVM_FFI_INLINE int32_t type_index() const noexcept {
         return data_.type_index;
     }
 
@@ -352,7 +352,7 @@ public:
    * \param other The other Any
    * \return True if the two Any are same type and value, false otherwise.
    */
-    TVM_FFI_INLINE bool same_as(const Any& other) const noexcept {
+    NODISCARD TVM_FFI_INLINE bool same_as(const Any& other) const noexcept {
         return data_.type_index == other.data_.type_index && data_.v_int64 == other.data_.v_int64;
     }
 
@@ -361,7 +361,7 @@ public:
    * \param other The other ObjectRef
    * \return True if the two Any are same type and value, false otherwise.
    */
-    TVM_FFI_INLINE bool same_as(const ObjectRef& other) const noexcept {
+    NODISCARD TVM_FFI_INLINE bool same_as(const ObjectRef& other) const noexcept {
         if (other.get() != nullptr) {
             return (data_.type_index == other->type_index() &&
                     reinterpret_cast<Object*>(data_.v_obj) == other.get());
@@ -381,7 +381,7 @@ public:
    * \brief Get the type key of the Any
    * \return The type key of the Any
    */
-    TVM_FFI_INLINE std::string GetTypeKey() const {
+    NODISCARD TVM_FFI_INLINE std::string GetTypeKey() const {
         return TypeIndexToTypeKey(data_.type_index);
     }
 
@@ -530,9 +530,9 @@ struct AnyEqual {
         // specialy handle string hash
         if (lhs.data_.type_index == kTVMFFIStr ||
             lhs.data_.type_index == kTVMFFIBytes) {
-            const BytesObjBase* lhs_str =
+            const auto* lhs_str =
                     details::AnyUnsafe::CopyFromAnyStorageAfterCheck<const BytesObjBase*>(lhs);
-            const BytesObjBase* rhs_str =
+            const auto* rhs_str =
                     details::AnyUnsafe::CopyFromAnyStorageAfterCheck<const BytesObjBase*>(rhs);
             return Bytes::memncmp(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size) == 0;
         }
