@@ -54,3 +54,32 @@ TEST(Object, InstanceCheck) {
     EXPECT_TRUE(!b->IsInstance<TIntObj>());
     EXPECT_TRUE(b->IsInstance<TFloatObj>());
 }
+
+TEST(ObjectRef, as) {
+    ObjectRef a = TInt(10);
+    ObjectRef b = TFloat(20);
+    // nullable object
+    ObjectRef c(nullptr);
+
+    EXPECT_TRUE(a.as<TIntObj>() != nullptr);
+    EXPECT_TRUE(a.as<TFloatObj>() == nullptr);
+    EXPECT_TRUE(a.as<TNumberObj>() != nullptr);
+
+    EXPECT_TRUE(b.as<TIntObj>() == nullptr);
+    EXPECT_TRUE(b.as<TFloatObj>() != nullptr);
+    EXPECT_TRUE(b.as<TNumberObj>() != nullptr);
+
+    EXPECT_TRUE(c.as<TIntObj>() == nullptr);
+    EXPECT_TRUE(c.as<TFloatObj>() == nullptr);
+    EXPECT_TRUE(c.as<TNumberObj>() == nullptr);
+
+    EXPECT_EQ(a.as<TIntObj>()->value, 10);
+    EXPECT_EQ(b.as<TFloatObj>()->value, 20);
+}
+
+TEST(Object, CAPIAccessor) {
+    ObjectRef a = TInt(10);
+    TVMFFIObjectHandle obj = details::ObjectUnsafe::RawObjectPtrFromObjectRef(a);
+    int32_t type_index = TVMFFIObjectGetTypeIndex(obj);
+    EXPECT_EQ(type_index, TIntObj::RuntimeTypeIndex());
+}
