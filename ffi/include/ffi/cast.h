@@ -28,8 +28,7 @@ namespace ffi {
  */
 template<typename RefType, typename ObjectType>
 TVM_FFI_INLINE RefType GetRef(const ObjectType* ptr) {
-    static_assert(std::is_base_of_v<typename RefType::ContainerType, ObjectType>,
-                  "Can only cast to the ref of same container type");
+    static_assert(std::is_base_of_v<typename RefType::ContainerType, ObjectType>, "Can only cast to the ref of same container type");
 
     if constexpr (is_optional_type_v<RefType> || RefType::_type_is_nullable) {
         if (ptr == nullptr) {
@@ -38,8 +37,7 @@ TVM_FFI_INLINE RefType GetRef(const ObjectType* ptr) {
     } else {
         TVM_FFI_ICHECK_NOTNULL(ptr);
     }
-    return RefType(details::ObjectUnsafe::ObjectPtrFromUnowned<Object>(
-            const_cast<Object*>(static_cast<const Object*>(ptr))));
+    return RefType(details::ObjectUnsafe::ObjectPtrFromUnowned<Object>(const_cast<Object*>(static_cast<const Object*>(ptr))));
 }
 
 /*!
@@ -51,7 +49,7 @@ TVM_FFI_INLINE RefType GetRef(const ObjectType* ptr) {
  * \return The corresponding RefType
  */
 template<typename BaseType, typename ObjectType>
-inline ObjectPtr<BaseType> GetObjectPtr(ObjectType* ptr) {
+ObjectPtr<BaseType> GetObjectPtr(ObjectType* ptr) {
     static_assert(std::is_base_of<BaseType, ObjectType>::value,
                   "Can only cast to the ref of same container type");
     return details::ObjectUnsafe::ObjectPtrFromUnowned<BaseType>(ptr);

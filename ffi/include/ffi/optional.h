@@ -48,17 +48,17 @@ public:
         return *this;
     }
 
-    TVM_FFI_INLINE Optional<T>& operator=(Optional<T>&& other) {
+    TVM_FFI_INLINE Optional& operator=(Optional&& other) noexcept {
         data_ = std::move(other.data_);
         return *this;
     }
 
-    TVM_FFI_INLINE Optional<T>& operator=(T other) {
+    TVM_FFI_INLINE Optional& operator=(T other) {
         data_ = std::move(other);
         return *this;
     }
 
-    TVM_FFI_INLINE Optional<T>& operator=(std::nullopt_t) {
+    TVM_FFI_INLINE Optional& operator=(std::nullopt_t) {
         data_ = std::nullopt;
         return *this;
     }
@@ -86,7 +86,7 @@ public:
         return data_.has_value();
     }
 
-    TVM_FFI_INLINE bool has_value() const noexcept {
+    NODISCARD TVM_FFI_INLINE bool has_value() const noexcept {
         return data_.has_value();
     }
 
@@ -122,7 +122,9 @@ public:
    * \return the const reference to the stored value.
    * \note only use this function  after checking has_value()
    */
-    TVM_FFI_INLINE const T& operator*() const& noexcept { return *data_; }
+    TVM_FFI_INLINE const T& operator*() const& noexcept {
+        return *data_;
+    }
 
 private:
     std::optional<T> data_;
