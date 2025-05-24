@@ -4,6 +4,7 @@
 #include "ffi/memory.h"
 #include "ffi/object.h"
 #include "testing_object.h"
+
 #include <gtest/gtest.h>
 
 using namespace litetvm::ffi;
@@ -55,7 +56,7 @@ TEST(Object, InstanceCheck) {
     EXPECT_TRUE(b->IsInstance<TFloatObj>());
 }
 
-TEST(ObjectRef, as) {
+TEST(Object, as) {
     ObjectRef a = TInt(10);
     ObjectRef b = TFloat(20);
     // nullable object

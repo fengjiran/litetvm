@@ -50,8 +50,7 @@ TVM_FFI_INLINE RefType GetRef(const ObjectType* ptr) {
  */
 template<typename BaseType, typename ObjectType>
 ObjectPtr<BaseType> GetObjectPtr(ObjectType* ptr) {
-    static_assert(std::is_base_of<BaseType, ObjectType>::value,
-                  "Can only cast to the ref of same container type");
+    static_assert(std::is_base_of_v<BaseType, ObjectType>,"Can only cast to the ref of same container type");
     return details::ObjectUnsafe::ObjectPtrFromUnowned<BaseType>(ptr);
 }
 
@@ -65,22 +64,20 @@ ObjectPtr<BaseType> GetObjectPtr(ObjectType* ptr) {
  */
 template<typename SubRef, typename BaseRef,
          typename = std::enable_if_t<std::is_base_of_v<ObjectRef, BaseRef>>>
-inline SubRef Downcast(BaseRef ref) {
+SubRef Downcast(BaseRef ref) {
     if (ref.defined()) {
         if (!ref->template IsInstance<typename SubRef::ContainerType>()) {
-            TVM_FFI_THROW(TypeError) << "Downcast from " << ref->GetTypeKey() << " to "
-                                     << SubRef::ContainerType::_type_key << " failed.";
+            TVM_FFI_THROW(TypeError) << "Downcast from " << ref->GetTypeKey() << " to " << SubRef::ContainerType::_type_key << " failed.";
         }
         return SubRef(details::ObjectUnsafe::ObjectPtrFromObjectRef<Object>(std::move(ref)));
-    } else {
-        if constexpr (is_optional_type_v<SubRef> || SubRef::_type_is_nullable) {
-            return SubRef(ObjectPtr<Object>(nullptr));
-        }
-        TVM_FFI_THROW(TypeError) << "Downcast from undefined(nullptr) to `"
-                                 << SubRef::ContainerType::_type_key
-                                 << "` is not allowed. Use Downcast<Optional<T>> instead.";
-        TVM_FFI_UNREACHABLE();
     }
+
+    if constexpr (is_optional_type_v<SubRef> || SubRef::_type_is_nullable) {
+        return SubRef(ObjectPtr<Object>(nullptr));
+    }
+
+    TVM_FFI_THROW(TypeError) << "Downcast from undefined(nullptr) to `"<< SubRef::ContainerType::_type_key<< "` is not allowed. Use Downcast<Optional<T>> instead.";
+    TVM_FFI_UNREACHABLE();
 }
 
 /*!
@@ -91,7 +88,7 @@ inline SubRef Downcast(BaseRef ref) {
  * \tparam T The target specific reference type.
  */
 template<typename T>
-inline T Downcast(const Any& ref) {
+T Downcast(const Any& ref) {
     if constexpr (std::is_same_v<T, Any>) {
         return ref;
     } else {
@@ -107,7 +104,7 @@ inline T Downcast(const Any& ref) {
  * \tparam T The target specific reference type.
  */
 template<typename T>
-inline T Downcast(Any&& ref) {
+T Downcast(Any&& ref) {
     if constexpr (std::is_same_v<T, Any>) {
         return std::move(ref);
     } else {
@@ -123,16 +120,15 @@ inline T Downcast(Any&& ref) {
  * \tparam OptionalType The target optional type
  */
 template<typename OptionalType, typename = std::enable_if_t<is_optional_type_v<OptionalType>>>
-inline OptionalType Downcast(const std::optional<Any>& ref) {
+OptionalType Downcast(const std::optional<Any>& ref) {
     if (ref.has_value()) {
         if constexpr (std::is_same_v<OptionalType, Any>) {
             return ref.value();
         } else {
             return ref.value().cast<OptionalType>();
         }
-    } else {
-        return OptionalType(std::nullopt);
     }
+    return OptionalType(std::nullopt);
 }
 
 }// namespace ffi
