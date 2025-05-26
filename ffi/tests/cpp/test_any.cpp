@@ -161,4 +161,105 @@ TEST(Any, Device) {
     EXPECT_EQ(ffi_v2.v_device.device_id, 0);
 }
 
+TEST(Any, DLTensor) {
+    AnyView view0;
+
+    Optional<DLTensor*> opt_v0 = view0.as<DLTensor*>();
+    EXPECT_TRUE(!opt_v0.has_value());
+
+    EXPECT_THROW(
+            {
+                try {
+                    MAYBE_UNUSED auto v0 = view0.cast<DLTensor*>();
+                } catch (const Error& error) {
+                    EXPECT_EQ(error.kind(), "TypeError");
+                    std::string what = error.what();
+                    EXPECT_NE(what.find("Cannot convert from type `None` to `DLTensor*`"), std::string::npos);
+                    throw;
+                }
+            },
+            ::litetvm::ffi::Error);
+
+    DLTensor dltensor;
+
+    AnyView view1_dl = &dltensor;
+    auto dl_v1 = view1_dl.cast<DLTensor*>();
+    EXPECT_EQ(dl_v1, &dltensor);
+}
+
+TEST(Any, Object) {
+    AnyView view0;
+    EXPECT_EQ(view0.CopyToTVMFFIAny().type_index, TypeIndex::kTVMFFINone);
+
+    // int object is not nullable
+    Optional<TInt> opt_v0 = view0.as<TInt>();
+    EXPECT_TRUE(!opt_v0.has_value());
+
+    TInt v1(11);
+    EXPECT_EQ(v1.use_count(), 1);
+
+    // view won't increase refcount
+    AnyView view1 = v1;
+    EXPECT_EQ(v1.use_count(), 1);
+
+    // any will trigger ref count increase
+    Any any1 = v1;
+    EXPECT_EQ(v1.use_count(), 2);
+
+    // copy to another view
+    AnyView view2 = any1;
+    EXPECT_EQ(v1.use_count(), 2);
+
+    // convert to weak raw object ptr
+    const auto* v1_ptr = view2.cast<const TIntObj*>();
+    EXPECT_EQ(v1.use_count(), 2);
+    EXPECT_EQ(v1_ptr->value, 11);
+    Any any2 = v1_ptr;
+    EXPECT_EQ(v1.use_count(), 3);
+    EXPECT_TRUE(any2.as<TInt>().has_value());
+
+    // convert to raw opaque ptr
+    void* raw_v1_ptr = const_cast<TIntObj*>(v1_ptr);
+    any2 = raw_v1_ptr;
+    EXPECT_TRUE(any2.as<void*>().value() == v1_ptr);
+
+    // convert to ObjectRef
+    {
+        auto v1_obj_ref = view2.cast<TNumber>();
+        EXPECT_EQ(v1.use_count(), 3);
+        any2 = v1_obj_ref;
+        EXPECT_EQ(v1.use_count(), 4);
+        EXPECT_TRUE(any2.as<TInt>().has_value());
+        any2.reset();
+    }
+
+    // convert that triggers error
+    EXPECT_THROW(
+            {
+                try {
+                    MAYBE_UNUSED auto v0 = view1.cast<TFloat>();
+                } catch (const Error& error) {
+                    EXPECT_EQ(error.kind(), "TypeError");
+                    std::string what = error.what();
+                    std::cout << what;
+                    EXPECT_NE(what.find("Cannot convert from type `test.Int` to `test.Float`"),
+                              std::string::npos);
+                    throw;
+                }
+            },
+            ::litetvm::ffi::Error);
+
+    // Try to convert to number
+    auto number0 = any1.cast<TNumber>();
+    EXPECT_EQ(v1.use_count(), 3);
+    EXPECT_TRUE(number0.as<TIntObj>());
+    EXPECT_EQ(number0.as<TIntObj>()->value, 11);
+    EXPECT_TRUE(!any1.as<int>().has_value());
+
+    auto int1 = view2.cast<TInt>();
+    EXPECT_EQ(v1.use_count(), 4);
+    any1.reset();
+    EXPECT_EQ(v1.use_count(), 3);
+}
+
 }// namespace
