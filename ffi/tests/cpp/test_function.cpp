@@ -19,11 +19,16 @@ using namespace litetvm::ffi;
 TEST(Function, for_each) {
     int n = 5;
     std::vector<AnyView> anys(n);
+    // using types = std::tuple<int, double, const char*, int, double>;
+
     PackedArgs::Fill(anys.data(), 1, 1.5, "hello", 5, 3.14);
     for (const auto& it: anys) {
         std::cout << it.GetTypeKey() << std::endl;
     }
 
-    using types = std::tuple<int, float, double, std::string>;
-    static_assert(std::is_same_v<float, std::tuple_element_t<1, types>>);
+    EXPECT_EQ(anys[0].cast<int>(), 1);
+    EXPECT_EQ(anys[1].cast<float>(), 1.5);
+    EXPECT_EQ(anys[2].cast<const char*>(), "hello");
+    EXPECT_EQ(anys[3].cast<int>(), 5);
+    EXPECT_EQ(anys[4].cast<double>(), 3.14);
 }

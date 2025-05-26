@@ -423,8 +423,8 @@ struct TypeTraits<const char*> : TypeTraitsBase {
         ObjectRefTypeTraitsBase<String>::MoveToAny(String(src), result);
     }
 
-    // Do not allow const char* in a container, so we do not need CheckAnyStorage
-    static TVM_FFI_INLINE std::optional<const char*> TryConvertFromAnyView(const TVMFFIAny* src) {
+    // Do not allow const char* in a container, so we do not need CheckAnyStrict
+    static TVM_FFI_INLINE std::optional<const char*> TryCastFromAnyView(const TVMFFIAny* src) {
         if (src->type_index == kTVMFFIRawStr) {
             return src->v_c_str;
         }
@@ -453,7 +453,7 @@ struct TypeTraits<TVMFFIByteArray*> : TypeTraitsBase {
         ObjectRefTypeTraitsBase<Bytes>::MoveToAny(Bytes(*src), result);
     }
 
-    static TVM_FFI_INLINE std::optional<TVMFFIByteArray*> TryConvertFromAnyView(
+    static TVM_FFI_INLINE std::optional<TVMFFIByteArray*> TryCastFromAnyView(
             const TVMFFIAny* src) {
         if (src->type_index == kTVMFFIByteArrayPtr) {
             return static_cast<TVMFFIByteArray*>(src->v_ptr);

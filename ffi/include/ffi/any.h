@@ -15,8 +15,6 @@
 namespace litetvm {
 namespace ffi {
 
-class Any;
-
 namespace details {
 // Helper to perform
 // unsafe operations related to object
@@ -44,6 +42,7 @@ public:
         // invariance: always set the union padding part to 0
         data_.v_int64 = 0;
     }
+
     /*!
    * \brief Swap this array with another Object
    * \param other The other Object
@@ -97,13 +96,13 @@ public:
     template<typename T,
              typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE std::optional<T> as() const {
-        return TypeTraits<T>::TryConvertFromAnyView(&data_);
+        return TypeTraits<T>::TryCastFromAnyView(&data_);
     }
 
     template<typename T,
              typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE T cast() const {
-        std::optional<T> opt = TypeTraits<T>::TryConvertFromAnyView(&data_);
+        std::optional<T> opt = TypeTraits<T>::TryCastFromAnyView(&data_);
         if (!opt.has_value()) {
             TVM_FFI_THROW(TypeError) << "Cannot convert from type `"
                                      << TypeTraits<T>::GetMismatchTypeInfo(&data_) << "` to `"
@@ -304,7 +303,7 @@ public:
         if constexpr (std::is_same_v<T, Any>) {
             return *this;
         } else {
-            return TypeTraits<T>::TryConvertFromAnyView(&data_);
+            return TypeTraits<T>::TryCastFromAnyView(&data_);
         }
     }
 
@@ -322,7 +321,7 @@ public:
     template<typename T,
              typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE T cast() const& {
-        std::optional<T> opt = TypeTraits<T>::TryConvertFromAnyView(&data_);
+        std::optional<T> opt = TypeTraits<T>::TryCastFromAnyView(&data_);
         if (!opt.has_value()) {
             TVM_FFI_THROW(TypeError) << "Cannot convert from type `"
                                      << TypeTraits<T>::GetMismatchTypeInfo(&data_) << "` to `"
@@ -334,11 +333,11 @@ public:
     template<typename T,
              typename = std::enable_if_t<TypeTraits<T>::storage_enabled>>
     TVM_FFI_INLINE T cast() && {
-        if (TypeTraits<T>::CheckAnyStorage(&data_)) {
+        if (TypeTraits<T>::CheckAnyStrict(&data_)) {
             return TypeTraits<T>::MoveFromAnyStorageAfterCheck(&data_);
         }
         // slow path, try to do fallback convert
-        std::optional<T> opt = TypeTraits<T>::TryConvertFromAnyView(&data_);
+        std::optional<T> opt = TypeTraits<T>::TryCastFromAnyView(&data_);
         if (!opt.has_value()) {
             TVM_FFI_THROW(TypeError) << "Cannot convert from type `"
                                      << TypeTraits<T>::GetMismatchTypeInfo(&data_) << "` to `"
@@ -457,8 +456,8 @@ struct AnyUnsafe : ObjectUnsafe {
     }
 
     template<typename T>
-    static TVM_FFI_INLINE bool CheckAnyStorage(const Any& ref) {
-        return TypeTraits<T>::CheckAnyStorage(&(ref.data_));
+    static TVM_FFI_INLINE bool CheckAnyStrict(const Any& ref) {
+        return TypeTraits<T>::CheckAnyStrict(&(ref.data_));
     }
 
     template<typename T>

@@ -121,7 +121,7 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
         result->v_dtype = src;
     }
 
-    static TVM_FFI_INLINE bool CheckAnyStorage(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
         return src->type_index == TypeIndex::kTVMFFIDataType;
     }
 
@@ -129,12 +129,12 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
         return src->v_dtype;
     }
 
-    static TVM_FFI_INLINE std::optional<DLDataType> TryConvertFromAnyView(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE std::optional<DLDataType> TryCastFromAnyView(const TVMFFIAny* src) {
         if (src->type_index == TypeIndex::kTVMFFIDataType) {
             return src->v_dtype;
         }
         // enable string to dtype auto conversion
-        if (auto opt_str = TypeTraits<std::string>::TryConvertFromAnyView(src)) {
+        if (auto opt_str = TypeTraits<std::string>::TryCastFromAnyView(src)) {
             return StringToDLDataType(*opt_str);
         }
         return std::nullopt;

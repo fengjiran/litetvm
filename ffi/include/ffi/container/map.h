@@ -1504,13 +1504,13 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
             const MapObj* n = reinterpret_cast<const MapObj*>(src->v_obj);
             for (const auto& kv: *n) {
                 if constexpr (!std::is_same_v<K, Any>) {
-                    if (!details::AnyUnsafe::CheckAnyStorage<K>(kv.first) && !kv.first.as<K>().has_value()) {
+                    if (!details::AnyUnsafe::CheckAnyStrict<K>(kv.first) && !kv.first.as<K>().has_value()) {
                         return "Map[some key is " + details::AnyUnsafe::GetMismatchTypeInfo<K>(kv.first) +
                                ", V]";
                     }
                 }
                 if constexpr (!std::is_same_v<V, Any>) {
-                    if (!details::AnyUnsafe::CheckAnyStorage<V>(kv.second) &&
+                    if (!details::AnyUnsafe::CheckAnyStrict<V>(kv.second) &&
                         !kv.second.as<V>().has_value()) {
                         return "Map[K, some value is " + details::AnyUnsafe::GetMismatchTypeInfo<V>(kv.second) +
                                "]";
@@ -1522,7 +1522,7 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
         TVM_FFI_UNREACHABLE();
     }
 
-    static TVM_FFI_INLINE bool CheckAnyStorage(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
         if (src->type_index != TypeIndex::kTVMFFIMap) return false;
         if constexpr (std::is_same_v<K, Any> && std::is_same_v<V, Any>) {
             return true;
@@ -1530,27 +1530,27 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
             const MapObj* n = reinterpret_cast<const MapObj*>(src->v_obj);
             for (const auto& kv: *n) {
                 if constexpr (!std::is_same_v<K, Any>) {
-                    if (!details::AnyUnsafe::CheckAnyStorage<K>(kv.first)) return false;
+                    if (!details::AnyUnsafe::CheckAnyStrict<K>(kv.first)) return false;
                 }
                 if constexpr (!std::is_same_v<V, Any>) {
-                    if (!details::AnyUnsafe::CheckAnyStorage<V>(kv.second)) return false;
+                    if (!details::AnyUnsafe::CheckAnyStrict<V>(kv.second)) return false;
                 }
             }
             return true;
         }
     }
 
-    static TVM_FFI_INLINE std::optional<Map<K, V>> TryConvertFromAnyView(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE std::optional<Map<K, V>> TryCastFromAnyView(const TVMFFIAny* src) {
         if (src->type_index != TypeIndex::kTVMFFIMap) return std::nullopt;
         if constexpr (!std::is_same_v<K, Any> || !std::is_same_v<V, Any>) {
             const MapObj* n = reinterpret_cast<const MapObj*>(src->v_obj);
             bool storage_check = [&]() {
                 for (const auto& kv: *n) {
                     if constexpr (!std::is_same_v<K, Any>) {
-                        if (!details::AnyUnsafe::CheckAnyStorage<K>(kv.first)) return false;
+                        if (!details::AnyUnsafe::CheckAnyStrict<K>(kv.first)) return false;
                     }
                     if constexpr (!std::is_same_v<V, Any>) {
-                        if (!details::AnyUnsafe::CheckAnyStorage<V>(kv.second)) return false;
+                        if (!details::AnyUnsafe::CheckAnyStrict<V>(kv.second)) return false;
                     }
                 }
                 return true;

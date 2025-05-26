@@ -68,7 +68,7 @@ public:
         if (idx > size) {
             TVM_FFI_THROW(IndexError) << "Index " << idx << " out of bounds " << size;
         }
-        return *(reinterpret_cast<ElemType*>(AddressOf(idx)));
+        return *static_cast<ElemType*>(AddressOf(idx));
     }
 
     /*!

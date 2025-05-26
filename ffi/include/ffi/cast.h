@@ -50,7 +50,7 @@ TVM_FFI_INLINE RefType GetRef(const ObjectType* ptr) {
  */
 template<typename BaseType, typename ObjectType>
 ObjectPtr<BaseType> GetObjectPtr(ObjectType* ptr) {
-    static_assert(std::is_base_of_v<BaseType, ObjectType>,"Can only cast to the ref of same container type");
+    static_assert(std::is_base_of_v<BaseType, ObjectType>, "Can only cast to the ref of same container type");
     return details::ObjectUnsafe::ObjectPtrFromUnowned<BaseType>(ptr);
 }
 
@@ -76,7 +76,7 @@ SubRef Downcast(BaseRef ref) {
         return SubRef(ObjectPtr<Object>(nullptr));
     }
 
-    TVM_FFI_THROW(TypeError) << "Downcast from undefined(nullptr) to `"<< SubRef::ContainerType::_type_key<< "` is not allowed. Use Downcast<Optional<T>> instead.";
+    TVM_FFI_THROW(TypeError) << "Downcast from undefined(nullptr) to `" << SubRef::ContainerType::_type_key << "` is not allowed. Use Downcast<Optional<T>> instead.";
     TVM_FFI_UNREACHABLE();
 }
 
@@ -119,7 +119,8 @@ T Downcast(Any&& ref) {
  * \return The corresponding SubRef.
  * \tparam OptionalType The target optional type
  */
-template<typename OptionalType, typename = std::enable_if_t<is_optional_type_v<OptionalType>>>
+template<typename OptionalType,
+         typename = std::enable_if_t<is_optional_type_v<OptionalType>>>
 OptionalType Downcast(const std::optional<Any>& ref) {
     if (ref.has_value()) {
         if constexpr (std::is_same_v<OptionalType, Any>) {

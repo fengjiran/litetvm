@@ -726,7 +726,7 @@ struct TypeTraits<TypedFunction<FType>> : public TypeTraitsBase {
         TypeTraits<Function>::MoveToAny(std::move(src.packed()), result);
     }
 
-    static TVM_FFI_INLINE bool CheckAnyStorage(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
         return src->type_index == TypeIndex::kTVMFFIFunction;
     }
 
@@ -734,9 +734,9 @@ struct TypeTraits<TypedFunction<FType>> : public TypeTraitsBase {
         return TypedFunction<FType>(TypeTraits<Function>::CopyFromAnyStorageAfterCheck(src));
     }
 
-    static TVM_FFI_INLINE std::optional<TypedFunction<FType>> TryConvertFromAnyView(
+    static TVM_FFI_INLINE std::optional<TypedFunction<FType>> TryCastFromAnyView(
             const TVMFFIAny* src) {
-        std::optional<Function> opt = TypeTraits<Function>::TryConvertFromAnyView(src);
+        std::optional<Function> opt = TypeTraits<Function>::TryCastFromAnyView(src);
         if (opt.has_value()) {
             return TypedFunction<FType>(*std::move(opt));
         } else {

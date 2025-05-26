@@ -941,8 +941,8 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
             const ArrayObj* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
             for (size_t i = 0; i < n->size(); i++) {
                 const Any& any_v = (*n)[i];
-                // CheckAnyStorage is cheaper than as<T>
-                if (details::AnyUnsafe::CheckAnyStorage<T>(any_v)) continue;
+                // CheckAnyStrict is cheaper than as<T>
+                if (details::AnyUnsafe::CheckAnyStrict<T>(any_v)) continue;
                 // try see if p is convertible to T
                 if (any_v.as<T>()) continue;
                 // now report the accurate mismatch information
@@ -954,7 +954,7 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
         TVM_FFI_UNREACHABLE();
     }
 
-    static TVM_FFI_INLINE bool CheckAnyStorage(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
         if (src->type_index != TypeIndex::kTVMFFIArray) return false;
         if constexpr (std::is_same_v<T, Any>) {
             return true;
@@ -962,13 +962,13 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
             const ArrayObj* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
             for (size_t i = 0; i < n->size(); i++) {
                 const Any& any_v = (*n)[i];
-                if (!details::AnyUnsafe::CheckAnyStorage<T>(any_v)) return false;
+                if (!details::AnyUnsafe::CheckAnyStrict<T>(any_v)) return false;
             }
             return true;
         }
     }
 
-    static TVM_FFI_INLINE std::optional<Array<T>> TryConvertFromAnyView(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE std::optional<Array<T>> TryCastFromAnyView(const TVMFFIAny* src) {
         // try to run conversion.
         if (src->type_index != TypeIndex::kTVMFFIArray) return std::nullopt;
         if constexpr (!std::is_same_v<T, Any>) {
@@ -976,7 +976,7 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
             bool storage_check = [&]() {
                 for (size_t i = 0; i < n->size(); i++) {
                     const Any& any_v = (*n)[i];
-                    if (!details::AnyUnsafe::CheckAnyStorage<T>(any_v)) return false;
+                    if (!details::AnyUnsafe::CheckAnyStrict<T>(any_v)) return false;
                 }
                 return true;
             }();
