@@ -724,14 +724,14 @@ namespace std {
 
 template<>
 struct hash<::litetvm::ffi::Bytes> {
-    std::size_t operator()(const ::litetvm::ffi::Bytes& bytes) const {
+    std::size_t operator()(const ::litetvm::ffi::Bytes& bytes) const noexcept {
         return ::litetvm::ffi::details::StableHashBytes(bytes.data(), bytes.size());
     }
 };
 
 template<>
 struct hash<::litetvm::ffi::String> {
-    std::size_t operator()(const ::litetvm::ffi::String& str) const {
+    std::size_t operator()(const ::litetvm::ffi::String& str) const noexcept {
         return ::litetvm::ffi::details::StableHashBytes(str.data(), str.size());
     }
 };

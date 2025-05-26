@@ -622,8 +622,7 @@ struct TypeTraits<const TObject*, std::enable_if_t<std::is_base_of_v<Object, TOb
     }
 
     static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
-        return src->type_index >= kTVMFFIStaticObjectBegin &&
-               details::IsObjectInstance<TObject>(src->type_index);
+        return src->type_index >= kTVMFFIStaticObjectBegin && details::IsObjectInstance<TObject>(src->type_index);
     }
 
     static TVM_FFI_INLINE const TObject* CopyFromAnyStorageAfterCheck(const TVMFFIAny* src) {
