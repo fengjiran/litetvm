@@ -24,30 +24,42 @@ namespace ffi {
 class ArrayObj : public Object, public details::InplaceArrayBase<ArrayObj, Any> {
 public:
     /*! \return The size of the array */
-    size_t size() const { return this->size_; }
+    NODISCARD size_t size() const {
+        return this->size_;
+    }
 
     /*!
    * \brief Read i-th element from array.
    * \param i The index
    * \return the i-th element.
    */
-    const Any at(int64_t i) const { return this->operator[](i); }
+    NODISCARD Any at(int64_t i) const {
+        return this->operator[](i);
+    }
 
     /*! \return begin constant iterator */
-    const Any* begin() const { return static_cast<Any*>(InplaceArrayBase::AddressOf(0)); }
+    NODISCARD const Any* begin() const {
+        return static_cast<Any*>(AddressOf(0));
+    }
 
     /*! \return end constant iterator */
-    const Any* end() const { return begin() + size_; }
+    NODISCARD const Any* end() const {
+        return begin() + size_;
+    }
 
     /*! \brief Release reference to all the elements */
-    void clear() { ShrinkBy(size_); }
+    void clear() {
+        ShrinkBy(size_);
+    }
 
     /*!
    * \brief Set i-th element of the array in-place
    * \param i The index
    * \param item The value to be set
    */
-    void SetItem(int64_t i, Any item) { this->operator[](i) = std::move(item); }
+    void SetItem(int64_t i, Any item) {
+        this->operator[](i) = std::move(item);
+    }
 
     /*!
    * \brief Constructs a container and copy from another
@@ -55,12 +67,12 @@ public:
    * \param from Source of the copy
    * \return Ref-counted ArrayObj requested
    */
-    static ObjectPtr<ArrayObj> CopyFrom(int64_t cap, ArrayObj* from) {
+    static ObjectPtr<ArrayObj> CopyFrom(int64_t cap, const ArrayObj* from) {
         int64_t size = from->size_;
         if (size > cap) {
             TVM_FFI_THROW(ValueError) << "not enough capacity";
         }
-        ObjectPtr<ArrayObj> p = ArrayObj::Empty(cap);
+        ObjectPtr<ArrayObj> p = Empty(cap);
         Any* write = p->MutableBegin();
         Any* read = from->MutableBegin();
         // To ensure exception safety, size is only incremented after the initialization succeeds
@@ -81,7 +93,7 @@ public:
         if (size > cap) {
             TVM_FFI_THROW(RuntimeError) << "not enough capacity";
         }
-        ObjectPtr<ArrayObj> p = ArrayObj::Empty(cap);
+        ObjectPtr<ArrayObj> p = Empty(cap);
         Any* write = p->MutableBegin();
         Any* read = from->MutableBegin();
         // To ensure exception safety, size is only incremented after the initialization succeeds
@@ -99,7 +111,7 @@ public:
    * \return Ref-counted ArrayObj requested
    */
     static ObjectPtr<ArrayObj> CreateRepeated(int64_t n, const Any& val) {
-        ObjectPtr<ArrayObj> p = ArrayObj::Empty(n);
+        ObjectPtr<ArrayObj> p = Empty(n);
         Any* itr = p->MutableBegin();
         for (int64_t& i = p->size_ = 0; i < n; ++i) {
             new (itr++) Any(val);
@@ -107,20 +119,26 @@ public:
         return p;
     }
 
-    static constexpr const int32_t _type_index = TypeIndex::kTVMFFIArray;
+    static constexpr int32_t _type_index = kTVMFFIArray;
     static constexpr const char* _type_key = "object.Array";
-    static const constexpr bool _type_final = true;
+    static constexpr bool _type_final = true;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(ArrayObj, Object);
 
 private:
     /*! \return Size of initialized memory, used by InplaceArrayBase. */
-    size_t GetSize() const { return this->size_; }
+    NODISCARD size_t GetSize() const {
+        return this->size_;
+    }
 
     /*! \return begin mutable iterator */
-    Any* MutableBegin() const { return static_cast<Any*>(InplaceArrayBase::AddressOf(0)); }
+    NODISCARD Any* MutableBegin() const {
+        return static_cast<Any*>(AddressOf(0));
+    }
 
     /*! \return end mutable iterator */
-    Any* MutableEnd() const { return MutableBegin() + size_; }
+    NODISCARD Any* MutableEnd() const {
+        return MutableBegin() + size_;
+    }
 
     /*!
    * \brief Create an ArrayObj with the given capacity.
@@ -146,10 +164,14 @@ private:
     template<typename IterType>
     ArrayObj* InitRange(int64_t idx, IterType first, IterType last) {
         Any* itr = MutableBegin() + idx;
-        for (; first != last; ++first) {
-            Any ref = *first;
-            new (itr++) Any(std::move(ref));
+        while (first != last) {
+            new (itr++) Any(std::move(*first++));
         }
+
+        // for (; first != last; ++first) {
+        //     Any ref = *first;
+        //     new (itr++) Any(std::move(ref));
+        // }
         return this;
     }
 
@@ -206,9 +228,9 @@ private:
    * \return Self
    */
     ArrayObj* ShrinkBy(int64_t delta) {
-        Any* itr = MutableEnd();
+        Any* ptr = MutableEnd();
         while (delta-- > 0) {
-            (--itr)->Any::~Any();
+            (--ptr)->~Any();
             --size_;
         }
         return this;
@@ -227,7 +249,7 @@ private:
     static constexpr int64_t kIncFactor = 2;
 
     // CRTP parent class
-    friend InplaceArrayBase<ArrayObj, Any>;
+    friend InplaceArrayBase;
 
     // Reference class
     template<typename, typename>
@@ -245,17 +267,15 @@ private:
 
 /*! \brief Helper struct for type-checking
  *
- * is_valid_iterator<T,IterType>::value will be true if IterType can
+ * is_valid_iterator<T, IterType>::value will be true if IterType can
  * be dereferenced into a type that can be stored in an Array<T>, and
  * false otherwise.
  */
-template<typename T, typename IterType>
-struct is_valid_iterator
-    : std::bool_constant<
-              std::is_same_v<
-                      T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<IterType>())>>> ||
-              std::is_base_of_v<
-                      T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<IterType>())>>>> {
+template<typename T,
+         typename Iter>
+struct is_valid_iterator : std::bool_constant<
+                                   std::is_same_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>> ||
+                                   std::is_base_of_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>>> {
 };
 
 template<typename T, typename IterType>
@@ -284,7 +304,7 @@ inline constexpr bool is_valid_iterator_v = is_valid_iterator<T, IterType>::valu
  * operator[] only provides const access, use Set to mutate the content.
  * \tparam T The content Value type, must be compatible with tvm::ffi::Any
  */
-template<typename T, typename = typename std::enable_if_t<details::storage_enabled_v<T>>>
+template<typename T, typename = std::enable_if_t<details::storage_enabled_v<T>>>
 class Array : public ObjectRef {
 public:
     using value_type = T;
@@ -292,32 +312,15 @@ public:
     /*!
    * \brief default constructor
    */
-    Array() { data_ = ArrayObj::Empty(); }
+    Array() {
+        data_ = ArrayObj::Empty();
+    }
     Array(Array<T>&& other) : ObjectRef(std::move(other.data_)) {}
     Array(const Array<T>& other) : ObjectRef(other.data_) {}
     template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
     Array(Array<U>&& other) : ObjectRef(std::move(other.data_)) {}
     template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
     Array(const Array<U>& other) : ObjectRef(other.data_) {}
-
-    TVM_FFI_INLINE Array<T>& operator=(Array<T>&& other) {
-        data_ = std::move(other.data_);
-        return *this;
-    }
-    TVM_FFI_INLINE Array<T>& operator=(const Array<T>& other) {
-        data_ = other.data_;
-        return *this;
-    }
-    template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
-    TVM_FFI_INLINE Array<T>& operator=(Array<U>&& other) {
-        data_ = std::move(other.data_);
-        return *this;
-    }
-    template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
-    TVM_FFI_INLINE Array<T>& operator=(const Array<U>& other) {
-        data_ = other.data_;
-        return *this;
-    }
 
     /*!
    * \brief constructor from pointer
@@ -329,12 +332,11 @@ public:
    * \brief Constructor from iterator
    * \param first begin of iterator
    * \param last end of iterator
-   * \tparam IterType The type of iterator
+   * \tparam Iter The type of iterator
    */
-    template<typename IterType>
-    Array(IterType first, IterType last) {
-        static_assert(is_valid_iterator_v<T, IterType>,
-                      "IterType cannot be inserted into a tvm::Array<T>");
+    template<typename Iter>
+    Array(Iter first, Iter last) {
+        static_assert(is_valid_iterator_v<T, Iter>, "IterType cannot be inserted into a tvm::Array<T>");
         Assign(first, last);
     }
 
@@ -359,7 +361,31 @@ public:
    * \param n The size of the container
    * \param val The init value
    */
-    explicit Array(const size_t n, const T& val) { data_ = ArrayObj::CreateRepeated(n, val); }
+    explicit Array(const size_t n, const T& val) {
+        data_ = ArrayObj::CreateRepeated(n, val);
+    }
+
+    TVM_FFI_INLINE Array& operator=(Array&& other) noexcept {
+        data_ = std::move(other.data_);
+        return *this;
+    }
+
+    TVM_FFI_INLINE Array& operator=(const Array& other) {
+        data_ = other.data_;
+        return *this;
+    }
+
+    template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
+    TVM_FFI_INLINE Array& operator=(Array<U>&& other) {
+        data_ = std::move(other.data_);
+        return *this;
+    }
+
+    template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
+    TVM_FFI_INLINE Array& operator=(const Array<U>& other) {
+        data_ = other.data_;
+        return *this;
+    }
 
 public:
     // iterators
@@ -623,7 +649,6 @@ public:
         AgregateImpl(dest, args...);
     }
 
-public:
     // Array's own methods
 
     /*!
@@ -640,7 +665,9 @@ public:
     }
 
     /*! \return The underlying ArrayObj */
-    ArrayObj* GetArrayObj() const { return static_cast<ArrayObj*>(data_.get()); }
+    NODISCARD ArrayObj* GetArrayObj() const {
+        return static_cast<ArrayObj*>(data_.get());
+    }
 
     /*!
    * \brief Helper function to apply a map function onto the array.

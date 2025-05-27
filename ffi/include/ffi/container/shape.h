@@ -10,7 +10,6 @@
 #include "ffi/type_traits.h"
 
 #include <algorithm>
-#include <ostream>
 #include <utility>
 #include <vector>
 

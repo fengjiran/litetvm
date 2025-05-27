@@ -159,8 +159,12 @@ inline std::string DLDataTypeToString_(DLDataType dtype) {// NOLINT(*)
     } else {
         os << details::DLDataTypeCodeAsCStr(static_cast<DLDataTypeCode>(dtype.code));
     }
-    if (dtype.code == kDLOpaqueHandle) return os.str();
-    int16_t lanes = static_cast<int16_t>(dtype.lanes);
+
+    if (dtype.code == kDLOpaqueHandle) {
+        return os.str();
+    }
+
+    auto lanes = static_cast<int16_t>(dtype.lanes);
     if (dtype.code < kDLFloat8_e3m4) {
         os << static_cast<int>(dtype.bits);
     }
@@ -177,31 +181,32 @@ inline std::string DLDataTypeToString_(DLDataType dtype) {// NOLINT(*)
  * \param str The string to convert.
  * \return The corresponding DLDataType.
  */
-inline DLDataType StringViewToDLDataType_(std::string_view str) {
+inline DLDataType StringViewToDLDataType_(const std::string_view& str) {
     DLDataType dtype;
     // handle void type
-    if (str.length() == 0 || str == "void") {
+    if (str.empty() || str == "void") {
         dtype.code = kDLOpaqueHandle;
         dtype.bits = 0;
         dtype.lanes = 0;
         return dtype;
     }
+
     // set the default values;
     dtype.bits = 32;
     dtype.lanes = 1;
     const char* scan;
 
-    auto parse_float = [&](const std::string_view& str, int offset, int code, int bits) {
+    auto parse_float = [&](const std::string_view& s, int offset, int code, int bits) {
         dtype.code = static_cast<uint8_t>(code);
         dtype.bits = static_cast<uint8_t>(bits);
-        scan = str.data() + offset;
+        scan = s.data() + offset;
         char* endpt = nullptr;
         if (*scan == 'x') {
             dtype.lanes = static_cast<uint16_t>(strtoul(scan + 1, &endpt, 10));
             scan = endpt;
         }
-        if (scan != str.data() + str.length()) {
-            TVM_FFI_THROW(ValueError) << "unknown dtype `" << str << '`';
+        if (scan != s.data() + s.length()) {
+            TVM_FFI_THROW(ValueError) << "unknown dtype `" << s << '`';
         }
         return dtype;
     };
@@ -216,49 +221,57 @@ inline DLDataType StringViewToDLDataType_(std::string_view str) {
         if (str.compare(5, 2, "8_") == 0) {
             if (str.compare(7, 4, "e3m4") == 0) {
                 return parse_float(str, 11, kDLFloat8_e3m4, 8);
-            } else if (str.compare(7, 4, "e4m3") == 0) {
+            }
+
+            if (str.compare(7, 4, "e4m3") == 0) {
                 if (str.compare(11, 7, "b11fnuz") == 0) {
                     return parse_float(str, 18, kDLFloat8_e4m3b11fnuz, 8);
-                } else if (str.compare(11, 2, "fn") == 0) {
+                }
+
+                if (str.compare(11, 2, "fn") == 0) {
                     if (str.compare(13, 2, "uz") == 0) {
                         return parse_float(str, 15, kDLFloat8_e4m3fnuz, 8);
-                    } else {
-                        return parse_float(str, 13, kDLFloat8_e4m3fn, 8);
                     }
-                } else {
-                    return parse_float(str, 11, kDLFloat8_e4m3, 8);
+                    return parse_float(str, 13, kDLFloat8_e4m3fn, 8);
                 }
-            } else if (str.compare(7, 8, "e5m2fnuz") == 0) {
-                return parse_float(str, 15, kDLFloat8_e5m2fnuz, 8);
-            } else if (str.compare(7, 4, "e5m2") == 0) {
-                return parse_float(str, 11, kDLFloat8_e5m2, 8);
-            } else if (str.compare(7, 7, "e8m0fnu") == 0) {
-                return parse_float(str, 14, kDLFloat8_e8m0fnu, 8);
-            } else {
-                TVM_FFI_THROW(ValueError) << "unknown float8 type `" << str << '`';
-                TVM_FFI_UNREACHABLE();
+                return parse_float(str, 11, kDLFloat8_e4m3, 8);
             }
-        } else if (str.compare(5, 2, "6_") == 0) {
+
+            if (str.compare(7, 8, "e5m2fnuz") == 0) {
+                return parse_float(str, 15, kDLFloat8_e5m2fnuz, 8);
+            }
+
+            if (str.compare(7, 4, "e5m2") == 0) {
+                return parse_float(str, 11, kDLFloat8_e5m2, 8);
+            }
+
+            if (str.compare(7, 7, "e8m0fnu") == 0) {
+                return parse_float(str, 14, kDLFloat8_e8m0fnu, 8);
+            }
+            TVM_FFI_THROW(ValueError) << "unknown float8 type `" << str << '`';
+            TVM_FFI_UNREACHABLE();
+        }
+
+        if (str.compare(5, 2, "6_") == 0) {
             if (str.compare(7, 6, "e2m3fn") == 0) {
                 return parse_float(str, 13, kDLFloat6_e2m3fn, 6);
-            } else if (str.compare(7, 6, "e3m2fn") == 0) {
-                return parse_float(str, 13, kDLFloat6_e3m2fn, 6);
-            } else {
-                TVM_FFI_THROW(ValueError) << "unknown float6 type `" << str << '`';
-                TVM_FFI_UNREACHABLE();
             }
-        } else if (str.compare(5, 2, "4_") == 0) {
+            if (str.compare(7, 6, "e3m2fn") == 0) {
+                return parse_float(str, 13, kDLFloat6_e3m2fn, 6);
+            }
+            TVM_FFI_THROW(ValueError) << "unknown float6 type `" << str << '`';
+            TVM_FFI_UNREACHABLE();
+        }
+        if (str.compare(5, 2, "4_") == 0) {
             // kFloat4_e2m1fn
             if (str.compare(7, 6, "e2m1fn") == 0) {
                 return parse_float(str, 13, kDLFloat4_e2m1fn, 4);
-            } else {
-                TVM_FFI_THROW(ValueError) << "unknown float4 type `" << str << '`';
-                TVM_FFI_UNREACHABLE();
             }
-        } else {
-            dtype.code = kDLFloat;
-            scan = str.data() + 5;
+            TVM_FFI_THROW(ValueError) << "unknown float4 type `" << str << '`';
+            TVM_FFI_UNREACHABLE();
         }
+        dtype.code = kDLFloat;
+        scan = str.data() + 5;
     } else if (str.compare(0, 6, "handle") == 0) {
         dtype.code = kDLOpaqueHandle;
         dtype.bits = 64;// handle uses 64 bit by default.
@@ -279,7 +292,7 @@ inline DLDataType StringViewToDLDataType_(std::string_view str) {
         TVM_FFI_THROW(ValueError) << "unknown dtype `" << str << '`';
     }
     char* xdelim;// emulate sscanf("%ux%u", bits, lanes)
-    uint8_t bits = static_cast<uint8_t>(strtoul(scan, &xdelim, 10));
+    auto bits = static_cast<uint8_t>(strtoul(scan, &xdelim, 10));
     if (bits != 0) dtype.bits = bits;
     int scalable_multiplier = 1;
     if (strncmp(xdelim, "xvscale", 7) == 0) {

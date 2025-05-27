@@ -82,12 +82,10 @@ inline const char* DLDataTypeCodeAsCStr(DLDataTypeCode type_code) {// NOLINT(*)
             return "float4_e2m1fn";
         }
         default: {
-            if (static_cast<int>(type_code) >= static_cast<int>(DLExtDataTypeCode::kDLExtCustomBegin)) {
+            if (static_cast<int>(type_code) >= static_cast<int>(kDLExtCustomBegin)) {
                 return "custom";
-            } else {
-                TVM_FFI_THROW(ValueError) << "DLDataType contains unknown type_code="
-                                          << static_cast<int>(type_code);
             }
+            TVM_FFI_THROW(ValueError) << "DLDataType contains unknown type_code="<< type_code;
             TVM_FFI_UNREACHABLE();
         }
     }
@@ -108,21 +106,21 @@ inline String DLDataTypeToString(DLDataType dtype) {
 
 // DLDataType
 template<>
-struct TypeTraits<DLDataType> : public TypeTraitsBase {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIDataType;
+struct TypeTraits<DLDataType> : TypeTraitsBase {
+    static constexpr int32_t field_static_type_index = kTVMFFIDataType;
 
     static TVM_FFI_INLINE void CopyToAnyView(const DLDataType& src, TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFIDataType;
+        result->type_index = kTVMFFIDataType;
         result->v_dtype = src;
     }
 
     static TVM_FFI_INLINE void MoveToAny(DLDataType src, TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFIDataType;
+        result->type_index = kTVMFFIDataType;
         result->v_dtype = src;
     }
 
     static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
-        return src->type_index == TypeIndex::kTVMFFIDataType;
+        return src->type_index == kTVMFFIDataType;
     }
 
     static TVM_FFI_INLINE DLDataType CopyFromAnyStorageAfterCheck(const TVMFFIAny* src) {
@@ -130,7 +128,7 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
     }
 
     static TVM_FFI_INLINE std::optional<DLDataType> TryCastFromAnyView(const TVMFFIAny* src) {
-        if (src->type_index == TypeIndex::kTVMFFIDataType) {
+        if (src->type_index == kTVMFFIDataType) {
             return src->v_dtype;
         }
         // enable string to dtype auto conversion
@@ -140,7 +138,9 @@ struct TypeTraits<DLDataType> : public TypeTraitsBase {
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return ffi::StaticTypeKey::kTVMFFIDataType; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return StaticTypeKey::kTVMFFIDataType;
+    }
 };
 }// namespace ffi
 }// namespace litetvm

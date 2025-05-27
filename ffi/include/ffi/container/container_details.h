@@ -5,7 +5,6 @@
 #ifndef LITETVM_FFI_CONTAINER_CONTAINER_DETAILS_H
 #define LITETVM_FFI_CONTAINER_CONTAINER_DETAILS_H
 
-#include "ffi/memory.h"
 #include "ffi/object.h"
 
 #include <sstream>
@@ -81,17 +80,17 @@ public:
         if (idx > size) {
             TVM_FFI_THROW(IndexError) << "Index " << idx << " out of bounds " << size;
         }
-        return *(reinterpret_cast<ElemType*>(AddressOf(idx)));
+        return *static_cast<ElemType*>(AddressOf(idx));
     }
 
     /*!
    * \brief Destroy the Inplace Array Base object
    */
     ~InplaceArrayBase() {
-        if constexpr (!(std::is_standard_layout<ElemType>::value && std::is_trivial<ElemType>::value)) {
+        if constexpr (!(std::is_standard_layout_v<ElemType> && std::is_trivial_v<ElemType>)) {
             size_t size = Self()->GetSize();
             for (size_t i = 0; i < size; ++i) {
-                ElemType* fp = reinterpret_cast<ElemType*>(AddressOf(i));
+                auto* fp = static_cast<ElemType*>(AddressOf(i));
                 fp->ElemType::~ElemType();
             }
         }
@@ -119,7 +118,7 @@ protected:
    *
    * \return Pointer to ArrayType.
    */
-    inline ArrayType* Self() const {
+    ArrayType* Self() const {
         return static_cast<ArrayType*>(const_cast<InplaceArrayBase*>(this));
     }
 
@@ -129,11 +128,9 @@ protected:
    * \param idx The index of the element.
    * \return Raw pointer to the element.
    */
-    void* AddressOf(size_t idx) const {
-        static_assert(
-                alignof(ArrayType) % alignof(ElemType) == 0 && sizeof(ArrayType) % alignof(ElemType) == 0,
-                "The size and alignment of ArrayType should respect "
-                "ElemType's alignment.");
+    NODISCARD void* AddressOf(size_t idx) const {
+        static_assert(alignof(ArrayType) % alignof(ElemType) == 0 && sizeof(ArrayType) % alignof(ElemType) == 0,
+                "The size and alignment of ArrayType should respect ElemType's alignment.");
 
         size_t kDataStart = sizeof(ArrayType);
         ArrayType* self = Self();
@@ -281,8 +278,7 @@ inline constexpr bool all_object_ref_v = (std::is_base_of_v<ObjectRef, T> && ...
  * \return True if Derived's storage can be used as Base's storage, false otherwise.
  */
 template<typename Base, typename Derived>
-inline constexpr bool type_contains_v =
-        std::is_base_of_v<Base, Derived> || std::is_same_v<Base, Derived>;
+inline constexpr bool type_contains_v = std::is_base_of_v<Base, Derived> || std::is_same_v<Base, Derived>;
 // special case for Any
 template<typename Derived>
 inline constexpr bool type_contains_v<Any, Derived> = true;

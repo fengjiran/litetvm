@@ -123,6 +123,18 @@ public:
         return this->as<const T*>().value_or(nullptr);
     }
 
+    /*!
+   * \brief Try to cast to a type T, return std::nullopt if the cast is not possible.
+   *
+   * \tparam T The type to cast to.
+   * \return The casted value, or std::nullopt if the cast is not possible.
+   */
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
+    TVM_FFI_INLINE std::optional<T> try_cast() const {
+        return TypeTraits<T>::TryCastFromAnyView(&data_);
+    }
+
     // comparison with nullptr
     TVM_FFI_INLINE bool operator==(std::nullptr_t) const noexcept {
         return data_.type_index == kTVMFFINone;
@@ -344,6 +356,23 @@ public:
                                      << TypeTraits<T>::TypeStr() << "`";
         }
         return *std::move(opt);
+    }
+
+    /**
+   * \brief Try to cast to a type T.
+   *
+   * \tparam T The type to cast to.
+   * \return The casted value, or std::nullopt if the cast is not possible.
+   * \note use STL name since it to be more consistent with cast API.
+   */
+    template<typename T,
+             typename = std::enable_if_t<TypeTraits<T>::convert_enabled || std::is_same_v<T, Any>>>
+    TVM_FFI_INLINE std::optional<T> try_cast() const {
+        if constexpr (std::is_same_v<T, Any>) {
+            return *this;
+        } else {
+            return TypeTraits<T>::TryCastFromAnyView(&data_);
+        }
     }
 
     /*

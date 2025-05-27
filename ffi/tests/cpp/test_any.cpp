@@ -262,4 +262,102 @@ TEST(Any, Object) {
     EXPECT_EQ(v1.use_count(), 3);
 }
 
+TEST(Any, ObjectRefWithFallbackTraits) {
+    // Test case for TPrimExpr fallback from Any
+    Any any1 = TPrimExpr("float32", 3.14);
+    auto v0 = any1.cast<TPrimExpr>();
+    EXPECT_EQ(v0->value, 3.14);
+    EXPECT_EQ(v0->dtype, "float32");
+
+    any1 = true;
+    auto v1 = any1.cast<TPrimExpr>();
+    EXPECT_EQ(v1->value, 1);
+    EXPECT_EQ(v1->dtype, "bool");
+
+    any1 = int64_t(42);
+    auto v2 = any1.cast<TPrimExpr>();
+    EXPECT_EQ(v2->value, 42);
+    EXPECT_EQ(v2->dtype, "int64");
+
+    any1 = 2.718;
+    auto v3 = any1.cast<TPrimExpr>();
+    EXPECT_EQ(v3->value, 2.718);
+    EXPECT_EQ(v3->dtype, "float32");
+
+    // Test case for TPrimExpr fallback from AnyView
+    TPrimExpr texpr1("float32", 3.14);
+    AnyView view1 = texpr1;
+    auto v4 = view1.cast<TPrimExpr>();
+    EXPECT_EQ(v4->value, 3.14);
+    EXPECT_EQ(v4->dtype, "float32");
+
+    view1 = true;
+    auto v5 = view1.cast<TPrimExpr>();
+    EXPECT_EQ(v5->value, 1);
+    EXPECT_EQ(v5->dtype, "bool");
+
+    view1 = int64_t(42);
+    auto v6 = view1.cast<TPrimExpr>();
+    EXPECT_EQ(v6->value, 42);
+    EXPECT_EQ(v6->dtype, "int64");
+
+    view1 = 2.718;
+    auto v7 = view1.cast<TPrimExpr>();
+    EXPECT_EQ(v7->value, 2.718);
+    EXPECT_EQ(v7->dtype, "float32");
+
+    // Test case for TPrimExpr fallback from Any with String
+    any1 = std::string("test_string");
+    auto v8 = any1.cast<TPrimExpr>();
+    EXPECT_EQ(v8->dtype, "test_string");
+    EXPECT_EQ(v8->value, 0);
+
+    // Test case for TPrimExpr fallback from AnyView with String
+    view1 = "test_string";
+    auto v9 = view1.cast<TPrimExpr>();
+    EXPECT_EQ(v9->dtype, "test_string");
+    EXPECT_EQ(v9->value, 0);
+}
+
+TEST(Any, CastVsAs) {
+    AnyView view0 = 1;
+    // as only runs strict check
+    auto opt_v0 = view0.as<int64_t>();
+    EXPECT_TRUE(opt_v0.has_value());
+    EXPECT_EQ(opt_v0.value(), 1);
+
+    auto opt_v1 = view0.as<bool>();
+    EXPECT_TRUE(!opt_v1.has_value());
+    auto opt_v2 = view0.as<double>();
+    EXPECT_TRUE(!opt_v2.has_value());
+
+    // try_cast will try run the conversion.
+    auto opt_v3 = view0.try_cast<bool>();
+    EXPECT_TRUE(opt_v3.has_value());
+    EXPECT_EQ(opt_v3.value(), 1);
+    auto opt_v4 = view0.try_cast<double>();
+    EXPECT_TRUE(opt_v4.has_value());
+    EXPECT_EQ(opt_v4.value(), 1);
+
+    Any any1 = true;
+    auto opt_v5 = any1.as<bool>();
+    EXPECT_TRUE(opt_v5.has_value());
+    EXPECT_EQ(opt_v5.value(), 1);
+
+    auto opt_v6 = any1.try_cast<int>();
+    EXPECT_TRUE(opt_v6.has_value());
+    EXPECT_EQ(opt_v6.value(), 1);
+
+    auto opt_v7 = any1.try_cast<double>();
+    EXPECT_TRUE(opt_v7.has_value());
+}
+
+TEST(Any, ObjectMove) {
+    Any any1 = TPrimExpr("float32", 3.14);
+    auto v0 = std::move(any1).cast<TPrimExpr>();
+    EXPECT_EQ(v0->value, 3.14);
+    EXPECT_EQ(v0.use_count(), 1);
+    EXPECT_TRUE(any1 == nullptr);
+}
+
 }// namespace
