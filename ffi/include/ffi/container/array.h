@@ -272,11 +272,10 @@ private:
  * false otherwise.
  */
 template<typename T,
-         typename Iter>
-struct is_valid_iterator : std::bool_constant<
-                                   std::is_same_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>> ||
-                                   std::is_base_of_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>>> {
-};
+         typename Iter,
+         bool v = std::is_same_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>> ||
+                  std::is_base_of_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>>>
+struct is_valid_iterator : std::bool_constant<v> {};
 
 template<typename T, typename IterType>
 struct is_valid_iterator<Optional<T>, IterType> : is_valid_iterator<T, IterType> {};
@@ -326,7 +325,7 @@ public:
    * \brief constructor from pointer
    * \param n the container pointer
    */
-    explicit Array(ObjectPtr<Object> n) : ObjectRef(n) {}
+    explicit Array(const ObjectPtr<Object>& n) : ObjectRef(n) {}
 
     /*!
    * \brief Constructor from iterator
@@ -387,7 +386,6 @@ public:
         return *this;
     }
 
-public:
     // iterators
     struct ValueConverter {
         using ResultType = T;
@@ -400,10 +398,14 @@ public:
     using reverse_iterator = details::ReverseIterAdapter<ValueConverter, const Any*>;
 
     /*! \return begin iterator */
-    iterator begin() const { return iterator(GetArrayObj()->begin()); }
+    iterator begin() const {
+        return iterator(GetArrayObj()->begin());
+    }
 
     /*! \return end iterator */
-    iterator end() const { return iterator(GetArrayObj()->end()); }
+    iterator end() const {
+        return iterator(GetArrayObj()->end());
+    }
 
     /*! \return rbegin iterator */
     reverse_iterator rbegin() const {
@@ -417,14 +419,13 @@ public:
         return reverse_iterator(GetArrayObj()->begin() - 1);
     }
 
-public:
     // const methods in std::vector
     /*!
    * \brief Immutably read i-th element from array.
    * \param i The index
    * \return the i-th element.
    */
-    const T operator[](int64_t i) const {
+    T operator[](int64_t i) const {
         ArrayObj* p = GetArrayObj();
         if (p == nullptr) {
             TVM_FFI_THROW(IndexError) << "cannot index a null array";
@@ -436,31 +437,33 @@ public:
     }
 
     /*! \return The size of the array */
-    size_t size() const {
+    NODISCARD size_t size() const {
         ArrayObj* p = GetArrayObj();
         return p == nullptr ? 0 : GetArrayObj()->size_;
     }
 
     /*! \return The capacity of the array */
-    size_t capacity() const {
+    NODISCARD size_t capacity() const {
         ArrayObj* p = GetArrayObj();
         return p == nullptr ? 0 : GetArrayObj()->capacity_;
     }
 
     /*! \return Whether array is empty */
-    bool empty() const { return size() == 0; }
+    NODISCARD bool empty() const {
+        return size() == 0;
+    }
 
     /*! \return The first element of the array */
-    const T front() const {
+    T front() const {
         ArrayObj* p = GetArrayObj();
         if (p == nullptr || p->size_ == 0) {
             TVM_FFI_THROW(IndexError) << "cannot index a empty array";
         }
-        return details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*(p->begin()));
+        return details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*p->begin());
     }
 
     /*! \return The last element of the array */
-    const T back() const {
+    T back() const {
         ArrayObj* p = GetArrayObj();
         if (p == nullptr || p->size_ == 0) {
             TVM_FFI_THROW(IndexError) << "cannot index a empty array";
@@ -468,7 +471,6 @@ public:
         return details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*(p->end() - 1));
     }
 
-public:
     // mutation in std::vector, implements copy-on-write
     /*!
    * \brief push a new item to the back of the list
@@ -708,10 +710,10 @@ public:
    * \brief reset the array to content from iterator.
    * \param first begin of iterator
    * \param last end of iterator
-   * \tparam IterType The type of iterator
+   * \tparam Iter The type of iterator
    */
-    template<typename IterType>
-    void Assign(IterType first, IterType last) {
+    template<typename Iter>
+    void Assign(Iter first, Iter last) {
         int64_t cap = std::distance(first, last);
         if (cap < 0) {
             TVM_FFI_THROW(ValueError) << "cannot construct an Array of negative size";
@@ -1028,7 +1030,9 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
         }
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return "Array<" + details::Type2Str<T>::v() + ">"; }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return "Array<" + details::Type2Str<T>::v() + ">";
+    }
 };
 
 namespace details {

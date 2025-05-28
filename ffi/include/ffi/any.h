@@ -573,8 +573,7 @@ struct AnyHash {
         uint64_t val_hash = [&]() -> uint64_t {
             if (src.data_.type_index == kTVMFFIStr ||
                 src.data_.type_index == kTVMFFIBytes) {
-                const BytesObjBase* src_str =
-                        details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(src);
+                const auto* src_str = details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(src);
                 return details::StableHashBytes(src_str->data, src_str->size);
             }
             return src.data_.v_uint64;
@@ -598,10 +597,8 @@ struct AnyEqual {
         // specialy handle string hash
         if (lhs.data_.type_index == kTVMFFIStr ||
             lhs.data_.type_index == kTVMFFIBytes) {
-            const auto* lhs_str =
-                    details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
-            const auto* rhs_str =
-                    details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
+            const auto* lhs_str = details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
+            const auto* rhs_str = details::AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
             return Bytes::memncmp(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size) == 0;
         }
         return false;

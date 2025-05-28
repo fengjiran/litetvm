@@ -87,7 +87,7 @@ public:
    * \brief Destroy the Inplace Array Base object
    */
     ~InplaceArrayBase() {
-        if constexpr (!(std::is_standard_layout_v<ElemType> && std::is_trivial_v<ElemType>)) {
+        if constexpr (!(std::is_standard_layout_v<ElemType> && std::is_trivial_v<ElemType>) ) {
             size_t size = Self()->GetSize();
             for (size_t i = 0; i < size; ++i) {
                 auto* fp = static_cast<ElemType*>(AddressOf(i));
@@ -130,7 +130,7 @@ protected:
    */
     NODISCARD void* AddressOf(size_t idx) const {
         static_assert(alignof(ArrayType) % alignof(ElemType) == 0 && sizeof(ArrayType) % alignof(ElemType) == 0,
-                "The size and alignment of ArrayType should respect ElemType's alignment.");
+                      "The size and alignment of ArrayType should respect ElemType's alignment.");
 
         size_t kDataStart = sizeof(ArrayType);
         ArrayType* self = Self();
@@ -154,39 +154,55 @@ public:
     using iterator_category = typename std::iterator_traits<TIter>::iterator_category;
 
     explicit IterAdapter(TIter iter) : iter_(iter) {}
+
     IterAdapter& operator++() {
         ++iter_;
         return *this;
     }
+
     IterAdapter& operator--() {
         --iter_;
         return *this;
     }
+
     IterAdapter operator++(int) {
         IterAdapter copy = *this;
         ++iter_;
         return copy;
     }
+
     IterAdapter operator--(int) {
         IterAdapter copy = *this;
         --iter_;
         return copy;
     }
 
-    IterAdapter operator+(difference_type offset) const { return IterAdapter(iter_ + offset); }
+    IterAdapter operator+(difference_type offset) const {
+        return IterAdapter(iter_ + offset);
+    }
 
-    IterAdapter operator-(difference_type offset) const { return IterAdapter(iter_ - offset); }
+    IterAdapter operator-(difference_type offset) const {
+        return IterAdapter(iter_ - offset);
+    }
 
     template<typename T = IterAdapter>
-    typename std::enable_if<std::is_same<iterator_category, std::random_access_iterator_tag>::value,
-                            typename T::difference_type>::type inline
+    std::enable_if_t<std::is_same_v<iterator_category, std::random_access_iterator_tag>,
+                     typename T::difference_type>
     operator-(const IterAdapter& rhs) const {
         return iter_ - rhs.iter_;
     }
 
-    bool operator==(IterAdapter other) const { return iter_ == other.iter_; }
-    bool operator!=(IterAdapter other) const { return !(*this == other); }
-    const value_type operator*() const { return Converter::convert(*iter_); }
+    bool operator==(IterAdapter other) const {
+        return iter_ == other.iter_;
+    }
+
+    bool operator!=(IterAdapter other) const {
+        return !(*this == other);
+    }
+
+    value_type operator*() const {
+        return Converter::convert(*iter_);
+    }
 
 private:
     TIter iter_;
