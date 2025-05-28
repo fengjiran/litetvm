@@ -392,7 +392,7 @@ public:
     struct ValueConverter {
         using ResultType = T;
         static T convert(const Any& n) {
-            return details::AnyUnsafe::CopyFromAnyStorageAfterCheck<T>(n);
+            return details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(n);
         }
     };
 
@@ -432,7 +432,7 @@ public:
         if (i < 0 || i >= p->size_) {
             TVM_FFI_THROW(IndexError) << "indexing " << i << " on an array of size " << p->size_;
         }
-        return details::AnyUnsafe::CopyFromAnyStorageAfterCheck<T>(*(p->begin() + i));
+        return details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*(p->begin() + i));
     }
 
     /*! \return The size of the array */
@@ -456,7 +456,7 @@ public:
         if (p == nullptr || p->size_ == 0) {
             TVM_FFI_THROW(IndexError) << "cannot index a empty array";
         }
-        return details::AnyUnsafe::CopyFromAnyStorageAfterCheck<T>(*(p->begin()));
+        return details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*(p->begin()));
     }
 
     /*! \return The last element of the array */
@@ -465,7 +465,7 @@ public:
         if (p == nullptr || p->size_ == 0) {
             TVM_FFI_THROW(IndexError) << "cannot index a empty array";
         }
-        return details::AnyUnsafe::CopyFromAnyStorageAfterCheck<T>(*(p->end() - 1));
+        return details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*(p->end() - 1));
     }
 
 public:
@@ -841,7 +841,7 @@ private:
                 // no other shared copies of the array.
                 auto arr = static_cast<ArrayObj*>(data.get());
                 for (auto it = arr->MutableBegin(); it != arr->MutableEnd(); it++) {
-                    T value = details::AnyUnsafe::CopyFromAnyStorageAfterCheck<T>(*it);
+                    T value = details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*it);
                     // reset the original value to nullptr, to ensure unique ownership
                     it->reset();
                     T mapped = fmap(std::move(value));
@@ -866,7 +866,7 @@ private:
             // `T`.
             bool all_identical = true;
             for (; it != arr->end(); it++) {
-                U mapped = fmap(details::AnyUnsafe::CopyFromAnyStorageAfterCheck<T>(*it));
+                U mapped = fmap(details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*it));
                 if (!(*it).same_as(mapped)) {
                     // At least one mapped element is different than the
                     // original.  Therefore, prepare the output array,
@@ -920,7 +920,7 @@ private:
         // so we can either start or resume the iteration from that point,
         // with no further checks on the result.
         for (; it != arr->end(); it++) {
-            U mapped = fmap(details::AnyUnsafe::CopyFromAnyStorageAfterCheck<T>(*it));
+            U mapped = fmap(details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*it));
             output->SetItem(it - arr->begin(), std::move(mapped));
         }
 
@@ -958,7 +958,7 @@ inline constexpr bool use_default_type_traits_v<Array<T>> = false;
 template<typename T>
 struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIArray;
-    using ObjectRefTypeTraitsBase<Array<T>>::CopyFromAnyStorageAfterCheck;
+    using ObjectRefTypeTraitsBase<Array<T>>::CopyFromAnyViewAfterCheck;
 
     static TVM_FFI_INLINE std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
         if (src->type_index != TypeIndex::kTVMFFIArray) {
@@ -1009,7 +1009,7 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
             }();
             // fast path, if storage check passes, we can return the array directly.
             if (storage_check) {
-                return CopyFromAnyStorageAfterCheck(src);
+                return CopyFromAnyViewAfterCheck(src);
             }
             // slow path, try to run a conversion to Array<T>
             Array<T> result;
@@ -1024,7 +1024,7 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
             }
             return result;
         } else {
-            return CopyFromAnyStorageAfterCheck(src);
+            return CopyFromAnyViewAfterCheck(src);
         }
     }
 

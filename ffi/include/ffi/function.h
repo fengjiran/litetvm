@@ -730,8 +730,8 @@ struct TypeTraits<TypedFunction<FType>> : public TypeTraitsBase {
         return src->type_index == TypeIndex::kTVMFFIFunction;
     }
 
-    static TVM_FFI_INLINE TypedFunction<FType> CopyFromAnyStorageAfterCheck(const TVMFFIAny* src) {
-        return TypedFunction<FType>(TypeTraits<Function>::CopyFromAnyStorageAfterCheck(src));
+    static TVM_FFI_INLINE TypedFunction<FType> CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
+        return TypedFunction<FType>(TypeTraits<Function>::CopyFromAnyViewAfterCheck(src));
     }
 
     static TVM_FFI_INLINE std::optional<TypedFunction<FType>> TryCastFromAnyView(

@@ -1335,7 +1335,7 @@ public:
    * \return the corresonding element.
    */
     const V at(const K& key) const {
-        return details::AnyUnsafe::CopyFromAnyStorageAfterCheck<V>(GetMapObj()->at(key));
+        return details::AnyUnsafe::CopyFromAnyViewAfterCheck<V>(GetMapObj()->at(key));
     }
     /*!
    * \brief Read element from map.
@@ -1383,7 +1383,7 @@ public:
         if (iter == GetMapObj()->end()) {
             return std::nullopt;
         }
-        return details::AnyUnsafe::CopyFromAnyStorageAfterCheck<V>(iter->second);
+        return details::AnyUnsafe::CopyFromAnyViewAfterCheck<V>(iter->second);
     }
     void erase(const K& key) { CopyOnWrite()->erase(key); }
 
@@ -1426,8 +1426,8 @@ public:
         /*! \brief De-reference iterators */
         reference operator*() const {
             auto& kv = *itr;
-            return std::make_pair(details::AnyUnsafe::CopyFromAnyStorageAfterCheck<K>(kv.first),
-                                  details::AnyUnsafe::CopyFromAnyStorageAfterCheck<V>(kv.second));
+            return std::make_pair(details::AnyUnsafe::CopyFromAnyViewAfterCheck<K>(kv.first),
+                                  details::AnyUnsafe::CopyFromAnyViewAfterCheck<V>(kv.second));
         }
         /*! \brief Prefix self increment, e.g. ++iter */
         iterator& operator++() {
@@ -1494,7 +1494,7 @@ inline constexpr bool use_default_type_traits_v<Map<K, V>> = false;
 template<typename K, typename V>
 struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIMap;
-    using ObjectRefTypeTraitsBase<Map<K, V>>::CopyFromAnyStorageAfterCheck;
+    using ObjectRefTypeTraitsBase<Map<K, V>>::CopyFromAnyViewAfterCheck;
 
     static TVM_FFI_INLINE std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
         if (src->type_index != TypeIndex::kTVMFFIMap) {
@@ -1556,7 +1556,7 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
                 return true;
             }();
             // fast path, if storage check passes, we can return the array directly.
-            if (storage_check) return CopyFromAnyStorageAfterCheck(src);
+            if (storage_check) return CopyFromAnyViewAfterCheck(src);
             // slow path, we need to create a new map and convert to the target type.
             Map<K, V> ret;
             for (const auto& kv: *n) {
@@ -1567,7 +1567,7 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
             }
             return ret;
         } else {
-            return CopyFromAnyStorageAfterCheck(src);
+            return CopyFromAnyViewAfterCheck(src);
         }
     }
 

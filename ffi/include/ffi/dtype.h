@@ -123,7 +123,7 @@ struct TypeTraits<DLDataType> : TypeTraitsBase {
         return src->type_index == kTVMFFIDataType;
     }
 
-    static TVM_FFI_INLINE DLDataType CopyFromAnyStorageAfterCheck(const TVMFFIAny* src) {
+    static TVM_FFI_INLINE DLDataType CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
         return src->v_dtype;
     }
 
