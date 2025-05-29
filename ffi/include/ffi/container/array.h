@@ -271,20 +271,18 @@ private:
  * be dereferenced into a type that can be stored in an Array<T>, and
  * false otherwise.
  */
-template<typename T,
-         typename Iter,
-         bool v = std::is_same_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>> ||
-                  std::is_base_of_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>>>
-struct is_valid_iterator : std::bool_constant<v> {};
+template<typename T, typename Iter>
+struct is_valid_iterator : std::bool_constant<std::is_same_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>> ||
+                                              std::is_base_of_v<T, std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<Iter>())>>>> {};
 
-template<typename T, typename IterType>
-struct is_valid_iterator<Optional<T>, IterType> : is_valid_iterator<T, IterType> {};
+template<typename T, typename Iter>
+struct is_valid_iterator<Optional<T>, Iter> : is_valid_iterator<T, Iter> {};
 
-template<typename IterType>
-struct is_valid_iterator<Any, IterType> : std::true_type {};
+template<typename Iter>
+struct is_valid_iterator<Any, Iter> : std::true_type {};
 
-template<typename T, typename IterType>
-inline constexpr bool is_valid_iterator_v = is_valid_iterator<T, IterType>::value;
+template<typename T, typename Iter>
+inline constexpr bool is_valid_iterator_v = is_valid_iterator<T, Iter>::value;
 
 /*!
  * \brief Array, container representing a contiguous sequence of ObjectRefs.
@@ -439,13 +437,13 @@ public:
     /*! \return The size of the array */
     NODISCARD size_t size() const {
         ArrayObj* p = GetArrayObj();
-        return p == nullptr ? 0 : GetArrayObj()->size_;
+        return p == nullptr ? 0 : p->size_;
     }
 
     /*! \return The capacity of the array */
     NODISCARD size_t capacity() const {
         ArrayObj* p = GetArrayObj();
-        return p == nullptr ? 0 : GetArrayObj()->capacity_;
+        return p == nullptr ? 0 : p->capacity_;
     }
 
     /*! \return Whether array is empty */
@@ -505,17 +503,18 @@ public:
    * \param first The begin iterator of the range
    * \param last The end iterator of the range
    */
-    template<typename IterType>
-    void insert(iterator position, IterType first, IterType last) {
-        static_assert(is_valid_iterator_v<T, IterType>,
-                      "IterType cannot be inserted into a tvm::Array<T>");
+    template<typename Iter>
+    void insert(iterator position, Iter first, Iter last) {
+        static_assert(is_valid_iterator_v<T, Iter>, "Iter cannot be inserted into a Array<T>");
 
         if (first == last) {
             return;
         }
+
         if (data_ == nullptr) {
             TVM_FFI_THROW(RuntimeError) << "cannot insert a null array";
         }
+
         int64_t idx = std::distance(begin(), position);
         int64_t size = GetArrayObj()->size_;
         int64_t numel = std::distance(first, last);
@@ -530,6 +529,7 @@ public:
         if (data_ == nullptr) {
             TVM_FFI_THROW(RuntimeError) << "cannot pop_back a null array";
         }
+
         int64_t size = GetArrayObj()->size_;
         if (size == 0) {
             TVM_FFI_THROW(RuntimeError) << "cannot pop_back an empty array";
@@ -545,12 +545,14 @@ public:
         if (data_ == nullptr) {
             TVM_FFI_THROW(RuntimeError) << "cannot erase a null array";
         }
+
         int64_t st = std::distance(begin(), position);
         int64_t size = GetArrayObj()->size_;
         if (st < 0 || st >= size) {
             TVM_FFI_THROW(RuntimeError) << "cannot erase at index " << st << ", because Array size is "
                                         << size;
         }
+
         CopyOnWrite()                               //
                 ->MoveElementsLeft(st, st + 1, size)//
                 ->ShrinkBy(1);
@@ -591,10 +593,12 @@ public:
         if (n < 0) {
             TVM_FFI_THROW(ValueError) << "cannot resize an Array to negative size";
         }
+
         if (data_ == nullptr) {
             SwitchContainer(n);
             return;
         }
+
         int64_t size = GetArrayObj()->size_;
         if (size < n) {
             CopyOnWrite(n - size)->EnlargeBy(n - size);
@@ -621,7 +625,7 @@ public:
         }
     }
 
-    template<typename... Args>
+    // template<typename... Args>
     static size_t CalcCapacityImpl() {
         return 0;
     }
@@ -632,12 +636,12 @@ public:
     }
 
     template<typename... Args>
-    static size_t CalcCapacityImpl(T value, Args... args) {
+    static size_t CalcCapacityImpl(MAYBE_UNUSED T value, Args... args) {
         return 1 + CalcCapacityImpl(args...);
     }
 
-    template<typename... Args>
-    static void AgregateImpl(Array<T>& dest) {}// NOLINT(*)
+    // template<typename... Args>
+    static void AgregateImpl(MAYBE_UNUSED Array<T>& dest) {}// NOLINT(*)
 
     template<typename... Args>
     static void AgregateImpl(Array<T>& dest, Array<T> value, Args... args) {// NOLINT(*)
@@ -928,6 +932,7 @@ private:
 
         return output;
     }
+
     template<typename, typename>
     friend class Array;
 };
@@ -938,9 +943,9 @@ private:
  * \param rhs second Array to be concatenated.
  * \return The concatenated Array. Original Arrays are kept unchanged.
  */
-template<typename T, typename = typename std::enable_if_t<std::is_same_v<T, Any> ||
+template<typename T, typename = std::enable_if_t<std::is_same_v<T, Any> ||
                                                           TypeTraits<T>::convert_enabled>>
-inline Array<T> Concat(Array<T> lhs, const Array<T>& rhs) {
+Array<T> Concat(Array<T> lhs, const Array<T>& rhs) {
     for (const auto& x: rhs) {
         lhs.push_back(x);
     }
