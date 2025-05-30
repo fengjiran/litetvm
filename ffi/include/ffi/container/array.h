@@ -312,8 +312,8 @@ public:
     Array() {
         data_ = ArrayObj::Empty();
     }
-    Array(Array<T>&& other) : ObjectRef(std::move(other.data_)) {}
-    Array(const Array<T>& other) : ObjectRef(other.data_) {}
+    Array(Array&& other) : ObjectRef(std::move(other.data_)) {}
+    Array(const Array& other) : ObjectRef(other.data_) {}
     template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
     Array(Array<U>&& other) : ObjectRef(std::move(other.data_)) {}
     template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
@@ -750,6 +750,7 @@ public:
         if (data_ == nullptr) {
             return SwitchContainer(ArrayObj::kInitSize);
         }
+
         if (!data_.unique()) {
             return SwitchContainer(capacity());
         }
@@ -824,7 +825,7 @@ private:
    * \tparam F The type of the mutation function.
    *
    * \tparam U The output type of the mutation function.  Inferred
-   * from the callable type given.  Must inherit from ObjectRef.
+   * from the callable type given. Must inherit from ObjectRef.
    *
    * \return The mapped array.  Depending on whether mutate-in-place
    * or copy-on-write optimizations were applicable, may be the same
@@ -838,14 +839,12 @@ private:
 
         TVM_FFI_ICHECK(data->IsInstance<ArrayObj>());
 
-        constexpr bool is_same_output_type = std::is_same_v<T, U>;
-
-        if constexpr (is_same_output_type) {
+        if constexpr (std::is_same_v<T, U>) {
             if (data.unique()) {
-                // Mutate-in-place path.  Only allowed if the output type U is
+                // Mutate-in-place path. Only allowed if the output type U is
                 // the same as type T, we have a mutable this*, and there are
                 // no other shared copies of the array.
-                auto arr = static_cast<ArrayObj*>(data.get());
+                auto* arr = static_cast<ArrayObj*>(data.get());
                 for (auto it = arr->MutableBegin(); it != arr->MutableEnd(); it++) {
                     T value = details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*it);
                     // reset the original value to nullptr, to ensure unique ownership
@@ -860,7 +859,7 @@ private:
         constexpr bool compatible_types = is_valid_iterator_v<T, U*> || is_valid_iterator_v<U, T*>;
 
         ObjectPtr<ArrayObj> output = nullptr;
-        auto arr = static_cast<ArrayObj*>(data.get());
+        auto* arr = static_cast<ArrayObj*>(data.get());
 
         auto it = arr->begin();
         if constexpr (compatible_types) {
@@ -873,7 +872,7 @@ private:
             bool all_identical = true;
             for (; it != arr->end(); it++) {
                 U mapped = fmap(details::AnyUnsafe::CopyFromAnyViewAfterCheck<T>(*it));
-                if (!(*it).same_as(mapped)) {
+                if (!it->same_as(mapped)) {
                     // At least one mapped element is different than the
                     // original.  Therefore, prepare the output array,
                     // consisting of any previous elements that had mapped to
@@ -943,8 +942,8 @@ private:
  * \param rhs second Array to be concatenated.
  * \return The concatenated Array. Original Arrays are kept unchanged.
  */
-template<typename T, typename = std::enable_if_t<std::is_same_v<T, Any> ||
-                                                          TypeTraits<T>::convert_enabled>>
+template<typename T,
+         typename = std::enable_if_t<std::is_same_v<T, Any> || TypeTraits<T>::convert_enabled>>
 Array<T> Concat(Array<T> lhs, const Array<T>& rhs) {
     for (const auto& x: rhs) {
         lhs.push_back(x);
@@ -963,16 +962,16 @@ template<typename T>
 inline constexpr bool use_default_type_traits_v<Array<T>> = false;
 
 template<typename T>
-struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIArray;
+struct TypeTraits<Array<T>> : ObjectRefTypeTraitsBase<Array<T>> {
+    static constexpr int32_t field_static_type_index = kTVMFFIArray;
     using ObjectRefTypeTraitsBase<Array<T>>::CopyFromAnyViewAfterCheck;
 
     static TVM_FFI_INLINE std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
-        if (src->type_index != TypeIndex::kTVMFFIArray) {
+        if (src->type_index != kTVMFFIArray) {
             return TypeTraitsBase::GetMismatchTypeInfo(src);
         }
         if constexpr (!std::is_same_v<T, Any>) {
-            const ArrayObj* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
+            const auto* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
             for (size_t i = 0; i < n->size(); i++) {
                 const Any& any_v = (*n)[i];
                 // CheckAnyStrict is cheaper than as<T>
@@ -989,11 +988,11 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
     }
 
     static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
-        if (src->type_index != TypeIndex::kTVMFFIArray) return false;
+        if (src->type_index != kTVMFFIArray) return false;
         if constexpr (std::is_same_v<T, Any>) {
             return true;
         } else {
-            const ArrayObj* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
+            const auto* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
             for (size_t i = 0; i < n->size(); i++) {
                 const Any& any_v = (*n)[i];
                 if (!details::AnyUnsafe::CheckAnyStrict<T>(any_v)) return false;
@@ -1004,26 +1003,32 @@ struct TypeTraits<Array<T>> : public ObjectRefTypeTraitsBase<Array<T>> {
 
     static TVM_FFI_INLINE std::optional<Array<T>> TryCastFromAnyView(const TVMFFIAny* src) {
         // try to run conversion.
-        if (src->type_index != TypeIndex::kTVMFFIArray) return std::nullopt;
+        if (src->type_index != kTVMFFIArray) {
+            return std::nullopt;
+        }
+
         if constexpr (!std::is_same_v<T, Any>) {
-            const ArrayObj* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
-            bool storage_check = [&]() {
+            const auto* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
+            bool storage_check = [&] {
                 for (size_t i = 0; i < n->size(); i++) {
                     const Any& any_v = (*n)[i];
-                    if (!details::AnyUnsafe::CheckAnyStrict<T>(any_v)) return false;
+                    if (!details::AnyUnsafe::CheckAnyStrict<T>(any_v))
+                        return false;
                 }
                 return true;
             }();
+
             // fast path, if storage check passes, we can return the array directly.
             if (storage_check) {
                 return CopyFromAnyViewAfterCheck(src);
             }
+
             // slow path, try to run a conversion to Array<T>
             Array<T> result;
             result.reserve(n->size());
             for (size_t i = 0; i < n->size(); i++) {
                 const Any& any_v = (*n)[i];
-                if (auto opt_v = any_v.as<T>()) {
+                if (auto opt_v = any_v.try_cast<T>()) {
                     result.push_back(*std::move(opt_v));
                 } else {
                     return std::nullopt;

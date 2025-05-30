@@ -526,7 +526,7 @@ struct AnyUnsafe : ObjectUnsafe {
 
     template<typename T>
     static TVM_FFI_INLINE bool CheckAnyStrict(const Any& ref) {
-        return TypeTraits<T>::CheckAnyStrict(&(ref.data_));
+        return TypeTraits<T>::CheckAnyStrict(&ref.data_);
     }
 
     template<typename T>
