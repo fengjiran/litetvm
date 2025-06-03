@@ -206,8 +206,10 @@ inline constexpr bool use_default_type_traits_v<Shape> = false;
 // Allow auto conversion from Array<int64_t> to Shape, but not from Shape to Array<int64_t>
 template<>
 struct TypeTraits<Shape> : ObjectRefWithFallbackTraitsBase<Shape, Array<int64_t>> {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIShape;
-    static TVM_FFI_INLINE Shape ConvertFallbackValue(const Array<int64_t>& src) { return Shape(src); }
+    static constexpr int32_t field_static_type_index = kTVMFFIShape;
+    static TVM_FFI_INLINE Shape ConvertFallbackValue(const Array<int64_t>& src) {
+        return {src};
+    }
 };
 
 }// namespace ffi
