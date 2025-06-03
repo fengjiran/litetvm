@@ -8,7 +8,6 @@
 #include <ffi/container/shape.h>
 #include <ffi/dtype.h>
 #include <ffi/error.h>
-#include <ffi/type_traits.h>
 
 #include <utility>
 
@@ -21,7 +20,10 @@ namespace ffi {
  * \return The check result.
  */
 inline bool IsContiguous(const DLTensor& arr) {
-    if (arr.strides == nullptr) return true;
+    if (arr.strides == nullptr) {
+        return true;
+    }
+
     int64_t expected_stride = 1;
     for (int32_t i = arr.ndim; i != 0; --i) {
         int32_t k = i - 1;
@@ -34,7 +36,10 @@ inline bool IsContiguous(const DLTensor& arr) {
             // More context: https://github.com/pytorch/pytorch/pull/83158
             continue;
         }
-        if (arr.strides[k] != expected_stride) return false;
+
+        if (arr.strides[k] != expected_stride) {
+            return false;
+        }
         expected_stride *= arr.shape[k];
     }
     return true;
@@ -50,13 +55,13 @@ inline bool IsAligned(const DLTensor& arr, size_t alignment) {
     // whether the device uses direct address mapping instead of indirect buffer
     bool direct_address = arr.device.device_type <= kDLCUDAHost ||
                           arr.device.device_type == kDLCUDAManaged ||
-                          arr.device.device_type == kDLROCM || arr.device.device_type == kDLROCMHost;
+                          arr.device.device_type == kDLROCM ||
+                          arr.device.device_type == kDLROCMHost;
     if (direct_address) {
-        return (reinterpret_cast<size_t>(static_cast<char*>(arr.data) + arr.byte_offset) % alignment ==
-                0);
-    } else {
-        return arr.byte_offset % alignment == 0;
+        return reinterpret_cast<size_t>(static_cast<char*>(arr.data) + arr.byte_offset) % alignment == 0;
     }
+
+    return arr.byte_offset % alignment == 0;
 }
 
 /*!
@@ -72,6 +77,7 @@ inline size_t GetDataSize(int64_t numel, DLDataType dtype) {
     if (dtype.code == kDLUInt && dtype.bits == 1 && dtype.lanes == 1) {
         return numel;
     }
+
     // for other sub-byte types, packing is preferred
     return (numel * dtype.bits * dtype.lanes + 7) / 8;
 }
@@ -93,7 +99,7 @@ inline size_t GetDataSize(const DLTensor& arr) {
 /*! \brief An object representing an NDArray. */
 class NDArrayObj : public Object, public DLTensor {
 public:
-    static constexpr const uint32_t _type_index = TypeIndex::kTVMFFINDArray;
+    static constexpr uint32_t _type_index = kTVMFFINDArray;
     static constexpr const char* _type_key = StaticTypeKey::kTVMFFINDArray;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(NDArrayObj, Object);
 
@@ -101,9 +107,9 @@ public:
    * \brief Move NDArray to a DLPack managed tensor.
    * \return The converted DLPack managed tensor.
    */
-    DLManagedTensor* ToDLPack() const {
-        DLManagedTensor* ret = new DLManagedTensor();
-        NDArrayObj* from = const_cast<NDArrayObj*>(this);
+    NODISCARD DLManagedTensor* ToDLPack() const {
+        auto* ret = new DLManagedTensor();
+        auto* from = const_cast<NDArrayObj*>(this);
         ret->dl_tensor = *static_cast<DLTensor*>(from);
         ret->manager_ctx = from;
         ret->deleter = DLManagedTensorDeleter;
@@ -115,9 +121,9 @@ public:
    * \brief Move  NDArray to a DLPack managed tensor.
    * \return The converted DLPack managed tensor.
    */
-    DLManagedTensorVersioned* ToDLPackVersioned() const {
-        DLManagedTensorVersioned* ret = new DLManagedTensorVersioned();
-        NDArrayObj* from = const_cast<NDArrayObj*>(this);
+    NODISCARD DLManagedTensorVersioned* ToDLPackVersioned() const {
+        auto* ret = new DLManagedTensorVersioned();
+        auto* from = const_cast<NDArrayObj*>(this);
         ret->version.major = DLPACK_MAJOR_VERSION;
         ret->version.minor = DLPACK_MINOR_VERSION;
         ret->dl_tensor = *static_cast<DLTensor*>(from);
@@ -133,13 +139,13 @@ protected:
     Optional<Shape> shape_data_;
 
     static void DLManagedTensorDeleter(DLManagedTensor* tensor) {
-        NDArrayObj* obj = static_cast<NDArrayObj*>(tensor->manager_ctx);
+        auto* obj = static_cast<NDArrayObj*>(tensor->manager_ctx);
         details::ObjectUnsafe::DecRefObjectHandle(obj);
         delete tensor;
     }
 
     static void DLManagedTensorVersionedDeleter(DLManagedTensorVersioned* tensor) {
-        NDArrayObj* obj = static_cast<NDArrayObj*>(tensor->manager_ctx);
+        auto* obj = static_cast<NDArrayObj*>(tensor->manager_ctx);
         details::ObjectUnsafe::DecRefObjectHandle(obj);
         delete tensor;
     }
@@ -157,9 +163,8 @@ template<typename TNDAlloc>
 class NDArrayObjFromNDAlloc : public NDArrayObj {
 public:
     template<typename... ExtraArgs>
-    NDArrayObjFromNDAlloc(TNDAlloc alloc, ffi::Shape shape, DLDataType dtype, DLDevice device,
-                          ExtraArgs&&... extra_args)
-        : alloc_(alloc) {
+    NDArrayObjFromNDAlloc(TNDAlloc alloc, Shape shape, DLDataType dtype, DLDevice device,
+                          ExtraArgs&&... extra_args): alloc_(alloc) {
         this->device = device;
         this->ndim = static_cast<int>(shape.size());
         this->dtype = dtype;
@@ -170,7 +175,9 @@ public:
         alloc_.AllocData(static_cast<DLTensor*>(this), std::forward<ExtraArgs>(extra_args)...);
     }
 
-    ~NDArrayObjFromNDAlloc() { alloc_.FreeData(static_cast<DLTensor*>(this)); }
+    ~NDArrayObjFromNDAlloc() {
+        alloc_.FreeData(static_cast<DLTensor*>(this));
+    }
 
 private:
     TNDAlloc alloc_;
@@ -213,23 +220,30 @@ public:
    * \brief Get the shape of the NDArray.
    * \return The shape of the NDArray.
    */
-    litetvm::ffi::Shape shape() const {
+    NODISCARD Shape shape() const {
         NDArrayObj* obj = get_mutable();
         if (!obj->shape_data_.has_value()) {
-            obj->shape_data_ = litetvm::ffi::Shape(obj->shape, obj->shape + obj->ndim);
+            obj->shape_data_ = Shape(obj->shape, obj->shape + obj->ndim);
         }
         return *(obj->shape_data_);
     }
+
     /*!
    * \brief Get the data type of the NDArray.
    * \return The data type of the NDArray.
    */
-    DLDataType dtype() const { return (*this)->dtype; }
+    NODISCARD DLDataType dtype() const {
+        return (*this)->dtype;
+    }
+
     /*!
    * \brief Check if the NDArray is contiguous.
    * \return True if the NDArray is contiguous, false otherwise.
    */
-    bool IsContiguous() const { return litetvm::ffi::IsContiguous(*get()); }
+    NODISCARD bool IsContiguous() const {
+        return ffi::IsContiguous(*get());
+    }
+
     /*!
    * \brief Create a NDArray from a NDAllocator.
    * \param alloc The NDAllocator.
@@ -257,7 +271,7 @@ public:
    */
     static NDArray FromDLPack(DLManagedTensor* tensor, size_t require_alignment = 0,
                               bool require_contiguous = false) {
-        if (require_alignment != 0 && !ffi::IsAligned(tensor->dl_tensor, require_alignment)) {
+        if (require_alignment != 0 && !IsAligned(tensor->dl_tensor, require_alignment)) {
             TVM_FFI_THROW(RuntimeError) << "FromDLPack: Data is not aligned to " << require_alignment
                                         << " bytes.";
         }
@@ -276,7 +290,7 @@ public:
    */
     static NDArray FromDLPackVersioned(DLManagedTensorVersioned* tensor, size_t require_alignment = 0,
                                        bool require_contiguous = false) {
-        if (require_alignment != 0 && !ffi::IsAligned(tensor->dl_tensor, require_alignment)) {
+        if (require_alignment != 0 && !IsAligned(tensor->dl_tensor, require_alignment)) {
             TVM_FFI_THROW(RuntimeError) << "FromDLPack: Data is not aligned to " << require_alignment
                                         << " bytes.";
         }
@@ -293,13 +307,17 @@ public:
    * \brief Convert the NDArray to a DLPack managed tensor.
    * \return The converted DLPack managed tensor.
    */
-    DLManagedTensor* ToDLPack() const { return get_mutable()->ToDLPack(); }
+    DLManagedTensor* ToDLPack() const {
+        return get_mutable()->ToDLPack();
+    }
 
     /*!
    * \brief Convert the NDArray to a DLPack managed tensor.
    * \return The converted DLPack managed tensor.
    */
-    DLManagedTensorVersioned* ToDLPackVersioned() const { return get_mutable()->ToDLPackVersioned(); }
+    DLManagedTensorVersioned* ToDLPackVersioned() const {
+        return get_mutable()->ToDLPackVersioned();
+    }
 
     TVM_FFI_DEFINE_OBJECT_REF_METHODS(NDArray, ObjectRef, NDArrayObj);
 
@@ -308,7 +326,9 @@ protected:
    * \brief Get mutable internal container pointer.
    * \return a mutable container pointer.
    */
-    NDArrayObj* get_mutable() const { return const_cast<NDArrayObj*>(get()); }
+    NDArrayObj* get_mutable() const {
+        return const_cast<NDArrayObj*>(get());
+    }
 };
 
 }// namespace ffi
