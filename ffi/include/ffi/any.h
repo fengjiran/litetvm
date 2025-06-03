@@ -606,6 +606,8 @@ struct AnyEqual {
 };
 
 }// namespace ffi
+using ffi::Any;
+using ffi::AnyView;
 }// namespace litetvm
 
 #endif//LITETVM_FFI_ANY_H

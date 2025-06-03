@@ -188,7 +188,7 @@ public:
         this->safe_call = RedirectCallToSafeCall::SafeCall;
     }
 
-    TVM_FFI_INLINE int32_t RedirectSafeCall(const TVMFFIAny* args, int32_t num_args,TVMFFIAny* rv) const {
+    TVM_FFI_INLINE int32_t RedirectSafeCall(const TVMFFIAny* args, int32_t num_args, TVMFFIAny* rv) const {
         auto* func = const_cast<FunctionObj*>(static_cast<const FunctionObj*>(data_.get()));
         return func->safe_call(func, args, num_args, rv);
     }
@@ -900,6 +900,55 @@ inline int32_t TypeKeyToIndex(std::string_view type_key) {
  */
 #define TVM_FFI_REGISTER_GLOBAL(OpName) \
     TVM_FFI_STR_CONCAT(TVM_FFI_FUNC_REG_VAR_DEF, __COUNTER__) = ::litetvm::ffi::Function::Registry(OpName)
+
+/*!
+ * \brief Export typed function as a SafeCallType symbol.
+ *
+ * \param ExportName The symbol name to be exported.
+ * \param Function The typed function.
+ * \note ExportName and Function must be different,
+ *       see code examples below.
+ *
+ * \sa ffi::TypedFunction
+ *
+ * \code
+ *
+ * int AddOne_(int x) {
+ *   return x + 1;
+ * }
+ *
+ * // Expose the function as "AddOne"
+ * TVM_FFI_DLL_EXPORT_TYPED_FUNC(AddOne, AddOne_);
+ *
+ * // Expose the function as "SubOne"
+ * TVM_FFI_DLL_EXPORT_TYPED_FUNC(SubOne, [](int x) {
+ *   return x - 1;
+ * });
+ *
+ * // The following code will cause compilation error.
+ * // Because the same Function and ExportName
+ * // TVM_FFI_DLL_EXPORT_TYPED_FUNC(AddOne_, AddOne_);
+ *
+ * // The following code is OK, assuming the macro
+ * // is in a different namespace from xyz
+ * // TVM_FFI_DLL_EXPORT_TYPED_FUNC(AddOne_, xyz::AddOne_);
+ *
+ * \endcode
+ */
+#define TVM_FFI_DLL_EXPORT_TYPED_FUNC(ExportName, Function)                          \
+    extern "C" {                                                                     \
+    TVM_FFI_DLL_EXPORT int ExportName(void* self, TVMFFIAny* args, int32_t num_args, \
+                                      TVMFFIAny* result) {                           \
+        TVM_FFI_SAFE_CALL_BEGIN();                                                   \
+        using FuncInfo = ::litetvm::ffi::details::FunctionInfo<decltype(Function)>;  \
+        static std::string name = #ExportName;                                       \
+        ::litetvm::ffi::details::unpack_call<typename FuncInfo::RetType>(            \
+                std::make_index_sequence<FuncInfo::num_args>{}, &name, Function,     \
+                reinterpret_cast<const ::litetvm::ffi::AnyView*>(args), num_args,    \
+                reinterpret_cast<::litetvm::ffi::Any*>(result));                     \
+        TVM_FFI_SAFE_CALL_END();                                                     \
+    }                                                                                \
+    }
 
 }// namespace ffi
 }// namespace litetvm
