@@ -9,7 +9,6 @@
 #include "ffi/container/container_details.h"
 #include "ffi/memory.h"
 #include "ffi/object.h"
-#include "ffi/optional.h"
 
 #include <algorithm>
 #include <limits>
@@ -40,31 +39,36 @@ public:
     /*! \brief Iterator class */
     class iterator;
 
-    static_assert(std::is_standard_layout<KVType>::value, "KVType is not standard layout");
+    static_assert(std::is_standard_layout_v<KVType>, "KVType is not standard layout");
     static_assert(sizeof(KVType) == 32, "sizeof(KVType) incorrect");
 
-    static constexpr const int32_t _type_index = TypeIndex::kTVMFFIMap;
+    static constexpr int32_t _type_index = kTVMFFIMap;
     static constexpr const char* _type_key = "object.Map";
-    static const constexpr bool _type_final = true;
+    static constexpr bool _type_final = true;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(MapObj, Object);
 
     /*!
    * \brief Number of elements in the SmallMapObj
    * \return The result
    */
-    size_t size() const { return size_; }
+    size_t size() const {
+        return size_;
+    }
+
     /*!
    * \brief Count the number of times a key exists in the hash map
    * \param key The indexing key
    * \return The result, 0 or 1
    */
     size_t count(const key_type& key) const;
+
     /*!
    * \brief Index value associated with a key, throw exception if the key does not exist
    * \param key The indexing key
    * \return The const reference to the value
    */
     const mapped_type& at(const key_type& key) const;
+
     /*!
    * \brief Index value associated with a key, throw exception if the key does not exist
    * \param key The indexing key
@@ -174,7 +178,7 @@ protected:
    * \return ObjectPtr to the map created
    */
     template<typename IterType>
-    static inline ObjectPtr<Object> CreateFromRange(IterType first, IterType last);
+    static ObjectPtr<Object> CreateFromRange(IterType first, IterType last);
     /*!
    * \brief InsertMaybeReHash an entry into the given hash map
    * \param kv The entry to be inserted
@@ -213,7 +217,9 @@ public:
    * \param key The indexing key
    * \return The result, 0 or 1
    */
-    size_t count(const key_type& key) const { return find(key).index < size_; }
+    size_t count(const key_type& key) const {
+        return find(key).index < size_;
+    }
     /*!
    * \brief Index value associated with a key, throw exception if the key does not exist
    * \param key The indexing key
@@ -239,9 +245,13 @@ public:
         return itr->second;
     }
     /*! \return begin iterator */
-    iterator begin() const { return iterator(0, this); }
+    iterator begin() const {
+        return iterator(0, this);
+    }
     /*! \return end iterator */
-    iterator end() const { return iterator(size_, this); }
+    iterator end() const {
+        return iterator(size_, this);
+    }
     /*!
    * \brief Index value associated with a key
    * \param key The indexing key
@@ -260,7 +270,9 @@ public:
    * \brief Erase the entry associated with the iterator
    * \param position The iterator
    */
-    void erase(const iterator& position) { Erase(position.index); }
+    void erase(const iterator& position) {
+        Erase(position.index);
+    }
 
 private:
     /*!
@@ -293,7 +305,7 @@ private:
    * \return The object created
    */
     static ObjectPtr<SmallMapObj> Empty(uint64_t n = kInitSize) {
-        using ::litetvm::ffi::make_inplace_array_object;
+        using ffi::make_inplace_array_object;
         ObjectPtr<SmallMapObj> p = make_inplace_array_object<SmallMapObj, KVType>(n);
         p->size_ = 0;
         p->slots_ = n;
@@ -356,21 +368,31 @@ private:
    * \param index The pointer to be incremented
    * \return The increased pointer
    */
-    uint64_t IncItr(uint64_t index) const { return index + 1 < size_ ? index + 1 : size_; }
+    uint64_t IncItr(uint64_t index) const {
+        return index + 1 < size_ ? index + 1 : size_;
+    }
     /*!
    * \brief Decrement the pointer
    * \param index The pointer to be decremented
    * \return The decreased pointer
    */
-    uint64_t DecItr(uint64_t index) const { return index > 0 ? index - 1 : size_; }
+    uint64_t DecItr(uint64_t index) const {
+        return index > 0 ? index - 1 : size_;
+    }
+
     /*!
    * \brief De-reference the pointer
    * \param index The pointer to be dereferenced
    * \return The result
    */
-    KVType* DeRefItr(uint64_t index) const { return static_cast<KVType*>(AddressOf(index)); }
+    KVType* DeRefItr(uint64_t index) const {
+        return static_cast<KVType*>(AddressOf(index));
+    }
+
     /*! \brief A size function used by InplaceArrayBase */
-    uint64_t GetSize() const { return size_; }
+    uint64_t GetSize() const {
+        return size_;
+    }
 
 protected:
     friend class MapObj;
@@ -1492,28 +1514,27 @@ template<typename K, typename V>
 inline constexpr bool use_default_type_traits_v<Map<K, V>> = false;
 
 template<typename K, typename V>
-struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIMap;
+struct TypeTraits<Map<K, V>> : ObjectRefTypeTraitsBase<Map<K, V>> {
+    static constexpr int32_t field_static_type_index = kTVMFFIMap;
     using ObjectRefTypeTraitsBase<Map<K, V>>::CopyFromAnyViewAfterCheck;
 
     static TVM_FFI_INLINE std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
-        if (src->type_index != TypeIndex::kTVMFFIMap) {
+        if (src->type_index != kTVMFFIMap) {
             return TypeTraitsBase::GetMismatchTypeInfo(src);
         }
         if constexpr (!std::is_same_v<K, Any> || !std::is_same_v<V, Any>) {
-            const MapObj* n = reinterpret_cast<const MapObj*>(src->v_obj);
+            const auto* n = reinterpret_cast<const MapObj*>(src->v_obj);
             for (const auto& kv: *n) {
                 if constexpr (!std::is_same_v<K, Any>) {
                     if (!details::AnyUnsafe::CheckAnyStrict<K>(kv.first) && !kv.first.as<K>().has_value()) {
-                        return "Map[some key is " + details::AnyUnsafe::GetMismatchTypeInfo<K>(kv.first) +
-                               ", V]";
+                        return "Map[some key is " + details::AnyUnsafe::GetMismatchTypeInfo<K>(kv.first) + ", V]";
                     }
                 }
+
                 if constexpr (!std::is_same_v<V, Any>) {
                     if (!details::AnyUnsafe::CheckAnyStrict<V>(kv.second) &&
                         !kv.second.as<V>().has_value()) {
-                        return "Map[K, some value is " + details::AnyUnsafe::GetMismatchTypeInfo<V>(kv.second) +
-                               "]";
+                        return "Map[K, some value is " + details::AnyUnsafe::GetMismatchTypeInfo<V>(kv.second) + "]";
                     }
                 }
             }
@@ -1523,11 +1544,11 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
     }
 
     static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
-        if (src->type_index != TypeIndex::kTVMFFIMap) return false;
+        if (src->type_index != kTVMFFIMap) return false;
         if constexpr (std::is_same_v<K, Any> && std::is_same_v<V, Any>) {
             return true;
         } else {
-            const MapObj* n = reinterpret_cast<const MapObj*>(src->v_obj);
+            const auto* n = reinterpret_cast<const MapObj*>(src->v_obj);
             for (const auto& kv: *n) {
                 if constexpr (!std::is_same_v<K, Any>) {
                     if (!details::AnyUnsafe::CheckAnyStrict<K>(kv.first)) return false;
@@ -1541,9 +1562,9 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
     }
 
     static TVM_FFI_INLINE std::optional<Map<K, V>> TryCastFromAnyView(const TVMFFIAny* src) {
-        if (src->type_index != TypeIndex::kTVMFFIMap) return std::nullopt;
+        if (src->type_index != kTVMFFIMap) return std::nullopt;
         if constexpr (!std::is_same_v<K, Any> || !std::is_same_v<V, Any>) {
-            const MapObj* n = reinterpret_cast<const MapObj*>(src->v_obj);
+            const auto* n = reinterpret_cast<const MapObj*>(src->v_obj);
             bool storage_check = [&]() {
                 for (const auto& kv: *n) {
                     if constexpr (!std::is_same_v<K, Any>) {
@@ -1555,13 +1576,14 @@ struct TypeTraits<Map<K, V>> : public ObjectRefTypeTraitsBase<Map<K, V>> {
                 }
                 return true;
             }();
+
             // fast path, if storage check passes, we can return the array directly.
             if (storage_check) return CopyFromAnyViewAfterCheck(src);
             // slow path, we need to create a new map and convert to the target type.
             Map<K, V> ret;
             for (const auto& kv: *n) {
-                auto k = kv.first.as<K>();
-                auto v = kv.second.as<V>();
+                auto k = kv.first.try_cast<K>();
+                auto v = kv.second.try_cast<V>();
                 if (!k.has_value() || !v.has_value()) return std::nullopt;
                 ret.Set(*std::move(k), *std::move(v));
             }

@@ -225,7 +225,7 @@ public:
         if (!obj->shape_data_.has_value()) {
             obj->shape_data_ = Shape(obj->shape, obj->shape + obj->ndim);
         }
-        return *(obj->shape_data_);
+        return *obj->shape_data_;
     }
 
     /*!
@@ -255,7 +255,7 @@ public:
    * \tparam ExtraArgs Extra arguments to be passed to Alloc.
    */
     template<typename TNDAlloc, typename... ExtraArgs>
-    static NDArray FromNDAlloc(TNDAlloc alloc, ffi::Shape shape, DLDataType dtype, DLDevice device,
+    static NDArray FromNDAlloc(TNDAlloc alloc, Shape shape, DLDataType dtype, DLDevice device,
                                ExtraArgs&&... extra_args) {
         return NDArray(make_object<details::NDArrayObjFromNDAlloc<TNDAlloc>>(
                 alloc, shape, dtype, device, std::forward<ExtraArgs>(extra_args)...));
@@ -307,7 +307,7 @@ public:
    * \brief Convert the NDArray to a DLPack managed tensor.
    * \return The converted DLPack managed tensor.
    */
-    DLManagedTensor* ToDLPack() const {
+    NODISCARD DLManagedTensor* ToDLPack() const {
         return get_mutable()->ToDLPack();
     }
 
@@ -315,7 +315,7 @@ public:
    * \brief Convert the NDArray to a DLPack managed tensor.
    * \return The converted DLPack managed tensor.
    */
-    DLManagedTensorVersioned* ToDLPackVersioned() const {
+    NODISCARD DLManagedTensorVersioned* ToDLPackVersioned() const {
         return get_mutable()->ToDLPackVersioned();
     }
 
@@ -326,7 +326,7 @@ protected:
    * \brief Get mutable internal container pointer.
    * \return a mutable container pointer.
    */
-    NDArrayObj* get_mutable() const {
+    NODISCARD NDArrayObj* get_mutable() const {
         return const_cast<NDArrayObj*>(get());
     }
 };
