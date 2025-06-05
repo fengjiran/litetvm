@@ -202,10 +202,11 @@ TVM_FFI_INLINE int32_t AtomicLoadRelaxed(const int32_t* ptr) {
 
 template<typename F, typename... Args>
 void for_each(const F& f, Args&&... args) {
-    using IntArray = int[];
+    // using IntArray = int[];
     int i = 0;
-    (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
-    UNUSED(i);
+    // (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
+    ((f(i++, std::forward<Args>(args))), ...);
+    // UNUSED(i);
 }
 
 /*!
