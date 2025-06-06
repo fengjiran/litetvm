@@ -282,7 +282,7 @@ struct TVMFFIErrorCell {
  */
 // typedef int (*TVMFFISafeCallType)(void* self, const TVMFFIAny* args, int32_t num_args,
 //                                   TVMFFIAny* result);
-using TVMFFISafeCallType = int (*)(void* self, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* result);
+using TVMFFISafeCallType = int (*)(void* handle, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* result);
 
 /*!
  * \brief Object cell for function object following header.
