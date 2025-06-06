@@ -70,7 +70,7 @@ template<typename TObjRef>
 inline constexpr bool use_default_type_traits_v<RValueRef<TObjRef>> = false;
 
 template<typename TObjRef>
-struct TypeTraits<RValueRef<TObjRef>> : public TypeTraitsBase {
+struct TypeTraits<RValueRef<TObjRef>> : TypeTraitsBase {
     static constexpr bool storage_enabled = false;
 
     static TVM_FFI_INLINE void CopyToAnyView(const RValueRef<TObjRef>& src, TVMFFIAny* result) {
@@ -81,7 +81,7 @@ struct TypeTraits<RValueRef<TObjRef>> : public TypeTraitsBase {
     }
 
     static TVM_FFI_INLINE std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
-        if (src->type_index == TypeIndex::kTVMFFIObjectRValueRef) {
+        if (src->type_index == kTVMFFIObjectRValueRef) {
             ObjectPtr<Object>* rvalue_ref = reinterpret_cast<ObjectPtr<Object>*>(src->v_ptr);
             // object type does not match up, we need to try to convert the object
             // in this case we do not move the original rvalue ref since conversion creates a copy
@@ -90,16 +90,15 @@ struct TypeTraits<RValueRef<TObjRef>> : public TypeTraitsBase {
 
             tmp_any.v_obj = reinterpret_cast<TVMFFIObject*>(rvalue_ref->get());
             return "RValueRef<" + TypeTraits<TObjRef>::GetMismatchTypeInfo(&tmp_any) + ">";
-        } else {
-            return TypeTraits<TObjRef>::GetMismatchTypeInfo(src);
         }
+        return TypeTraits<TObjRef>::GetMismatchTypeInfo(src);
     }
 
     static TVM_FFI_INLINE std::optional<RValueRef<TObjRef>> TryCastFromAnyView(
             const TVMFFIAny* src) {
         // first try rvalue conversion
         if (src->type_index == TypeIndex::kTVMFFIObjectRValueRef) {
-            ObjectPtr<Object>* rvalue_ref = reinterpret_cast<ObjectPtr<Object>*>(src->v_ptr);
+            auto* rvalue_ref = static_cast<ObjectPtr<Object>*>(src->v_ptr);
             TVMFFIAny tmp_any;
             tmp_any.type_index = rvalue_ref->get()->type_index();
             tmp_any.v_obj = reinterpret_cast<TVMFFIObject*>(rvalue_ref->get());
@@ -117,9 +116,8 @@ struct TypeTraits<RValueRef<TObjRef>> : public TypeTraitsBase {
         // try lvalue conversion
         if (std::optional<TObjRef> opt = TypeTraits<TObjRef>::TryCastFromAnyView(src)) {
             return RValueRef<TObjRef>(*std::move(opt));
-        } else {
-            return std::nullopt;
         }
+        return std::nullopt;
     }
 
     static TVM_FFI_INLINE std::string TypeStr() {
