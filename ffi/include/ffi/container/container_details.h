@@ -185,6 +185,16 @@ public:
         return IterAdapter(iter_ - offset);
     }
 
+    IterAdapter& operator+=(difference_type offset) {
+        iter_ += offset;
+        return *this;
+    }
+
+    IterAdapter& operator-=(difference_type offset) {
+        iter_ -= offset;
+        return *this;
+    }
+
     template<typename T = IterAdapter>
     std::enable_if_t<std::is_same_v<iterator_category, std::random_access_iterator_tag>,
                      typename T::difference_type>

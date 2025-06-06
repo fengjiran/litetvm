@@ -123,7 +123,7 @@ public:
         } else if constexpr (std::is_same_v<TypeWithoutCR, Any>) {
             return Any(args_[arg_index_]);
         } else {
-            std::optional<TypeWithoutCR> opt = args_[arg_index_].as<TypeWithoutCR>();
+            std::optional<TypeWithoutCR> opt = args_[arg_index_].try_cast<TypeWithoutCR>();
             if (!opt.has_value()) {
                 TVMFFIAny any_data = args_[arg_index_].CopyToTVMFFIAny();
                 TVM_FFI_THROW(TypeError) << "Mismatched type on argument #" << arg_index_
