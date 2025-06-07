@@ -13,12 +13,19 @@ namespace {
 using namespace litetvm::ffi;
 using namespace litetvm::ffi::testing;
 
+TEST(RValueRef, use_count) {
+    RValueRef<Array<int>> a(Array<int>({1, 2}));
+    EXPECT_EQ(a.use_count(), 1);
+    Array<int> b = *std::move(a);
+    EXPECT_EQ(b.use_count(), 1);
+}
 
 TEST(RValueRef, Basic) {
+    // GTEST_SKIP();
     auto append =
             Function::FromTyped([](RValueRef<Array<int>> ref, int val, bool is_unique) -> Array<int> {
                 Array<int> arr = *std::move(ref);
-                EXPECT_EQ(arr.unique(), is_unique);
+                EXPECT_TRUE(arr.unique() == is_unique);
                 arr.push_back(val);
                 return arr;
             });
@@ -32,6 +39,7 @@ TEST(RValueRef, Basic) {
 }
 
 TEST(RValueRef, ParamChecking) {
+    // GTEST_SKIP();
     // try decution
     Function fadd1 = Function::FromTyped([](TInt a) -> int64_t { return a->value + 1; });
 

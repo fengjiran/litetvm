@@ -57,7 +57,14 @@ public:
         : data_(details::ObjectUnsafe::ObjectPtrFromObjectRef<Object>(std::move(data))) {}
 
     /*! \brief return the data as rvalue */
-    TObjRef operator*() && { return TObjRef(std::move(data_)); }
+    TObjRef operator*() && {
+        return TObjRef(std::move(data_));
+    }
+
+    /*! \return The use count of the ptr, for debug purposes */
+    NODISCARD int use_count() const {
+        return data_.use_count();
+    }
 
 private:
     mutable ObjectPtr<Object> data_;
@@ -74,15 +81,15 @@ struct TypeTraits<RValueRef<TObjRef>> : TypeTraitsBase {
     static constexpr bool storage_enabled = false;
 
     static TVM_FFI_INLINE void CopyToAnyView(const RValueRef<TObjRef>& src, TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFIObjectRValueRef;
+        result->type_index = kTVMFFIObjectRValueRef;
         // store the address of the ObjectPtr, which allows us to move the value
         // and set the original ObjectPtr to nullptr
-        result->v_ptr = &(src.data_);
+        result->v_ptr = &src.data_;
     }
 
     static TVM_FFI_INLINE std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
         if (src->type_index == kTVMFFIObjectRValueRef) {
-            ObjectPtr<Object>* rvalue_ref = reinterpret_cast<ObjectPtr<Object>*>(src->v_ptr);
+            auto* rvalue_ref = static_cast<ObjectPtr<Object>*>(src->v_ptr);
             // object type does not match up, we need to try to convert the object
             // in this case we do not move the original rvalue ref since conversion creates a copy
             TVMFFIAny tmp_any;
@@ -94,8 +101,7 @@ struct TypeTraits<RValueRef<TObjRef>> : TypeTraitsBase {
         return TypeTraits<TObjRef>::GetMismatchTypeInfo(src);
     }
 
-    static TVM_FFI_INLINE std::optional<RValueRef<TObjRef>> TryCastFromAnyView(
-            const TVMFFIAny* src) {
+    static TVM_FFI_INLINE std::optional<RValueRef<TObjRef>> TryCastFromAnyView(const TVMFFIAny* src) {
         // first try rvalue conversion
         if (src->type_index == TypeIndex::kTVMFFIObjectRValueRef) {
             auto* rvalue_ref = static_cast<ObjectPtr<Object>*>(src->v_ptr);

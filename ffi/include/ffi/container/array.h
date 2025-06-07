@@ -312,10 +312,14 @@ public:
     Array() {
         data_ = ArrayObj::Empty();
     }
+
     Array(Array&& other) : ObjectRef(std::move(other.data_)) {}
+
     Array(const Array& other) : ObjectRef(other.data_) {}
+
     template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
     Array(Array<U>&& other) : ObjectRef(std::move(other.data_)) {}
+
     template<typename U, typename = std::enable_if_t<details::type_contains_v<T, U>>>
     Array(const Array<U>& other) : ObjectRef(other.data_) {}
 
@@ -323,7 +327,7 @@ public:
    * \brief constructor from pointer
    * \param n the container pointer
    */
-    explicit Array(const ObjectPtr<Object>& n) : ObjectRef(n) {}
+    explicit Array(ObjectPtr<Object> n) : ObjectRef(n) {}
 
     /*!
    * \brief Constructor from iterator
