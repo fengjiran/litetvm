@@ -74,7 +74,7 @@ public:
     FCall call;
 
     TVM_FFI_INLINE void CallPacked(const AnyView* args, int32_t num_args, Any* result) const {
-        this->call(this, args, num_args, result);
+        call(this, args, num_args, result);
     }
 
     static constexpr uint32_t _type_index = kTVMFFIFunction;
@@ -307,14 +307,11 @@ public:
    */
     template<typename TCallable>
     static Function FromPacked(TCallable packed_call) {
-        static_assert(
-                std::is_convertible_v<TCallable, std::function<void(const AnyView*, int32_t, Any*)>> ||
-                        std::is_convertible_v<TCallable, std::function<void(PackedArgs args, Any*)>>,
-                "tvm::ffi::Function::FromPacked requires input function signature to match packed func "
-                "format");
+        static_assert(std::is_convertible_v<TCallable, std::function<void(const AnyView*, int32_t, Any*)>> ||
+                              std::is_convertible_v<TCallable, std::function<void(PackedArgs args, Any*)>>,
+                      "ffi::Function::FromPacked requires input function signature to match packed func format");
         if constexpr (std::is_convertible_v<TCallable, std::function<void(PackedArgs args, Any*)>>) {
-            auto wrapped_call = [packed_call](const AnyView* args, int32_t num_args,
-                                              Any* rv) mutable -> void {
+            auto wrapped_call = [packed_call](const AnyView* args, int32_t num_args, Any* rv) mutable -> void {
                 PackedArgs args_pack(args, num_args);
                 packed_call(args_pack, rv);
             };
@@ -337,9 +334,9 @@ public:
     static Function ImportFromExternDLL(Function other) {
         const auto* other_func = other.get();
         // the other function comes from the same dll, no action needed
-        if (other_func->safe_call == &(FunctionObj::SafeCall) ||
-            other_func->safe_call == &(details::ImportedFunctionObjImpl::SafeCall) ||
-            other_func->safe_call == &(details::ExternCFunctionObjImpl::SafeCall)) {
+        if (other_func->safe_call == &FunctionObj::SafeCall ||
+            other_func->safe_call == &details::ImportedFunctionObjImpl::SafeCall ||
+            other_func->safe_call == &details::ExternCFunctionObjImpl::SafeCall) {
             return other;
         }
         // the other function coems from a different library
@@ -430,8 +427,7 @@ public:
    * \note This function do not depend on Array so core do not have container dep.
    */
     static std::vector<String> ListGlobalNames() {
-        Function fname_functor =
-                GetGlobalRequired("ffi.FunctionListGlobalNamesFunctor")().cast<Function>();
+        Function fname_functor = GetGlobalRequired("ffi.FunctionListGlobalNamesFunctor")().cast<Function>();
         std::vector<String> names;
         int len = fname_functor(-1).cast<int>();
         for (int i = 0; i < len; ++i) {
@@ -470,8 +466,7 @@ public:
     template<typename TCallable>
     static Function FromTyped(TCallable callable, std::string name) {
         using FuncInfo = details::FunctionInfo<TCallable>;
-        auto call_packed = [callable, name](const AnyView* args, int32_t num_args,
-                                            Any* rv) mutable -> void {
+        auto call_packed = [callable, name](const AnyView* args, int32_t num_args, Any* rv) mutable -> void {
             details::unpack_call<typename FuncInfo::RetType>(
                     std::make_index_sequence<FuncInfo::num_args>{}, &name, callable, args, num_args, rv);
         };
@@ -536,7 +531,7 @@ private:
    */
     template<typename TCallable>
     static Function FromPackedInternal(TCallable packed_call) {
-        using ObjType = typename details::FunctionObjImpl<TCallable>;
+        using ObjType = details::FunctionObjImpl<TCallable>;
         Function func;
         func.data_ = make_object<ObjType>(std::forward<TCallable>(packed_call));
         return func;
@@ -585,9 +580,9 @@ template<typename R, typename... Args>
 class TypedFunction<R(Args...)> {
 public:
     /*! \brief short hand for this function type */
-    using TSelf = TypedFunction<R(Args...)>;
+    using TSelf = TypedFunction;
     /*! \brief default constructor */
-    TypedFunction() {}
+    TypedFunction() = default;
     /*! \brief constructor from null */
     TypedFunction(std::nullptr_t null) {}// NOLINT(*)
     /*!
@@ -611,8 +606,8 @@ public:
    * \param name the name of the lambda function.
    * \tparam FLambda the type of the lambda function.
    */
-    template<typename FLambda, typename = typename std::enable_if<std::is_convertible<
-                                       FLambda, std::function<R(Args...)>>::value>::type>
+    template<typename FLambda,
+             typename = std::enable_if_t<std::is_convertible_v<FLambda, std::function<R(Args...)>>>>
     TypedFunction(FLambda typed_lambda, std::string name) {// NOLINT(*)
         packed_ = Function::FromTyped(typed_lambda, name);
     }
@@ -634,11 +629,12 @@ public:
    * \param typed_lambda typed lambda function.
    * \tparam FLambda the type of the lambda function.
    */
-    template<typename FLambda, typename = typename std::enable_if<std::is_convertible<
-                                       FLambda, std::function<R(Args...)>>::value>::type>
+    template<typename FLambda,
+             typename = std::enable_if_t<std::is_convertible_v<FLambda, std::function<R(Args...)>>>>
     TypedFunction(const FLambda& typed_lambda) {// NOLINT(*)
         packed_ = Function::FromTyped(typed_lambda);
     }
+
     /*!
    * \brief copy assignment operator from typed lambda
    *
@@ -655,9 +651,8 @@ public:
    * \tparam FLambda the type of the lambda function.
    * \returns reference to self.
    */
-    template<typename FLambda, typename = typename std::enable_if<
-                                       std::is_convertible<FLambda,
-                                                           std::function<R(Args...)>>::value>::type>
+    template<typename FLambda,
+             typename = std::enable_if_t<std::is_convertible_v<FLambda, std::function<R(Args...)>>>>
     TSelf& operator=(FLambda typed_lambda) {// NOLINT(*)
         packed_ = Function::FromTyped(typed_lambda);
         return *this;
@@ -692,19 +687,33 @@ public:
    * \brief convert to ffi::Function
    * \return the internal ffi::Function
    */
-    operator Function() const { return packed(); }
+    operator Function() const {
+        return packed();
+    }
+
     /*!
    * \return reference the internal ffi::Function
    */
-    const Function& packed() const& { return packed_; }
+    const Function& packed() const& {
+        return packed_;
+    }
+
     /*!
    * \return r-value reference the internal ffi::Function
    */
-    constexpr Function&& packed() && { return std::move(packed_); }
+    constexpr Function&& packed() && {
+        return std::move(packed_);
+    }
+
     /*! \return Whether the packed function is nullptr */
-    bool operator==(std::nullptr_t null) const { return packed_ == nullptr; }
+    bool operator==(std::nullptr_t null) const {
+        return packed_ == nullptr;
+    }
+
     /*! \return Whether the packed function is not nullptr */
-    bool operator!=(std::nullptr_t null) const { return packed_ != nullptr; }
+    bool operator!=(std::nullptr_t null) const {
+        return packed_ != nullptr;
+    }
 
 private:
     /*! \brief The internal packed function */
@@ -715,8 +724,8 @@ template<typename FType>
 inline constexpr bool use_default_type_traits_v<TypedFunction<FType>> = false;
 
 template<typename FType>
-struct TypeTraits<TypedFunction<FType>> : public TypeTraitsBase {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIFunction;
+struct TypeTraits<TypedFunction<FType>> : TypeTraitsBase {
+    static constexpr int32_t field_static_type_index = kTVMFFIFunction;
 
     static TVM_FFI_INLINE void CopyToAnyView(const TypedFunction<FType>& src, TVMFFIAny* result) {
         TypeTraits<Function>::CopyToAnyView(src.packed(), result);
@@ -727,24 +736,24 @@ struct TypeTraits<TypedFunction<FType>> : public TypeTraitsBase {
     }
 
     static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
-        return src->type_index == TypeIndex::kTVMFFIFunction;
+        return src->type_index == kTVMFFIFunction;
     }
 
     static TVM_FFI_INLINE TypedFunction<FType> CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
         return TypedFunction<FType>(TypeTraits<Function>::CopyFromAnyViewAfterCheck(src));
     }
 
-    static TVM_FFI_INLINE std::optional<TypedFunction<FType>> TryCastFromAnyView(
-            const TVMFFIAny* src) {
+    static TVM_FFI_INLINE std::optional<TypedFunction<FType>> TryCastFromAnyView(const TVMFFIAny* src) {
         std::optional<Function> opt = TypeTraits<Function>::TryCastFromAnyView(src);
         if (opt.has_value()) {
             return TypedFunction<FType>(*std::move(opt));
-        } else {
-            return std::nullopt;
         }
+        return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() { return details::FunctionInfo<FType>::Sig(); }
+    static TVM_FFI_INLINE std::string TypeStr() {
+        return details::FunctionInfo<FType>::Sig();
+    }
 };
 
 /*! \brief Registry for global function */
@@ -761,8 +770,9 @@ public:
    */
     template<typename FLambda>
     Registry& set_body_packed(FLambda f) {
-        return Register(ffi::Function::FromPacked(f));
+        return Register(Function::FromPacked(f));
     }
+
     /*!
    * \brief set the body of the function to the given function.
    *        Note that this will ignore default arg values and always require all arguments to be
@@ -822,21 +832,20 @@ public:
    */
     template<typename T, typename R, typename... Args>
     Registry& set_body_method(R (T::*f)(Args...)) {
-        static_assert(std::is_base_of_v<ObjectRef, T> || std::is_base_of_v<Object, T>,
-                      "T must be derived from ObjectRef or Object");
+        static_assert(std::is_base_of_v<ObjectRef, T> || std::is_base_of_v<Object, T>, "T must be derived from ObjectRef or Object");
         if constexpr (std::is_base_of_v<ObjectRef, T>) {
             auto fwrap = [f](T target, Args... params) -> R {
                 // call method pointer
                 return (target.*f)(params...);
             };
-            return Register(ffi::Function::FromTyped(fwrap, name_));
+            return Register(Function::FromTyped(fwrap, name_));
         }
         if constexpr (std::is_base_of_v<Object, T>) {
             auto fwrap = [f](const T* target, Args... params) -> R {
                 // call method pointer
                 return (const_cast<T*>(target)->*f)(params...);
             };
-            return Register(ffi::Function::FromTyped(fwrap, name_));
+            return Register(Function::FromTyped(fwrap, name_));
         }
         return *this;
     }
@@ -850,14 +859,14 @@ public:
                 // call method pointer
                 return (target.*f)(params...);
             };
-            return Register(ffi::Function::FromTyped(fwrap, name_));
+            return Register(Function::FromTyped(fwrap, name_));
         }
         if constexpr (std::is_base_of_v<Object, T>) {
             auto fwrap = [f](const T* target, Args... params) -> R {
                 // call method pointer
                 return (target->*f)(params...);
             };
-            return Register(ffi::Function::FromTyped(fwrap, name_));
+            return Register(Function::FromTyped(fwrap, name_));
         }
         return *this;
     }
@@ -868,7 +877,7 @@ protected:
    * \param f The body of the function.
    */
     Registry& Register(Function f) {
-        Function::SetGlobal(name_, f);
+        SetGlobal(name_, f);
         return *this;
     }
 
