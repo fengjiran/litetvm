@@ -130,7 +130,7 @@ private:
 };
 
 /*!
- * \brief Base class to provide a common implementation to redirect call to safecall
+ * \brief Base class to provide a common implementation to redirect call to safe call
  * \tparam Derived The derived class in CRTP-idiom
  */
 template<typename Derived>
@@ -351,13 +351,13 @@ public:
    * \param deleter The deleter to release the resource of self.
    * \return The created function.
    */
-    static Function FromExternC(void* self, TVMFFISafeCallType safe_call,
-                                void (*deleter)(void* self)) {
+    static Function FromExternC(void* self, TVMFFISafeCallType safe_call, void (*deleter)(void* self)) {
         // the other function coems from a different library
         Function func;
         func.data_ = make_object<details::ExternCFunctionObjImpl>(self, safe_call, deleter);
         return func;
     }
+
     /*!
    * \brief Get global function by name
    * \param name The function name
@@ -427,7 +427,7 @@ public:
    * \note This function do not depend on Array so core do not have container dep.
    */
     static std::vector<String> ListGlobalNames() {
-        Function fname_functor = GetGlobalRequired("ffi.FunctionListGlobalNamesFunctor")().cast<Function>();
+        auto fname_functor = GetGlobalRequired("ffi.FunctionListGlobalNamesFunctor")().cast<Function>();
         std::vector<String> names;
         int len = fname_functor(-1).cast<int>();
         for (int i = 0; i < len; ++i) {

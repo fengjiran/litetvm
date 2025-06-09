@@ -75,7 +75,7 @@ namespace details {
 class ErrorObjFromStd : public ErrorObj {
 public:
     ErrorObjFromStd(std::string kind, std::string message, std::string traceback)
-        : kind_data_(kind), message_data_(message), traceback_data_(traceback) {
+        : kind_data_(std::move(kind)), message_data_(std::move(message)), traceback_data_(std::move(traceback)) {
         this->kind = TVMFFIByteArray{kind_data_.data(), kind_data_.length()};
         this->message = TVMFFIByteArray{message_data_.data(), message_data_.length()};
         this->traceback = TVMFFIByteArray{traceback_data_.data(), traceback_data_.length()};
@@ -127,7 +127,7 @@ public:
         return {obj->traceback.data, obj->traceback.size};
     }
 
-    void UpdateTraceback(const TVMFFIByteArray* traceback_str) {
+    void UpdateTraceback(const TVMFFIByteArray* traceback_str) const {
         auto* obj = static_cast<ErrorObj*>(data_.get());
         obj->update_traceback(obj, traceback_str);
     }
