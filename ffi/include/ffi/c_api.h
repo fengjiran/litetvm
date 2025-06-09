@@ -253,7 +253,7 @@ struct TVMFFIErrorCell {
  *
  * Safe call explicitly catches exception on function boundary.
  *
- * \param self The function handle
+ * \param handle The function handle
  * \param num_args Number of input arguments
  * \param args The input arguments to the call.
  * \param result Store output result.
@@ -272,7 +272,7 @@ struct TVMFFIErrorCell {
  * \note We decided to leverage TVMFFIErrorMoveFromRaised and TVMFFIErrorSetRaised
  *  for C function error propagation. This design choice, while
  *  introducing a dependency for TLS runtime, simplifies error
- *  propgation in chains of calls in compiler codegen.
+ *  propagation in chains of calls in compiler codegen.
  *  As we do not need to propagate error through argument but simply
  *  set them in the runtime environment.
  *

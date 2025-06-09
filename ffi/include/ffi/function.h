@@ -71,7 +71,7 @@ public:
     using TVMFFIFunctionCell::safe_call;
 
     /*! \brief A C++ style call implementation, with exception propagation in c++ style. */
-    FCall call;
+    FCall call {nullptr};
 
     TVM_FFI_INLINE void CallPacked(const AnyView* args, int32_t num_args, Any* result) const {
         call(this, args, num_args, result);
