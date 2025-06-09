@@ -88,7 +88,7 @@ private:
    * \param traceback The traceback to update.
    */
     static void UpdateTraceback(TVMFFIObjectHandle self, const TVMFFIByteArray* traceback_str) {
-        ErrorObjFromStd* obj = static_cast<ErrorObjFromStd*>(self);
+        auto* obj = static_cast<ErrorObjFromStd*>(self);
         obj->traceback_data_ = std::string(traceback_str->data, traceback_str->size);
         obj->traceback = TVMFFIByteArray{obj->traceback_data_.data(), obj->traceback_data_.length()};
     }
@@ -105,40 +105,40 @@ private:
  */
 class Error : public ObjectRef, public std::exception {
 public:
-    Error(std::string kind, std::string message, std::string traceback) {
+    Error(const std::string& kind, const std::string& message, const std::string& traceback) {
         data_ = make_object<details::ErrorObjFromStd>(kind, message, traceback);
     }
 
-    Error(std::string kind, std::string message, const TVMFFIByteArray* traceback)
+    Error(const std::string& kind, const std::string& message, const TVMFFIByteArray* traceback)
         : Error(kind, message, std::string(traceback->data, traceback->size)) {}
 
-    std::string kind() const {
-        ErrorObj* obj = static_cast<ErrorObj*>(data_.get());
-        return std::string(obj->kind.data, obj->kind.size);
+    NODISCARD std::string kind() const {
+        auto* obj = static_cast<ErrorObj*>(data_.get());
+        return {obj->kind.data, obj->kind.size};
     }
 
-    std::string message() const {
-        ErrorObj* obj = static_cast<ErrorObj*>(data_.get());
-        return std::string(obj->message.data, obj->message.size);
+    NODISCARD std::string message() const {
+        auto* obj = static_cast<ErrorObj*>(data_.get());
+        return {obj->message.data, obj->message.size};
     }
 
-    std::string traceback() const {
-        ErrorObj* obj = static_cast<ErrorObj*>(data_.get());
-        return std::string(obj->traceback.data, obj->traceback.size);
+    NODISCARD std::string traceback() const {
+        auto* obj = static_cast<ErrorObj*>(data_.get());
+        return {obj->traceback.data, obj->traceback.size};
     }
 
     void UpdateTraceback(const TVMFFIByteArray* traceback_str) {
-        ErrorObj* obj = static_cast<ErrorObj*>(data_.get());
+        auto* obj = static_cast<ErrorObj*>(data_.get());
         obj->update_traceback(obj, traceback_str);
     }
 
-    const char* what() const noexcept(true) override {
+    NODISCARD const char* what() const noexcept(true) override {
         thread_local std::string what_data;
         auto* obj = static_cast<ErrorObj*>(data_.get());
-        what_data = (std::string("Traceback (most recent call last):\n") +
-                     std::string(obj->traceback.data, obj->traceback.size) +
-                     std::string(obj->kind.data, obj->kind.size) + std::string(": ") +
-                     std::string(obj->message.data, obj->message.size) + '\n');
+        what_data = std::string("Traceback (most recent call last):\n") +
+                    std::string(obj->traceback.data, obj->traceback.size) +
+                    std::string(obj->kind.data, obj->kind.size) + std::string(": ") +
+                    std::string(obj->message.data, obj->message.size) + '\n';
         return what_data.c_str();
     }
 
@@ -150,10 +150,10 @@ namespace details {
 class ErrorBuilder {
 public:
     explicit ErrorBuilder(std::string kind, std::string traceback, bool log_before_throw)
-        : kind_(kind), traceback_(traceback), log_before_throw_(log_before_throw) {}
+        : kind_(std::move(kind)), traceback_(std::move(traceback)), log_before_throw_(log_before_throw) {}
 
     explicit ErrorBuilder(std::string kind, const TVMFFIByteArray* traceback, bool log_before_throw)
-        : ErrorBuilder(kind, std::string(traceback->data, traceback->size), log_before_throw) {}
+        : ErrorBuilder(std::move(kind), std::string(traceback->data, traceback->size), log_before_throw) {}
 
 // MSVC disable warning in error builder as it is exepected
 #ifdef _MSC_VER
@@ -162,7 +162,7 @@ public:
 #endif
     // avoid inline to reduce binary size, error throw path do not need to be fast
     [[noreturn]] ~ErrorBuilder() noexcept(false) {
-        Error error(std::move(kind_), stream_.str(), std::move(traceback_));
+        Error error(kind_, stream_.str(), traceback_);
         if (log_before_throw_) {
             std::cerr << error.what();
         }
@@ -172,7 +172,9 @@ public:
 #pragma disagnostic pop
 #endif
 
-    std::ostringstream& stream() { return stream_; }
+    std::ostringstream& stream() {
+        return stream_;
+    }
 
 protected:
     std::string kind_;

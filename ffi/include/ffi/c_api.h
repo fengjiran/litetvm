@@ -219,6 +219,10 @@ struct TVMFFIByteArray {
     const char* data;
     size_t size;
 };
+// typedef struct {
+//     const char* data;
+//     size_t size;
+// } TVMFFIByteArray;
 
 /*!
  * \brief Shape cell used in shape object following header.
