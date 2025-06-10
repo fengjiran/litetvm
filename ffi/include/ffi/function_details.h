@@ -31,16 +31,16 @@ struct Arg2Str {
 
     template<size_t... I>
     static TVM_FFI_INLINE void Run(std::ostream& os, std::index_sequence<I...>) {
-        using TExpander = int[];
-        (void) TExpander{0, (Apply<I>(os), 0)...};
+        // using TExpander = int[];
+        // (void) TExpander{0, (Apply<I>(os), 0)...};
+        (Apply<I>(os), ...);
     }
 };
 
 template<typename T>
-static constexpr bool ArgSupported =
-        std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Any> ||
-        std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, AnyView> ||
-        TypeTraitsNoCR<T>::convert_enabled;
+static constexpr bool ArgSupported = std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Any> ||
+                                     std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, AnyView> ||
+                                     TypeTraitsNoCR<T>::convert_enabled;
 
 // NOTE: return type can only support non-reference managed returns
 template<typename T>
