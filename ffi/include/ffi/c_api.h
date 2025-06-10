@@ -461,8 +461,7 @@ TVM_FFI_DLL int TVMFFIFunctionCall(TVMFFIObjectHandle func, TVMFFIAny* args, int
  * \param override Whether allow override already registered function.
  * \return 0 when success, nonzero when failure happens
  */
-TVM_FFI_DLL int TVMFFIFunctionSetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle f,
-                                        int override);
+TVM_FFI_DLL int TVMFFIFunctionSetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle f, int override);
 
 /*!
  * \brief Get a global function.

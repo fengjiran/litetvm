@@ -29,7 +29,7 @@ namespace ffi {
  */
 class GlobalFunctionTable {
 public:
-    void Update(const String& name, Function func, bool can_override) {
+    void Update(const String& name, const Function& func, bool can_override) {
         if (table_.count(name)) {
             if (!can_override) {
                 TVM_FFI_THROW(RuntimeError) << "Global Function `" << name << "` is already registered";
@@ -66,13 +66,13 @@ public:
         // the host language (Python) and the resource can become invalid
         // indeterministic order of destruction and forking.
         // The resources will only be recycled during program exit.
-        static GlobalFunctionTable* inst = new GlobalFunctionTable();
-        return inst;
+        // static GlobalFunctionTable* inst = new GlobalFunctionTable();
+        static GlobalFunctionTable inst;
+        return &inst;
     }
 
 private:
-    // deliberately track function pointer without recycling
-    // to avoid
+    // deliberately track the function pointer without recycling to avoid
     std::unordered_map<String, Function*> table_;
 };
 
@@ -202,8 +202,7 @@ int TVMFFIFunctionSetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle f, i
     using namespace litetvm::ffi;
     TVM_FFI_SAFE_CALL_BEGIN();
     String name_str(name->data, name->size);
-    GlobalFunctionTable::Global()->Update(name_str, GetRef<Function>(static_cast<FunctionObj*>(f)),
-                                          override != 0);
+    GlobalFunctionTable::Global()->Update(name_str, GetRef<Function>(static_cast<FunctionObj*>(f)), override != 0);
     TVM_FFI_SAFE_CALL_END();
 }
 
@@ -213,22 +212,23 @@ int TVMFFIFunctionGetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle* out
     String name_str(name->data, name->size);
     const Function* fp = GlobalFunctionTable::Global()->Get(name_str);
     if (fp != nullptr) {
-        litetvm::ffi::Function func(*fp);
-        *out = litetvm::ffi::details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(func));
+        Function func(*fp);
+        *out = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(func));
     } else {
         *out = nullptr;
     }
     TVM_FFI_SAFE_CALL_END();
 }
 
-int TVMFFIFunctionCall(TVMFFIObjectHandle func, TVMFFIAny* args, int32_t num_args,
-                       TVMFFIAny* result) {
+int TVMFFIFunctionCall(TVMFFIObjectHandle func, TVMFFIAny* args, int32_t num_args,TVMFFIAny* result) {
     using namespace litetvm::ffi;
     // NOTE: this is a tail call
-    return reinterpret_cast<FunctionObj*>(func)->safe_call(func, args, num_args, result);
+    return static_cast<FunctionObj*>(func)->safe_call(func, args, num_args, result);
 }
 
-int TVMFFIEnvCheckSignals() { return litetvm::ffi::EnvCAPIRegistry::Global()->EnvCheckSignals(); }
+int TVMFFIEnvCheckSignals() {
+    return litetvm::ffi::EnvCAPIRegistry::Global()->EnvCheckSignals();
+}
 
 /*!
  * \brief Register a symbol into the from the surrounding env.
@@ -257,9 +257,8 @@ TVM_FFI_REGISTER_GLOBAL("ffi.FunctionListGlobalNamesFunctor").set_body_typed([](
     auto return_functor = [names](int64_t i) -> litetvm::ffi::Any {
         if (i < 0) {
             return names.size();
-        } else {
-            return names[i];
         }
+        return names[i];
     };
     return litetvm::ffi::Function::FromTyped(return_functor);
 });

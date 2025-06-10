@@ -130,8 +130,8 @@ __attribute__((constructor)) void install_signal_handler(void) {
 }// namespace litetvm
 
 const TVMFFIByteArray* TVMFFITraceback(const char*, int, const char*) {
-    static thread_local std::string traceback_str;
-    static thread_local TVMFFIByteArray traceback_array;
+    thread_local std::string traceback_str;
+    thread_local TVMFFIByteArray traceback_array;
     traceback_str = ::litetvm::ffi::Traceback();
     traceback_array.data = traceback_str.data();
     traceback_array.size = traceback_str.size();

@@ -205,7 +205,7 @@ void for_each(const F& f, Args&&... args) {
     // using IntArray = int[];
     int i = 0;
     // (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
-    ((f(i++, std::forward<Args>(args))), ...);
+    (f(i++, std::forward<Args>(args)), ...);
     // UNUSED(i);
 }
 

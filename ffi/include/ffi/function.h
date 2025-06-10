@@ -339,11 +339,12 @@ public:
             other_func->safe_call == &details::ExternCFunctionObjImpl::SafeCall) {
             return other;
         }
-        // the other function coems from a different library
+        // the other function comes from a different library
         Function func;
         func.data_ = make_object<details::ImportedFunctionObjImpl>(std::move(other.data_));
         return func;
     }
+
     /*!
    * \brief Create ffi::Function from a C style callbacks.
    * \param self Resource handle to the function
@@ -418,9 +419,9 @@ public:
    */
     static void SetGlobal(std::string_view name, Function func, bool override = false) {
         TVMFFIByteArray name_arr{name.data(), name.size()};
-        TVM_FFI_CHECK_SAFE_CALL(
-                TVMFFIFunctionSetGlobal(&name_arr, details::ObjectUnsafe::GetHeader(func.get()), override));
+        TVM_FFI_CHECK_SAFE_CALL(TVMFFIFunctionSetGlobal(&name_arr, details::ObjectUnsafe::GetHeader(func.get()), override));
     }
+
     /*!
    * \brief List all global names
    * \return A vector of all global names
@@ -443,6 +444,7 @@ public:
         static Function fremove = GetGlobalRequired("ffi.FunctionRemoveGlobal");
         fremove(name);
     }
+
     /*!
    * \brief Constructing a packed function from a normal function.
    *
@@ -457,6 +459,7 @@ public:
         };
         return FromPackedInternal(call_packed);
     }
+
     /*!
    * \brief Constructing a packed function from a normal function.
    *
@@ -515,9 +518,14 @@ public:
     }
 
     /*! \return Whether the packed function is nullptr */
-    TVM_FFI_INLINE bool operator==(std::nullptr_t) const { return data_ == nullptr; }
+    TVM_FFI_INLINE bool operator==(std::nullptr_t) const {
+        return data_ == nullptr;
+    }
+
     /*! \return Whether the packed function is not nullptr */
-    TVM_FFI_INLINE bool operator!=(std::nullptr_t) const { return data_ != nullptr; }
+    TVM_FFI_INLINE bool operator!=(std::nullptr_t) const {
+        return data_ != nullptr;
+    }
 
     TVM_FFI_DEFINE_OBJECT_REF_METHODS(Function, ObjectRef, FunctionObj);
 
