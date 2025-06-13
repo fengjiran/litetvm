@@ -29,6 +29,10 @@ TEST(Func, for_each) {
     EXPECT_EQ(anys[2].cast<const char*>(), "hello");
     EXPECT_EQ(anys[3].cast<int>(), 5);
     EXPECT_EQ(anys[4].cast<double>(), 3.14);
+
+    std::cout << details::FuncFunctorImpl<int, int, float, double, void*>::Sig() << std::endl;
+    // std::index_sequence<0, 1, 2, 3, 4> seq = std::make_index_sequence<5>();
+
 }
 
 TEST(Func, FromPacked) {

@@ -64,7 +64,7 @@ struct FuncFunctorImpl {
         using IdxSeq = std::make_index_sequence<sizeof...(Args)>;
         std::ostringstream ss;
         ss << "(";
-        Arg2Str<std::tuple<Args...>>::Run(ss, IdxSeq{});
+        Arg2Str<ArgType>::Run(ss, IdxSeq());
         ss << ") -> " << Type2Str<R>::v();
         return ss.str();
     }
@@ -110,8 +110,7 @@ public:
    * \param f_sig Pointer to static function outputting signature of the function being called.
    * named.
    */
-    TVM_FFI_INLINE ArgValueWithContext(const AnyView* args, int32_t arg_index,
-                                       const std::string* optional_name, FGetFuncSignature f_sig)
+    TVM_FFI_INLINE ArgValueWithContext(const AnyView* args, int32_t arg_index, const std::string* optional_name, FGetFuncSignature f_sig)
         : args_(args), arg_index_(arg_index), optional_name_(optional_name), f_sig_(f_sig) {}
 
     template<typename Type>
@@ -146,9 +145,8 @@ private:
 };
 
 template<typename R, std::size_t... Is, typename F>
-TVM_FFI_INLINE void unpack_call(std::index_sequence<Is...>, const std::string* optional_name,
-                                const F& f, MAYBE_UNUSED const AnyView* args,
-                                MAYBE_UNUSED int32_t num_args, MAYBE_UNUSED Any* rv) {
+TVM_FFI_INLINE void unpack_call(std::index_sequence<Is...>, const std::string* optional_name, const F& f,
+                                MAYBE_UNUSED const AnyView* args, MAYBE_UNUSED int32_t num_args, MAYBE_UNUSED Any* rv) {
     using FuncInfo = FunctionInfo<F>;
     FGetFuncSignature f_sig = FuncInfo::Sig;
 
@@ -163,6 +161,7 @@ TVM_FFI_INLINE void unpack_call(std::index_sequence<Is...>, const std::string* o
                                  << (f_sig == nullptr ? "" : (*f_sig)()) << "`. Expected " << nargs
                                  << " but got " << num_args << " arguments";
     }
+
     // use index sequence to do recursive-less unpacking
     if constexpr (std::is_same_v<R, void>) {
         f(ArgValueWithContext(args, Is, optional_name, f_sig)...);

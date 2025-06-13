@@ -71,7 +71,7 @@ public:
     using TVMFFIFunctionCell::safe_call;
 
     /*! \brief A C++ style call implementation, with exception propagation in c++ style. */
-    FCall call {nullptr};
+    FCall call{nullptr};
 
     TVM_FFI_INLINE void CallPacked(const AnyView* args, int32_t num_args, Any* result) const {
         call(this, args, num_args, result);
@@ -137,8 +137,7 @@ template<typename Derived>
 struct RedirectCallToSafeCall {
     static void Call(const FunctionObj* func, const AnyView* args, int32_t num_args, Any* rv) {
         auto* self = static_cast<Derived*>(const_cast<FunctionObj*>(func));
-        TVM_FFI_CHECK_SAFE_CALL(self->RedirectSafeCall(reinterpret_cast<const TVMFFIAny*>(args),
-                                                       num_args, reinterpret_cast<TVMFFIAny*>(rv)));
+        TVM_FFI_CHECK_SAFE_CALL(self->RedirectSafeCall(reinterpret_cast<const TVMFFIAny*>(args), num_args, reinterpret_cast<TVMFFIAny*>(rv)));
     }
 
     static int32_t SafeCall(void* func, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* rv) {
@@ -386,6 +385,7 @@ public:
     static std::optional<Function> GetGlobal(const char* name) {
         return GetGlobal(std::string_view(name));
     }
+
     /*!
    * \brief Get global function by name and throw an error if it is not found.
    * \param name The name of the function
@@ -417,7 +417,7 @@ public:
    * \param func The function
    * \param override Whether to override when there is duplication.
    */
-    static void SetGlobal(std::string_view name, Function func, bool override = false) {
+    static void SetGlobal(std::string_view name, const Function& func, bool override = false) {
         TVMFFIByteArray name_arr{name.data(), name.size()};
         TVM_FFI_CHECK_SAFE_CALL(TVMFFIFunctionSetGlobal(&name_arr, details::ObjectUnsafe::GetHeader(func.get()), override));
     }
@@ -453,11 +453,11 @@ public:
     template<typename TCallable>
     static Function FromTyped(TCallable callable) {
         using FuncInfo = details::FunctionInfo<TCallable>;
-        auto call_packed = [callable](const AnyView* args, int32_t num_args, Any* rv) mutable -> void {
-            details::unpack_call<typename FuncInfo::RetType>(
-                    std::make_index_sequence<FuncInfo::num_args>{}, nullptr, callable, args, num_args, rv);
+        auto packed_call = [callable](const AnyView* args, int32_t num_args, Any* rv) mutable -> void {
+            details::unpack_call<typename FuncInfo::RetType>(std::make_index_sequence<FuncInfo::num_args>{},
+                                                             nullptr, callable, args, num_args, rv);
         };
-        return FromPackedInternal(call_packed);
+        return FromPackedInternal(packed_call);
     }
 
     /*!
@@ -469,12 +469,13 @@ public:
     template<typename TCallable>
     static Function FromTyped(TCallable callable, std::string name) {
         using FuncInfo = details::FunctionInfo<TCallable>;
-        auto call_packed = [callable, name](const AnyView* args, int32_t num_args, Any* rv) mutable -> void {
+        auto packed_call = [callable, name](const AnyView* args, int32_t num_args, Any* rv) mutable -> void {
             details::unpack_call<typename FuncInfo::RetType>(
                     std::make_index_sequence<FuncInfo::num_args>{}, &name, callable, args, num_args, rv);
         };
-        return FromPackedInternal(call_packed);
+        return FromPackedInternal(packed_call);
     }
+
     /*!
    * \brief Call function by directly passing in unpacked arguments.
    *
@@ -500,10 +501,11 @@ public:
         static_cast<FunctionObj*>(data_.get())->CallPacked(args_pack, kNumArgs, &result);
         return result;
     }
+
     /*!
    * \brief Call the function in packed format.
    * \param args The arguments
-   * \param rv The return value.
+   * \param result The return value.
    */
     TVM_FFI_INLINE void CallPacked(const AnyView* args, int32_t num_args, Any* result) const {
         static_cast<FunctionObj*>(data_.get())->CallPacked(args, num_args, result);
@@ -848,6 +850,7 @@ public:
             };
             return Register(Function::FromTyped(fwrap, name_));
         }
+
         if constexpr (std::is_base_of_v<Object, T>) {
             auto fwrap = [f](const T* target, Args... params) -> R {
                 // call method pointer
@@ -884,7 +887,7 @@ protected:
    * \brief set the body of the function to be f
    * \param f The body of the function.
    */
-    Registry& Register(Function f) {
+    Registry& Register(const Function& f) {
         SetGlobal(name_, f);
         return *this;
     }

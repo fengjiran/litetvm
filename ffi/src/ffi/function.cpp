@@ -248,12 +248,12 @@ TVM_FFI_REGISTER_GLOBAL("ffi.FunctionRemoveGlobal")
             return litetvm::ffi::GlobalFunctionTable::Global()->Remove(name);
         });
 
-TVM_FFI_REGISTER_GLOBAL("ffi.FunctionListGlobalNamesFunctor").set_body_typed([]() {
+TVM_FFI_REGISTER_GLOBAL("ffi.FunctionListGlobalNamesFunctor").set_body_typed([] {
     // NOTE: we return functor instead of array
     // so list global function names do not need to depend on array
     // this is because list global function names usually is a core api that happens
     // before array ffi functions are available.
-    litetvm::ffi::Array<litetvm::ffi::String> names = litetvm::ffi::GlobalFunctionTable::Global()->ListNames();
+    auto names = litetvm::ffi::GlobalFunctionTable::Global()->ListNames();
     auto return_functor = [names](int64_t i) -> litetvm::ffi::Any {
         if (i < 0) {
             return names.size();
