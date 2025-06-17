@@ -85,6 +85,10 @@ TVM_FFI_INLINE bool IsObjectInstance(int32_t object_type_index);
  *       This field is automatically set by macro TVM_DECLARE_FINAL_OBJECT_INFO
  *       It is still OK to subclass a terminal object type T and construct it using make_object.
  *       But IsInstance check will only show that the object type is T(instead of the subclass).
+ * - _type_mutable:
+ *      Whether we would like to expose cast to non-constant pointer
+ *      ObjectType* from Any/AnyView. By default, we set to false so it is not exposed.
+ *
  *
  * The following two fields are necessary for base classes that can be subclassed.
  *
@@ -179,6 +183,7 @@ public:
 
     // Default object type properties for sub-classes
     static constexpr bool _type_final = false;
+    static constexpr bool _type_mutable = false;
     static constexpr uint32_t _type_child_slots = 0;
     static constexpr bool _type_child_slots_can_overflow = true;
     // NOTE: static type index field of the class
@@ -610,7 +615,7 @@ struct ObjectPtrEqual {
                               TypeName::_type_child_slots < ParentType::_type_child_slots,                  \
                       "Need to set _type_child_slots when parent specifies it.");                           \
         TVMFFIByteArray type_key{TypeName::_type_key, std::char_traits<char>::length(TypeName::_type_key)}; \
-        static int32_t tindex = TVMFFIGetOrAllocTypeIndex(                                                  \
+        static int32_t tindex = TVMFFITypeGetOrAllocIndex(                                                  \
                 &type_key, TypeName::_type_index, TypeName::_type_depth, TypeName::_type_child_slots,       \
                 TypeName::_type_child_slots_can_overflow, ParentType::_GetOrAllocRuntimeTypeIndex());       \
         return tindex;                                                                                      \
@@ -639,7 +644,7 @@ struct ObjectPtrEqual {
                               TypeName::_type_child_slots < ParentType::_type_child_slots,                  \
                       "Need to set _type_child_slots when parent specifies it.");                           \
         TVMFFIByteArray type_key{TypeName::_type_key, std::char_traits<char>::length(TypeName::_type_key)}; \
-        static int32_t tindex = TVMFFIGetOrAllocTypeIndex(                                                  \
+        static int32_t tindex = TVMFFITypeGetOrAllocIndex(                                                  \
                 &type_key, -1, TypeName::_type_depth, TypeName::_type_child_slots,                          \
                 TypeName::_type_child_slots_can_overflow, ParentType::_GetOrAllocRuntimeTypeIndex());       \
         return tindex;                                                                                      \

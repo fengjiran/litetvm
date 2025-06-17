@@ -397,7 +397,7 @@ public:
         if (!res.has_value()) {
             TVM_FFI_THROW(ValueError) << "Function " << name << " not found";
         }
-        return res.value();
+        return *res;
     }
 
     static Function GetGlobalRequired(const std::string& name) {
@@ -846,7 +846,7 @@ public:
         if constexpr (std::is_base_of_v<ObjectRef, T>) {
             auto fwrap = [f](T target, Args... params) -> R {
                 // call method pointer
-                return (target.*f)(params...);
+                return (target.*f)(std::forward<Args>(params)...);
             };
             return Register(Function::FromTyped(fwrap, name_));
         }
@@ -854,7 +854,7 @@ public:
         if constexpr (std::is_base_of_v<Object, T>) {
             auto fwrap = [f](const T* target, Args... params) -> R {
                 // call method pointer
-                return (const_cast<T*>(target)->*f)(params...);
+                return (const_cast<T*>(target)->*f)(std::forward<Args>(params)...);
             };
             return Register(Function::FromTyped(fwrap, name_));
         }
@@ -868,14 +868,14 @@ public:
         if constexpr (std::is_base_of_v<ObjectRef, T>) {
             auto fwrap = [f](const T target, Args... params) -> R {
                 // call method pointer
-                return (target.*f)(params...);
+                return (target.*f)(std::forward<Args>(params)...);
             };
             return Register(Function::FromTyped(fwrap, name_));
         }
         if constexpr (std::is_base_of_v<Object, T>) {
             auto fwrap = [f](const T* target, Args... params) -> R {
                 // call method pointer
-                return (target->*f)(params...);
+                return (target->*f)(std::forward<Args>(params)...);
             };
             return Register(Function::FromTyped(fwrap, name_));
         }

@@ -281,7 +281,7 @@ private:
     template<typename U>
     TVM_FFI_INLINE auto EQToOptional(const U& other) const {
         // support case where sub-class returns a symbolic ref type.
-        using RetType = decltype(value() == other.value());
+        using RetType = decltype(operator*() == *other);
         if (same_as(other)) return RetType(true);
         if (has_value() && other.has_value()) {
             return operator*() == *other;
@@ -293,7 +293,7 @@ private:
     template<typename U>
     TVM_FFI_INLINE auto NEToOptional(const U& other) const {
         // support case where sub-class returns a symbolic ref type.
-        using RetType = decltype(value() != other.value());
+        using RetType = decltype(operator*() != *other);
         if (same_as(other)) return RetType(false);
         if (has_value() && other.has_value()) {
             return operator*() != *other;

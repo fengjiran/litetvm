@@ -392,8 +392,6 @@ TVM_FFI_INLINE std::string_view ToStringView(TVMFFIByteArray str) {
 // const char*, requirement: not nullable, do not retain ownership
 template<int N>
 struct TypeTraits<char[N]> : TypeTraitsBase {
-    // NOTE: only enable implicit conversion into AnyView
-    static constexpr int32_t field_static_type_index = kTVMFFIRawStr;
     static constexpr bool storage_enabled = false;
 
     static TVM_FFI_INLINE void CopyToAnyView(const char src[N], TVMFFIAny* result) {
@@ -439,7 +437,6 @@ struct TypeTraits<const char*> : TypeTraitsBase {
 // TVMFFIByteArray, requirement: not nullable, do not retain ownership
 template<>
 struct TypeTraits<TVMFFIByteArray*> : TypeTraitsBase {
-    static constexpr int32_t field_static_type_index = kTVMFFIByteArrayPtr;
     static constexpr bool storage_enabled = false;
 
     static TVM_FFI_INLINE void CopyToAnyView(TVMFFIByteArray* src, TVMFFIAny* result) {

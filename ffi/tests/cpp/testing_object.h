@@ -52,13 +52,13 @@ public:
     TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TIntObj, TNumberObj);
 };
 
-TVM_FFI_REFLECTION_DEF(TIntObj).def_readonly("value", &TIntObj::value);
-
 class TInt : public TNumber {
 public:
     explicit TInt(int64_t value) {
         data_ = make_object<TIntObj>(value);
     }
+
+    static TInt StaticAdd(TInt lhs, TInt rhs) { return TInt(lhs->value + rhs->value); }
 
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TInt, TNumber, TIntObj);
 };
@@ -69,11 +69,11 @@ public:
 
     TFloatObj(double value) : value(value) {}
 
+    double Add(double other) const { return value + other; }
+
     static constexpr const char* _type_key = "test.Float";
     TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TFloatObj, TNumberObj);
 };
-
-TVM_FFI_REFLECTION_DEF(TFloatObj).def_readonly("value", &TFloatObj::value);
 
 class TFloat : public TNumber {
 public:
@@ -93,6 +93,7 @@ public:
     TPrimExprObj(std::string dtype, double value) : dtype(dtype), value(value) {}
 
     static constexpr const char* _type_key = "test.PrimExpr";
+    static constexpr bool _type_mutable = true;
     TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TPrimExprObj, Object);
 };
 
