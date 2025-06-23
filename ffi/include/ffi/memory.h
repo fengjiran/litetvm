@@ -89,7 +89,9 @@ public:
     template<typename T>
     class Handler {
     public:
-        using StorageType = std::aligned_storage_t<sizeof(T), alignof(T)>;
+        struct alignas(T) StorageType {
+            char data[sizeof(T)];
+        };
 
         template<typename... Args>
         static T* New(SimpleObjAllocator*, Args&&... args) {

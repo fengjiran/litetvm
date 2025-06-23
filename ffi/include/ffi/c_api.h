@@ -467,7 +467,7 @@ struct TVMFFITypeInfo {
    * \note To keep things simple, we do not allow multiple inheritance so the
    *       hieracy stays as a tree
    */
-    const int32_t* type_acenstors;
+    const TVMFFITypeInfo** type_acenstors;
 
     /*! \brief Cached hash value of the type key, used for consistent structural hashing. */
     uint64_t type_key_hash;
