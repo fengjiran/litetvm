@@ -71,10 +71,10 @@ public:
     using TVMFFIFunctionCell::safe_call;
 
     /*! \brief A C++ style call implementation, with exception propagation in c++ style. */
-    FCall call{nullptr};
+    FCall call;
 
     TVM_FFI_INLINE void CallPacked(const AnyView* args, int32_t num_args, Any* result) const {
-        call(this, args, num_args, result);
+        this->call(this, args, num_args, result);
     }
 
     static constexpr uint32_t _type_index = kTVMFFIFunction;
@@ -417,7 +417,7 @@ public:
    * \param func The function
    * \param override Whether to override when there is duplication.
    */
-    static void SetGlobal(std::string_view name, const Function& func, bool override = false) {
+    static void SetGlobal(std::string_view name, Function func, bool override = false) {
         TVMFFIByteArray name_arr{name.data(), name.size()};
         TVM_FFI_CHECK_SAFE_CALL(TVMFFIFunctionSetGlobal(&name_arr, details::ObjectUnsafe::GetHeader(func.get()), override));
     }

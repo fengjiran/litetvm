@@ -154,6 +154,20 @@ TEST(Func, PassReturnAny) {
     EXPECT_EQ(fadd_one(1).cast<int>(), 2);
 }
 
+TEST(Func, TypedFunction) {
+    TypedFunction<int(int)> fadd1 = [](int a) -> int { return a + 1; };
+    EXPECT_EQ(fadd1(1), 2);
+
+    TypedFunction<int(int)> fadd2([](int a) -> int { return a + 2; });
+    EXPECT_EQ(fadd2(1), 3);
+    EXPECT_EQ(fadd2.packed()(1).cast<int>(), 3);
+
+    TypedFunction<void(int)> fcheck_int;
+    EXPECT_TRUE(fcheck_int == nullptr);
+    fcheck_int = [](int a) -> void { EXPECT_EQ(a, 1); };
+    fcheck_int(1);
+}
+
 TEST(Func, Global) {
     Function::SetGlobal("testing.add1",
                         Function::FromTyped([](const int32_t& a) -> int { return a + 1; }));
@@ -171,20 +185,6 @@ TEST(Func, Global) {
         names.push_back(fname_functor(i).cast<String>());
     }
     EXPECT_TRUE(std::find(names.begin(), names.end(), "testing.add1") != names.end());
-}
-
-TEST(Func, TypedFunction) {
-    TypedFunction<int(int)> fadd1 = [](int a) -> int { return a + 1; };
-    EXPECT_EQ(fadd1(1), 2);
-
-    TypedFunction<int(int)> fadd2([](int a) -> int { return a + 2; });
-    EXPECT_EQ(fadd2(1), 3);
-    EXPECT_EQ(fadd2.packed()(1).cast<int>(), 3);
-
-    TypedFunction<void(int)> fcheck_int;
-    EXPECT_TRUE(fcheck_int == nullptr);
-    fcheck_int = [](int a) -> void { EXPECT_EQ(a, 1); };
-    fcheck_int(1);
 }
 
 TEST(Func, TypedFunctionAsAny) {

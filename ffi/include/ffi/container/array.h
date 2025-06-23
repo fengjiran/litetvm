@@ -21,8 +21,18 @@ namespace litetvm {
 namespace ffi {
 
 /*! \brief array node content in array */
-class ArrayObj : public Object, public details::InplaceArrayBase<ArrayObj, Any> {
+class ArrayObj : public Object, public details::InplaceArrayBase<ArrayObj, TVMFFIAny> {
 public:
+    ~ArrayObj() {
+        Any* begin = MutableBegin();
+        for (int64_t i = 0; i < size_; ++i) {
+            (begin + i)->Any::~Any();
+        }
+        if (data_deleter_ != nullptr) {
+            data_deleter_(data_);
+        }
+    }
+
     /*! \return The size of the array */
     NODISCARD size_t size() const {
         return this->size_;
@@ -33,13 +43,25 @@ public:
    * \param i The index
    * \return the i-th element.
    */
-    NODISCARD Any at(int64_t i) const {
+    NODISCARD const Any& at(int64_t i) const {
         return this->operator[](i);
+    }
+
+    /*!
+   * \brief Read i-th element from array.
+   * \param i The index
+   * \return the i-th element.
+   */
+    const Any& operator[](int64_t i) const {
+        if (i >= size_) {
+            TVM_FFI_THROW(IndexError) << "Index " << i << " out of bounds " << size_;
+        }
+        return static_cast<Any*>(data_)[i];
     }
 
     /*! \return begin constant iterator */
     NODISCARD const Any* begin() const {
-        return static_cast<Any*>(AddressOf(0));
+        return static_cast<Any*>(data_);
     }
 
     /*! \return end constant iterator */
@@ -58,7 +80,10 @@ public:
    * \param item The value to be set
    */
     void SetItem(int64_t i, Any item) {
-        this->operator[](i) = std::move(item);
+        if (i >= size_) {
+            TVM_FFI_THROW(IndexError) << "Index " << i << " out of bounds " << size_;
+        }
+        static_cast<Any*>(data_)[i] = std::move(item);
     }
 
     /*!
@@ -132,7 +157,7 @@ private:
 
     /*! \return begin mutable iterator */
     NODISCARD Any* MutableBegin() const {
-        return static_cast<Any*>(AddressOf(0));
+        return static_cast<Any*>(this->data_);
     }
 
     /*! \return end mutable iterator */
@@ -141,15 +166,25 @@ private:
     }
 
     /*!
+   * \brief Emplace a new element at the back of the array
+   * \param args The arguments to construct the new element
+   */
+    template<typename... Args>
+    void EmplaceInit(size_t idx, Args&&... args) {
+        Any* itr = MutableBegin() + idx;
+        new (itr) Any(std::forward<Args>(args)...);
+    }
+
+    /*!
    * \brief Create an ArrayObj with the given capacity.
    * \param n Required capacity
    * \return Ref-counted ArrayObj requested
    */
     static ObjectPtr<ArrayObj> Empty(int64_t n = kInitSize) {
-        TVM_FFI_ICHECK_GE(n, 0);
         ObjectPtr<ArrayObj> p = make_inplace_array_object<ArrayObj, Any>(n);
         p->capacity_ = n;
         p->size_ = 0;
+        p->data_ = p->AddressOf(0);
         return p;
     }
 
@@ -236,11 +271,20 @@ private:
         return this;
     }
 
+    /*! \brief Data pointer to the first element of the array */
+    void* data_;
+
     /*! \brief Number of elements used */
     int64_t size_;
 
     /*! \brief Number of elements allocated */
     int64_t capacity_;
+
+    /*!
+   * \brief Optional data deleter when data is allocated separately
+   *        and its deletion is not managed by ArrayObj::deleter_.
+   */
+    void (*data_deleter_)(void*) = nullptr;
 
     /*! \brief Initial size of ArrayObj */
     static constexpr int64_t kInitSize = 4;
@@ -481,6 +525,12 @@ public:
     void push_back(const T& item) {
         ArrayObj* p = CopyOnWrite(1);
         p->EmplaceInit(p->size_++, item);
+    }
+
+    template<typename... Args>
+    void emplace_back(Args&&... args) {
+        ArrayObj* p = CopyOnWrite(1);
+        p->EmplaceInit(p->size_++, std::forward<Args>(args)...);
     }
 
     /*!

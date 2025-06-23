@@ -160,62 +160,34 @@ namespace litetvm {
 namespace ffi {
 namespace details {
 
-/********** Atomic Operations *********/
-
-TVM_FFI_INLINE int32_t AtomicIncrementRelaxed(int32_t* ptr) {
-#ifdef _MSC_VER
-    return _InterlockedIncrement(reinterpret_cast<volatile long*>(ptr)) - 1;// NOLINT(*)
-#else
-    return __atomic_fetch_add(ptr, 1, __ATOMIC_RELAXED);
-#endif
-}
-
-TVM_FFI_INLINE int32_t AtomicDecrementRelAcq(int32_t* ptr) {
-#ifdef _MSC_VER
-    return _InterlockedDecrement(reinterpret_cast<volatile long*>(ptr)) + 1;// NOLINT(*)
-#else
-    return __atomic_fetch_sub(ptr, 1, __ATOMIC_ACQ_REL);
-#endif
-}
-
-TVM_FFI_INLINE int32_t AtomicLoadRelaxed(const int32_t* ptr) {
-    auto* raw_ptr = const_cast<int32_t*>(ptr);
-#ifdef _MSC_VER
-    // simply load the variable ptr out
-    return (reinterpret_cast<const volatile long*>(raw_ptr))[0];// NOLINT(*)
-#else
-    return __atomic_load_n(raw_ptr, __ATOMIC_RELAXED);
-#endif
-}
-
 // for each iterator
-// template<bool stop, std::size_t I, typename F>
-// struct for_each_dispatcher {
-//     template<typename T, typename... Args>
-//     static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
-//         f(I, std::forward<T>(value));
-//         for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
-//     }
-// };
-//
-// template<std::size_t I, typename F>
-// struct for_each_dispatcher<true, I, F> {
-//     static void run(const F&) {}// NOLINT(*)
-// };
-//
-// template<typename F, typename... Args>
-// void for_each(const F& f, Args&&... args) {// NOLINT(*)
-//     for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
-// }
+template<bool stop, std::size_t I, typename F>
+struct for_each_dispatcher {
+    template<typename T, typename... Args>
+    static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
+        f(I, std::forward<T>(value));
+        for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
+    }
+};
+
+template<std::size_t I, typename F>
+struct for_each_dispatcher<true, I, F> {
+    static void run(const F&) {}// NOLINT(*)
+};
 
 template<typename F, typename... Args>
-void for_each(const F& f, Args&&... args) {
-    // using IntArray = int[];
-    int i = 0;
-    // (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
-    (f(i++, std::forward<Args>(args)), ...);
-    // UNUSED(i);
+void for_each(const F& f, Args&&... args) {// NOLINT(*)
+    for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
 }
+
+// template<typename F, typename... Args>
+// void for_each(const F& f, Args&&... args) {
+//     // using IntArray = int[];
+//     int i = 0;
+//     // (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
+//     (f(i++, std::forward<Args>(args)), ...);
+//     // UNUSED(i);
+// }
 
 /*!
  * \brief hash an object and combines uint64_t key with previous keys
