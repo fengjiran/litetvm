@@ -161,33 +161,33 @@ namespace ffi {
 namespace details {
 
 // for each iterator
-template<bool stop, std::size_t I, typename F>
-struct for_each_dispatcher {
-    template<typename T, typename... Args>
-    static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
-        f(I, std::forward<T>(value));
-        for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
-    }
-};
-
-template<std::size_t I, typename F>
-struct for_each_dispatcher<true, I, F> {
-    static void run(const F&) {}// NOLINT(*)
-};
+// template<bool stop, std::size_t I, typename F>
+// struct for_each_dispatcher {
+//     template<typename T, typename... Args>
+//     static void run(const F& f, T&& value, Args&&... args) {// NOLINT(*)
+//         f(I, std::forward<T>(value));
+//         for_each_dispatcher<sizeof...(Args) == 0, (I + 1), F>::run(f, std::forward<Args>(args)...);
+//     }
+// };
+//
+// template<std::size_t I, typename F>
+// struct for_each_dispatcher<true, I, F> {
+//     static void run(const F&) {}// NOLINT(*)
+// };
+//
+// template<typename F, typename... Args>
+// void for_each(const F& f, Args&&... args) {// NOLINT(*)
+//     for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
+// }
 
 template<typename F, typename... Args>
-void for_each(const F& f, Args&&... args) {// NOLINT(*)
-    for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
+void for_each(const F& f, Args&&... args) {
+    // using IntArray = int[];
+    int i = 0;
+    // (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
+    (f(i++, std::forward<Args>(args)), ...);
+    // UNUSED(i);
 }
-
-// template<typename F, typename... Args>
-// void for_each(const F& f, Args&&... args) {
-//     // using IntArray = int[];
-//     int i = 0;
-//     // (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
-//     (f(i++, std::forward<Args>(args)), ...);
-//     // UNUSED(i);
-// }
 
 /*!
  * \brief hash an object and combines uint64_t key with previous keys
