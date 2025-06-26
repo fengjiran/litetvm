@@ -179,7 +179,7 @@ public:
 #ifdef _MSC_VER
         return (reinterpret_cast<const volatile long*>(&header_.ref_counter))[0];// NOLINT(*)
 #else
-        return __atomic_load_n(&(header_.ref_counter), __ATOMIC_RELAXED);
+        return __atomic_load_n(&header_.ref_counter, __ATOMIC_RELAXED);
 #endif
     }
 
@@ -638,6 +638,7 @@ struct ObjectPtrEqual {
                               TypeName::_type_child_slots < ParentType::_type_child_slots,                  \
                       "Need to set _type_child_slots when parent specifies it.");                           \
         TVMFFIByteArray type_key{TypeName::_type_key, std::char_traits<char>::length(TypeName::_type_key)}; \
+                                                                                                            \
         static int32_t tindex = TVMFFITypeGetOrAllocIndex(                                                  \
                 &type_key, TypeName::_type_index, TypeName::_type_depth, TypeName::_type_child_slots,       \
                 TypeName::_type_child_slots_can_overflow, ParentType::_GetOrAllocRuntimeTypeIndex());       \

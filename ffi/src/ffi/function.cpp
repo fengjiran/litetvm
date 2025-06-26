@@ -93,7 +93,7 @@ public:
     const Entry* Get(const String& name) {
         auto it = table_.find(name);
         if (it == table_.end()) return nullptr;
-        const auto* obj = it->second.cast<const Object*>();
+        const auto* obj = (*it).second.cast<const Object*>();
         return static_cast<const Entry*>(obj);
     }
 
