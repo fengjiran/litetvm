@@ -3,6 +3,7 @@
 //
 
 #include "ffi/function.h"
+
 #include "ffi/any.h"
 #include "ffi/c_api.h"
 #include "ffi/cast.h"
@@ -11,6 +12,7 @@
 #include "ffi/error.h"
 #include "ffi/memory.h"
 #include "ffi/string.h"
+#include <utility>
 
 namespace litetvm {
 namespace ffi {
@@ -36,18 +38,20 @@ public:
         String name_data;
         String doc_data;
         String type_schema_data;
-        ffi::Function func_data;
+        Function func_data;
 
         explicit Entry(const TVMFFIMethodInfo* method_info) {
-            // make copy of the metadata
+            // make a copy of the metadata
             name_data = String(method_info->name.data, method_info->name.size);
             doc_data = String(method_info->doc.data, method_info->doc.size);
             type_schema_data = String(method_info->type_schema.data, method_info->type_schema.size);
-            func_data = AnyView::CopyFromTVMFFIAny(method_info->method).cast<ffi::Function>();
+            func_data = AnyView::CopyFromTVMFFIAny(method_info->method).cast<Function>();
             this->SyncMethodInfo(method_info->flags);
             // no need to update method pointer as it would remain the same as func and we retained
         }
-        explicit Entry(String name, ffi::Function func) : name_data(name), func_data(func) {
+
+        explicit Entry(String name, Function func)
+            : name_data(std::move(name)), func_data(std::move(func)) {
             this->SyncMethodInfo(kTVMFFIFieldFlagBitMaskIsStaticMethod);
         }
 
@@ -89,11 +93,11 @@ public:
     const Entry* Get(const String& name) {
         auto it = table_.find(name);
         if (it == table_.end()) return nullptr;
-        const Object* obj = (*it).second.cast<const Object*>();
+        const auto* obj = it->second.cast<const Object*>();
         return static_cast<const Entry*>(obj);
     }
 
-    Array<String> ListNames() const {
+    NODISCARD Array<String> ListNames() const {
         Array<String> names;
         names.reserve(table_.size());
         for (const auto& kv: table_) {
@@ -114,6 +118,8 @@ public:
     }
 
 private:
+    GlobalFunctionTable() = default;
+
     // deliberately track the function pointer without recycling to avoid
     Map<String, Any> table_;
 };

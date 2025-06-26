@@ -428,23 +428,25 @@ struct TVMFFIMethodInfo {
 struct TVMFFITypeExtraInfo {
     /*! \brief The docstring about the object. */
     TVMFFIByteArray doc;
+
     /*!
-         * \brief An optional function that can create a new empty instance of the type.
-         *
-         * When known_fixed_size is non-zero, creator can be called
-         * with nullptr passed to optional_bytes.
-         *
-         * \note Caller must call setter for each field to initialize the object for
-         *       the final object to be in valid state.
-         *
-         * \note This field is optional to enable reflection based creation.
-         */
+     * \brief An optional function that can create a new empty instance of the type.
+     *
+     * When known_fixed_size is non-zero, creator can be called
+     * with nullptr passed to optional_bytes.
+     *
+     * \note Caller must call setter for each field to initialize the object for
+     *       the final object to be in valid state.
+     *
+     * \note This field is optional to enable reflection based creation.
+     */
     TVMFFIObjectCreator creator;
+
     /*!
-         * \brief Total size of the object struct, if it is fixed and known.
-         *
-         * This field is set optional and set to 0 if not registered.
-         */
+     * \brief Total size of the object struct, if it is fixed and known.
+     *
+     * This field is set optional and set to 0 if not registered.
+     */
     int64_t total_size;
 };
 

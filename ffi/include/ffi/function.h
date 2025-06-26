@@ -137,7 +137,8 @@ template<typename Derived>
 struct RedirectCallToSafeCall {
     static void Call(const FunctionObj* func, const AnyView* args, int32_t num_args, Any* rv) {
         auto* self = static_cast<Derived*>(const_cast<FunctionObj*>(func));
-        TVM_FFI_CHECK_SAFE_CALL(self->RedirectSafeCall(reinterpret_cast<const TVMFFIAny*>(args), num_args, reinterpret_cast<TVMFFIAny*>(rv)));
+        TVM_FFI_CHECK_SAFE_CALL(self->RedirectSafeCall(reinterpret_cast<const TVMFFIAny*>(args),
+                                                       num_args, reinterpret_cast<TVMFFIAny*>(rv)));
     }
 
     static int32_t SafeCall(void* func, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* rv) {
@@ -153,8 +154,9 @@ class ExternCFunctionObjImpl : public FunctionObj,
                                public RedirectCallToSafeCall<ExternCFunctionObjImpl> {
 public:
     using RedirectCallToSafeCall::SafeCall;
+    using deleter_type = void (*)(void*);
 
-    ExternCFunctionObjImpl(void* self, TVMFFISafeCallType safe_call, void (*deleter)(void* self))
+    ExternCFunctionObjImpl(void* self, TVMFFISafeCallType safe_call, deleter_type deleter)
         : self_(self), safe_call_(safe_call), deleter_(deleter) {
         this->call = Call;
         this->safe_call = RedirectCallToSafeCall::SafeCall;
@@ -171,7 +173,7 @@ public:
 private:
     void* self_;
     TVMFFISafeCallType safe_call_;
-    void (*deleter_)(void* self);
+    deleter_type deleter_;
 };
 
 /*!

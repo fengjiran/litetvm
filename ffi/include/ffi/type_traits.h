@@ -537,7 +537,8 @@ struct ObjectRefTypeTraitsBase : TypeTraitsBase {
 };
 
 template<typename TObjRef>
-struct TypeTraits<TObjRef, std::enable_if_t<std::is_base_of_v<ObjectRef, TObjRef> && use_default_type_traits_v<TObjRef>>>
+struct TypeTraits<TObjRef,
+                  std::enable_if_t<std::is_base_of_v<ObjectRef, TObjRef> && use_default_type_traits_v<TObjRef>>>
     : ObjectRefTypeTraitsBase<TObjRef> {};
 
 /*!
