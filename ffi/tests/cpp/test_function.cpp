@@ -137,7 +137,7 @@ TEST(Func, FromTyped) {
                     EXPECT_EQ(error.kind(), "TypeError");
                     EXPECT_EQ(error.message(),
                               "Mismatched number of arguments when calling: "
-                              "`fpass_and_return(0: test.Int, 1: int, 2: AnyView) -> object.Function`. "
+                              "`fpass_and_return(0: test.Int, 1: int, 2: AnyView) -> ffi.Function`. "
                               "Expected 3 but got 0 arguments");
                     throw;
                 }

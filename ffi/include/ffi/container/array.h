@@ -145,7 +145,7 @@ public:
     }
 
     static constexpr int32_t _type_index = kTVMFFIArray;
-    static constexpr const char* _type_key = "object.Array";
+    static constexpr const char* _type_key = StaticTypeKey::kTVMFFIArray;
     static constexpr bool _type_final = true;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(ArrayObj, Object);
 

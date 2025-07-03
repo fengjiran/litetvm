@@ -78,7 +78,7 @@ public:
     }
 
     static constexpr uint32_t _type_index = kTVMFFIFunction;
-    static constexpr const char* _type_key = "object.Function";
+    static constexpr const char* _type_key = StaticTypeKey::kTVMFFIFunction;
 
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(FunctionObj, Object);
 
