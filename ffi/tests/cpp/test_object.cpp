@@ -10,6 +10,8 @@
 using namespace litetvm::ffi;
 using namespace litetvm::ffi::testing;
 
+class test_object : public Object {};
+
 TEST(Object, RefCounter) {
     auto a = make_object<TIntObj>(10);
     ObjectPtr<TIntObj> b = a;

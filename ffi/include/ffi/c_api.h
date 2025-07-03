@@ -318,7 +318,8 @@ using TVMFFIFieldSetter = int (*)(void* field, const TVMFFIAny* value);
  * \param result The new object handle
  * \return 0 when success, nonzero when failure happens
  */
-typedef int (*TVMFFIObjectCreator)(TVMFFIObjectHandle* result);
+// typedef int (*TVMFFIObjectCreator)(TVMFFIObjectHandle* result);
+using TVMFFIObjectCreator = int (*)(TVMFFIObjectHandle* result);
 
 
 /*!

@@ -39,16 +39,15 @@ private:
 /*!
  * \brief Get the byte offset of a class member field.
  *
- * \tparam The original class.
+ * \tparam Class original class.
  * \tparam T the field type.
  *
  * \param field_ptr A class member pointer
- * \returns The byteoffset
+ * \returns The byte offset
  */
 template<typename Class, typename T>
 TVM_FFI_INLINE int64_t GetFieldByteOffsetToObject(T Class::* field_ptr) {
-    int64_t field_offset_to_class =
-            reinterpret_cast<int64_t>(&(static_cast<Class*>(nullptr)->*field_ptr));
+    int64_t field_offset_to_class = reinterpret_cast<int64_t>(&(static_cast<Class*>(nullptr)->*field_ptr));
     return field_offset_to_class - details::ObjectUnsafe::GetObjectOffsetToSubclass<Class>();
 }
 
@@ -384,7 +383,7 @@ inline Function GetMethod(std::string_view type_key, const char* method_name) {
  * \note This function calls both the child and parent type info.
  */
 template<typename Callback>
-inline void ForEachFieldInfo(const TypeInfo* type_info, Callback callback) {
+void ForEachFieldInfo(const TypeInfo* type_info, Callback callback) {
     using ResultType = decltype(callback(type_info->fields));
     static_assert(std::is_same_v<ResultType, void>, "Callback must return void");
     // iterate through acenstors in parent to child order
@@ -412,7 +411,7 @@ inline void ForEachFieldInfo(const TypeInfo* type_info, Callback callback) {
  * \note This function calls both the child and parent type info and can be used for searching.
  */
 template<typename Callback>
-inline bool ForEachFieldInfoWithEarlyStop(const TypeInfo* type_info,
+bool ForEachFieldInfoWithEarlyStop(const TypeInfo* type_info,
                                           Callback callback_with_early_stop) {
     // iterate through acenstors in parent to child order
     // skip the first one since it is always the root object

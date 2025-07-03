@@ -13,7 +13,7 @@ namespace {
 using namespace litetvm::ffi;
 using namespace litetvm::ffi::testing;
 
-struct TestObjA : public Object {
+struct TestObjA : Object {
     int64_t x;
     int64_t y;
 
