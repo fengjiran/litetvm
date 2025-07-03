@@ -25,7 +25,7 @@ struct FieldInfoTrait {};
  */
 class DefaultValue : public FieldInfoTrait {
 public:
-    explicit DefaultValue(Any value) : value_(value) {}
+    explicit DefaultValue(Any value) : value_(std::move(value)) {}
 
     void Apply(TVMFFIFieldInfo* info) const {
         info->default_value = AnyView(value_).CopyToTVMFFIAny();
@@ -47,7 +47,7 @@ private:
  */
 template<typename Class, typename T>
 TVM_FFI_INLINE int64_t GetFieldByteOffsetToObject(T Class::* field_ptr) {
-    int64_t field_offset_to_class = reinterpret_cast<int64_t>(&(static_cast<Class*>(nullptr)->*field_ptr));
+    auto field_offset_to_class = reinterpret_cast<int64_t>(&(static_cast<Class*>(nullptr)->*field_ptr));
     return field_offset_to_class - details::ObjectUnsafe::GetObjectOffsetToSubclass<Class>();
 }
 
@@ -56,14 +56,14 @@ protected:
     template<typename T>
     static int FieldGetter(void* field, TVMFFIAny* result) {
         TVM_FFI_SAFE_CALL_BEGIN();
-        *result = details::AnyUnsafe::MoveAnyToTVMFFIAny(Any(*reinterpret_cast<T*>(field)));
+        *result = details::AnyUnsafe::MoveAnyToTVMFFIAny(Any(*static_cast<T*>(field)));
         TVM_FFI_SAFE_CALL_END();
     }
 
     template<typename T>
     static int FieldSetter(void* field, const TVMFFIAny* value) {
         TVM_FFI_SAFE_CALL_BEGIN();
-        *reinterpret_cast<T*>(field) = AnyView::CopyFromTVMFFIAny(*value).cast<T>();
+        *static_cast<T*>(field) = AnyView::CopyFromTVMFFIAny(*value).cast<T>();
         TVM_FFI_SAFE_CALL_END();
     }
 
@@ -80,6 +80,7 @@ protected:
         if constexpr (std::is_base_of_v<FieldInfoTrait, std::decay_t<T>>) {
             value.Apply(info);
         }
+
         if constexpr (std::is_same_v<std::decay_t<T>, char*>) {
             info->doc = TVMFFIByteArray{value, std::char_traits<char>::length(value)};
         }
@@ -98,12 +99,13 @@ protected:
             info->doc = TVMFFIByteArray{value, std::char_traits<char>::length(value)};
         }
     }
+
     template<typename Class, typename R, typename... Args>
     static TVM_FFI_INLINE Function GetMethod(std::string name, R (Class::*func)(Args...)) {
         auto fwrap = [func](const Class* target, Args... params) -> R {
             return (const_cast<Class*>(target)->*func)(std::forward<Args>(params)...);
         };
-        return ffi::Function::FromTyped(fwrap, name);
+        return Function::FromTyped(fwrap, name);
     }
 
     template<typename Class, typename R, typename... Args>
@@ -111,12 +113,12 @@ protected:
         auto fwrap = [func](const Class* target, Args... params) -> R {
             return (target->*func)(std::forward<Args>(params)...);
         };
-        return ffi::Function::FromTyped(fwrap, name);
+        return Function::FromTyped(fwrap, name);
     }
 
     template<typename Class, typename Func>
     static TVM_FFI_INLINE Function GetMethod(std::string name, Func&& func) {
-        return ffi::Function::FromTyped(std::forward<Func>(func), name);
+        return Function::FromTyped(std::forward<Func>(func), name);
     }
 };
 
@@ -132,7 +134,6 @@ public:
     /*!
    * \brief Define a readonly field.
    *
-   * \tparam Class The class type.
    * \tparam T The field type.
    * \tparam Extra The extra arguments.
    *
@@ -151,7 +152,6 @@ public:
     /*!
    * \brief Define a read-write field.
    *
-   * \tparam Class The class type.
    * \tparam T The field type.
    * \tparam Extra The extra arguments.
    *
@@ -220,8 +220,7 @@ private:
     }
 
     template<typename T, typename BaseClass, typename... ExtraArgs>
-    void RegisterField(const char* name, T BaseClass::* field_ptr, bool writable,
-                       ExtraArgs&&... extra_args) {
+    void RegisterField(const char* name, T BaseClass::* field_ptr, bool writable, ExtraArgs&&... extra_args) {
         static_assert(std::is_base_of_v<BaseClass, Class>, "BaseClass must be a base class of Class");
         TVMFFIFieldInfo info;
         info.name = TVMFFIByteArray{name, std::char_traits<char>::length(name)};
@@ -242,7 +241,7 @@ private:
         info.doc = TVMFFIByteArray{nullptr, 0};
         info.type_schema = TVMFFIByteArray{nullptr, 0};
         // apply field info traits
-        ((ApplyFieldInfoTrait(&info, std::forward<ExtraArgs>(extra_args)), ...));
+        (ApplyFieldInfoTrait(&info, std::forward<ExtraArgs>(extra_args)), ...);
         // call register
         TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeRegisterField(type_index_, &info));
     }

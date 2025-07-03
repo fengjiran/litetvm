@@ -22,7 +22,7 @@ struct TestObjA : Object {
     TVM_FFI_DECLARE_BASE_OBJECT_INFO(TestObjA, Object);
 };
 
-struct TestObjADerived : public TestObjA {
+struct TestObjADerived : TestObjA {
     int64_t z;
 
     static constexpr const char* _type_key = "test.TestObjADerived";

@@ -174,8 +174,7 @@ public:
         field_data.doc = this->CopyString(info->doc);
         field_data.type_schema = this->CopyString(info->type_schema);
         if (info->flags & kTVMFFIFieldFlagBitMaskHasDefault) {
-            field_data.default_value =
-                    this->CopyAny(AnyView::CopyFromTVMFFIAny(info->default_value)).CopyToTVMFFIAny();
+            field_data.default_value = this->CopyAny(AnyView::CopyFromTVMFFIAny(info->default_value)).CopyToTVMFFIAny();
         } else {
             field_data.default_value = AnyView(nullptr).CopyToTVMFFIAny();
         }
@@ -297,7 +296,7 @@ private:
     }
 
     AnyView CopyAny(Any val) {
-        AnyView view = AnyView(val);
+        auto view = AnyView(val);
         any_pool_.emplace_back(std::move(val));
         return view;
     }
@@ -308,12 +307,12 @@ private:
     std::vector<Any> any_pool_;
 };
 
-void MakeObjectFromPackedArgs(ffi::PackedArgs args, Any* ret) {
+void MakeObjectFromPackedArgs(PackedArgs args, Any* ret) {
     int32_t type_index;
     if (auto opt_type_index = args[0].try_cast<int32_t>()) {
         type_index = *opt_type_index;
     } else {
-        String type_key = args[0].cast<String>();
+        auto type_key = args[0].cast<String>();
         TVMFFIByteArray type_key_array = TVMFFIByteArray{type_key.data(), type_key.size()};
         TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeKeyToIndex(&type_key_array, &type_index));
     }
