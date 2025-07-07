@@ -270,7 +270,7 @@ public:
    *       destroyed after calling Fill.
    */
     template<typename... Args>
-    static void TVM_FFI_INLINE Fill(AnyView* data, Args&&... args) {
+    TVM_FFI_INLINE static void Fill(AnyView* data, Args&&... args) {
         details::for_each(details::PackedArgsSetter(data), std::forward<Args>(args)...);
     }
 
@@ -739,23 +739,23 @@ template<typename FType>
 struct TypeTraits<TypedFunction<FType>> : TypeTraitsBase {
     static constexpr int32_t field_static_type_index = kTVMFFIFunction;
 
-    static TVM_FFI_INLINE void CopyToAnyView(const TypedFunction<FType>& src, TVMFFIAny* result) {
+    TVM_FFI_INLINE static void CopyToAnyView(const TypedFunction<FType>& src, TVMFFIAny* result) {
         TypeTraits<Function>::CopyToAnyView(src.packed(), result);
     }
 
-    static TVM_FFI_INLINE void MoveToAny(TypedFunction<FType> src, TVMFFIAny* result) {
+    TVM_FFI_INLINE static void MoveToAny(TypedFunction<FType> src, TVMFFIAny* result) {
         TypeTraits<Function>::MoveToAny(std::move(src.packed()), result);
     }
 
-    static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
+    TVM_FFI_INLINE static bool CheckAnyStrict(const TVMFFIAny* src) {
         return src->type_index == kTVMFFIFunction;
     }
 
-    static TVM_FFI_INLINE TypedFunction<FType> CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
+    TVM_FFI_INLINE static TypedFunction<FType> CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
         return TypedFunction<FType>(TypeTraits<Function>::CopyFromAnyViewAfterCheck(src));
     }
 
-    static TVM_FFI_INLINE std::optional<TypedFunction<FType>> TryCastFromAnyView(const TVMFFIAny* src) {
+    TVM_FFI_INLINE static std::optional<TypedFunction<FType>> TryCastFromAnyView(const TVMFFIAny* src) {
         std::optional<Function> opt = TypeTraits<Function>::TryCastFromAnyView(src);
         if (opt.has_value()) {
             return TypedFunction<FType>(*std::move(opt));
@@ -763,7 +763,7 @@ struct TypeTraits<TypedFunction<FType>> : TypeTraitsBase {
         return std::nullopt;
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() {
+    TVM_FFI_INLINE static std::string TypeStr() {
         return details::FunctionInfo<FType>::Sig();
     }
 };
@@ -909,7 +909,7 @@ inline int32_t TypeKeyToIndex(std::string_view type_key) {
 }
 
 #define TVM_FFI_FUNC_REG_VAR_DEF \
-    static inline TVM_FFI_ATTRIBUTE_UNUSED ::litetvm::ffi::Function::Registry& __##TVMFFIFuncReg
+    TVM_FFI_ATTRIBUTE_UNUSED static inline ::litetvm::ffi::Function::Registry& __##TVMFFIFuncReg
 
 /*!
  * \brief Register a function globally.

@@ -5,22 +5,26 @@
 #include "ffi/container/ndarray.h"
 #include "ffi/c_api.h"
 #include "ffi/function.h"
+#include "ffi/reflection/reflection.h"
 
 namespace litetvm {
 namespace ffi {
 
 // Shape
-TVM_FFI_REGISTER_GLOBAL("ffi.Shape").set_body_packed([](PackedArgs args, Any* ret) {
-    int64_t* mutable_data;
-    ObjectPtr<ShapeObj> shape = details::MakeEmptyShape(args.size(), &mutable_data);
-    for (int i = 0; i < args.size(); ++i) {
-        if (auto opt_int = args[i].as<int64_t>()) {
-            mutable_data[i] = *opt_int;
-        } else {
-            TVM_FFI_THROW(ValueError) << "Expect shape to take list of int arguments";
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef().def_packed("ffi.Shape", [](ffi::PackedArgs args, Any* ret) {
+        int64_t* mutable_data;
+        ObjectPtr<ShapeObj> shape = details::MakeEmptyShape(args.size(), &mutable_data);
+        for (int i = 0; i < args.size(); ++i) {
+            if (auto opt_int = args[i].try_cast<int64_t>()) {
+                mutable_data[i] = *opt_int;
+            } else {
+                TVM_FFI_THROW(ValueError) << "Expect shape to take list of int arguments";
+            }
         }
-    }
-    *ret = Shape(shape);
+        *ret = Shape(shape);
+    });
 });
 }// namespace ffi
 }// namespace litetvm

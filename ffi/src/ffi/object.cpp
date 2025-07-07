@@ -5,6 +5,7 @@
 #include "ffi/container/map.h"
 #include "ffi/error.h"
 #include "ffi/function.h"
+#include "ffi/reflection/reflection.h"
 
 #include <memory>
 #include <string>
@@ -382,7 +383,10 @@ void MakeObjectFromPackedArgs(PackedArgs args, Any* ret) {
     *ret = ObjectRef(ptr);
 }
 
-TVM_FFI_REGISTER_GLOBAL("ffi.MakeObjectFromPackedArgs").set_body_packed(MakeObjectFromPackedArgs);
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef().def_packed("ffi.MakeObjectFromPackedArgs", MakeObjectFromPackedArgs);
+});
 
 
 }// namespace ffi

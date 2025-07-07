@@ -29,6 +29,7 @@
 #include "ffi/endian.h"
 
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 
 #if defined(_MSC_VER)
@@ -49,9 +50,9 @@
 #endif
 
 #if defined(_MSC_VER)
-#define TVM_FFI_INLINE __forceinline
+#define TVM_FFI_INLINE [[msvc::forceinline]] inline
 #else
-#define TVM_FFI_INLINE inline __attribute__((always_inline))
+#define TVM_FFI_INLINE [[gnu::always_inline]] inline
 #endif
 
 /*!
@@ -60,9 +61,9 @@
  * e.g. some logging functions.
  */
 #if defined(_MSC_VER)
-#define TVM_FFI_NO_INLINE __declspec(noinline)
+#define TVM_FFI_NO_INLINE [[msvc::noinline]]
 #else
-#define TVM_FFI_NO_INLINE __attribute__((noinline))
+#define TVM_FFI_NO_INLINE [[gnu::noinline]]
 #endif
 
 #if defined(_MSC_VER)
@@ -72,11 +73,7 @@
 #endif
 
 /*! \brief helper macro to suppress unused warning */
-#if defined(__GNUC__)
-#define TVM_FFI_ATTRIBUTE_UNUSED __attribute__((unused))
-#else
-#define TVM_FFI_ATTRIBUTE_UNUSED
-#endif
+#define TVM_FFI_ATTRIBUTE_UNUSED [[maybe_unused]]
 
 #define TVM_FFI_STR_CONCAT_(__x, __y) __x##__y
 #define TVM_FFI_STR_CONCAT(__x, __y) TVM_FFI_STR_CONCAT_(__x, __y)
@@ -90,7 +87,7 @@
 #endif
 
 #define TVM_FFI_STATIC_INIT_BLOCK_VAR_DEF \
-    static inline TVM_FFI_ATTRIBUTE_UNUSED int __##TVMFFIStaticInitReg
+    TVM_FFI_ATTRIBUTE_UNUSED static inline int __##TVMFFIStaticInitReg
 
 /*! \brief helper macro to run code once during initialization */
 #define TVM_FFI_STATIC_INIT_BLOCK(Body) \
@@ -160,6 +157,10 @@ namespace litetvm {
 namespace ffi {
 namespace details {
 
+// a dependent-name version of false, for static_assert
+template<typename>
+inline constexpr bool always_false = false;
+
 // for each iterator
 // template<bool stop, std::size_t I, typename F>
 // struct for_each_dispatcher {
@@ -180,14 +181,37 @@ namespace details {
 //     for_each_dispatcher<sizeof...(Args) == 0, 0, F>::run(f, std::forward<Args>(args)...);
 // }
 
+struct for_each_dispatcher {
+    template<typename F, typename... Args, size_t... I>
+    static void run(std::index_sequence<I...>, const F& f, Args&&... args) {// NOLINT(*)
+        if constexpr (std::conjunction_v<
+                              std::is_invocable<F, std::integral_constant<size_t, I>, Args>...>) {
+            (f(std::integral_constant<size_t, I>{}, std::forward<Args>(args)), ...);
+        } else if constexpr (std::conjunction_v<std::is_invocable<F, size_t, Args>...>) {
+            (f(I, std::forward<Args>(args)), ...);
+        } else if constexpr (std::conjunction_v<std::is_invocable<F, Args>...>) {
+            (f(std::forward<Args>(args)), ...);
+        } else {
+            static_assert(always_false<F>, "The function is not invocable with the provided arguments");
+        }
+    }
+};
+
+// Three kinds of function F are acceptable in `for_each`:
+// 1. F(size_t, Arg): argument with its index
+// 2. F(Arg): just the argument
+// 3. F(std::integral_constant<size_t, I>, Arg): argument with its constexpr index
+// The third one can make the index available in template arguments and `if constexpr`.
 template<typename F, typename... Args>
-void for_each(const F& f, Args&&... args) {
-    // using IntArray = int[];
-    int i = 0;
-    // (void) IntArray{0, (f(i++, std::forward<Args>(args)), 0)...};
-    (f(i++, std::forward<Args>(args)), ...);
-    // UNUSED(i);
+void for_each(const F& f, Args&&... args) {// NOLINT(*)
+    for_each_dispatcher::run(std::index_sequence_for<Args...>{}, f, std::forward<Args>(args)...);
 }
+
+// template<typename F, typename... Args>
+// void for_each(const F& f, Args&&... args) {
+//     int i = 0;
+//     (f(i++, std::forward<Args>(args)), ...);
+// }
 
 /*!
  * \brief hash an object and combines uint64_t key with previous keys

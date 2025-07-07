@@ -5,43 +5,10 @@
 #include "ffi/container/map.h"
 #include "ffi/container/shape.h"
 #include "ffi/function.h"
+#include "ffi/reflection/reflection.h"
 
 namespace litetvm {
 namespace ffi {
-
-TVM_FFI_REGISTER_GLOBAL("ffi.Array").set_body_packed([](PackedArgs args, Any* ret) {
-    *ret = Array<Any>(args.data(), args.data() + args.size());
-});
-
-TVM_FFI_REGISTER_GLOBAL("ffi.ArrayGetItem").set_body_typed([](const ArrayObj* n, int64_t i) -> Any {
-    return n->at(i);
-});
-
-TVM_FFI_REGISTER_GLOBAL("ffi.ArraySize").set_body_typed([](const ArrayObj* n) -> int64_t {
-    return n->size();
-});
-
-// Map
-TVM_FFI_REGISTER_GLOBAL("ffi.Map").set_body_packed([](PackedArgs args, Any* ret) {
-    TVM_FFI_ICHECK_EQ(args.size() % 2, 0);
-    Map<Any, Any> data;
-    for (int i = 0; i < args.size(); i += 2) {
-        data.Set(args[i], args[i + 1]);
-    }
-    *ret = data;
-});
-
-TVM_FFI_REGISTER_GLOBAL("ffi.MapSize").set_body_typed([](const MapObj* n) -> int64_t {
-    return n->size();
-});
-
-TVM_FFI_REGISTER_GLOBAL("ffi.MapGetItem").set_body_typed([](const MapObj* n, const Any& k) -> Any {
-    return n->at(k);
-});
-
-TVM_FFI_REGISTER_GLOBAL("ffi.MapCount").set_body_typed([](const MapObj* n, const Any& k) -> int64_t {
-    return n->count(k);
-});
 
 // Favor struct outside function scope as MSVC may have bug for in fn scope struct.
 class MapForwardIterFunctor {
@@ -72,9 +39,34 @@ private:
     MapObj::iterator end_;
 };
 
-TVM_FFI_REGISTER_GLOBAL("ffi.MapForwardIterFunctor").set_body_typed([](const MapObj* n) -> Function {
-            return Function::FromTyped(MapForwardIterFunctor(n->begin(), n->end()));
-        });
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef()
+            .def_packed("ffi.Array",
+                        [](ffi::PackedArgs args, Any* ret) {
+                            *ret = Array<Any>(args.data(), args.data() + args.size());
+                        })
+            .def("ffi.ArrayGetItem", [](const ffi::ArrayObj* n, int64_t i) -> Any { return n->at(i); })
+            .def("ffi.ArraySize",
+                 [](const ffi::ArrayObj* n) -> int64_t { return static_cast<int64_t>(n->size()); })
+            .def_packed("ffi.Map",
+                        [](ffi::PackedArgs args, Any* ret) {
+                            TVM_FFI_ICHECK_EQ(args.size() % 2, 0);
+                            Map<Any, Any> data;
+                            for (int i = 0; i < args.size(); i += 2) {
+                                data.Set(args[i], args[i + 1]);
+                            }
+                            *ret = data;
+                        })
+            .def("ffi.MapSize",
+                 [](const ffi::MapObj* n) -> int64_t { return static_cast<int64_t>(n->size()); })
+            .def("ffi.MapGetItem", [](const ffi::MapObj* n, const Any& k) -> Any { return n->at(k); })
+            .def("ffi.MapCount",
+                 [](const ffi::MapObj* n, const Any& k) -> int64_t { return n->count(k); })
+            .def("ffi.MapForwardIterFunctor", [](const ffi::MapObj* n) -> ffi::Function {
+                return ffi::Function::FromTyped(MapForwardIterFunctor(n->begin(), n->end()));
+            });
+});
 
 }// namespace ffi
 }// namespace litetvm

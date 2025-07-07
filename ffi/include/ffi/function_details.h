@@ -18,25 +18,6 @@ namespace litetvm {
 namespace ffi {
 namespace details {
 
-template<typename ArgType>
-struct Arg2Str {
-    template<size_t i>
-    static TVM_FFI_INLINE void Apply(std::ostream& os) {
-        using Arg = std::tuple_element_t<i, ArgType>;
-        if constexpr (i != 0) {
-            os << ", ";
-        }
-        os << i << ": " << Type2Str<Arg>::v();
-    }
-
-    template<size_t... I>
-    static TVM_FFI_INLINE void Run(std::ostream& os, std::index_sequence<I...>) {
-        // using TExpander = int[];
-        // (void) TExpander{0, (Apply<I>(os), 0)...};
-        (Apply<I>(os), ...);
-    }
-};
-
 template<typename T>
 static constexpr bool ArgSupported = std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Any> ||
                                      std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, AnyView> ||
@@ -60,11 +41,17 @@ struct FuncFunctorImpl {
     static constexpr bool unpacked_supported = (ArgSupported<Args> && ...) && RetSupported<R>;
 #endif
 
-    static TVM_FFI_INLINE std::string Sig() {
-        using IdxSeq = std::make_index_sequence<sizeof...(Args)>;
+    TVM_FFI_INLINE static std::string Sig() {
         std::ostringstream ss;
         ss << "(";
-        Arg2Str<ArgType>::Run(ss, IdxSeq());
+        for_each(
+                [&ss](auto i, const auto& v) {
+                    if constexpr (i() != 0) {
+                        ss << ", ";
+                    }
+                    ss << i() << ": " << v;
+                },
+                Type2Str<Args>::v()...);
         ss << ") -> " << Type2Str<R>::v();
         return ss.str();
     }

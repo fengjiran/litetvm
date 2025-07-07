@@ -11,6 +11,7 @@
 #include "ffi/container/map.h"
 #include "ffi/error.h"
 #include "ffi/memory.h"
+#include "ffi/reflection/reflection.h"
 #include "ffi/string.h"
 #include <utility>
 
@@ -297,30 +298,30 @@ int TVMFFIEnvRegisterCAPI(const TVMFFIByteArray* name, void* symbol) {
     TVM_FFI_SAFE_CALL_END();
 }
 
-TVM_FFI_REGISTER_GLOBAL("ffi.FunctionRemoveGlobal")
-        .set_body_typed([](const litetvm::ffi::String& name) -> bool {
-            return litetvm::ffi::GlobalFunctionTable::Global()->Remove(name);
-        });
-
-TVM_FFI_REGISTER_GLOBAL("ffi.FunctionListGlobalNamesFunctor").set_body_typed([] {
-    // NOTE: we return functor instead of array
-    // so list global function names do not need to depend on array
-    // this is because list global function names usually is a core api that happens
-    // before array ffi functions are available.
-    auto names = litetvm::ffi::GlobalFunctionTable::Global()->ListNames();
-    auto return_functor = [names](int64_t i) -> litetvm::ffi::Any {
-        if (i < 0) {
-            return names.size();
-        }
-        return names[i];
-    };
-    return litetvm::ffi::Function::FromTyped(return_functor);
-});
-
-TVM_FFI_REGISTER_GLOBAL("ffi.String").set_body_typed([](litetvm::ffi::String val) -> litetvm::ffi::String {
-    return val;
-});
-
-TVM_FFI_REGISTER_GLOBAL("ffi.Bytes").set_body_typed([](litetvm::ffi::Bytes val) -> litetvm::ffi::Bytes {
-    return val;
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef()
+            .def("ffi.FunctionRemoveGlobal",
+                 [](const litetvm::ffi::String& name) -> bool {
+                     return litetvm::ffi::GlobalFunctionTable::Global()->Remove(name);
+                 })
+            .def("ffi.FunctionListGlobalNamesFunctor",
+                 []() {
+                     // NOTE: we return functor instead of array
+                     // so list global function names do not need to depend on array
+                     // this is because list global function names usually is a core api that happens
+                     // before array ffi functions are available.
+                     litetvm::ffi::Array<litetvm::ffi::String> names =
+                             litetvm::ffi::GlobalFunctionTable::Global()->ListNames();
+                     auto return_functor = [names](int64_t i) -> litetvm::ffi::Any {
+                         if (i < 0) {
+                             return names.size();
+                         } else {
+                             return names[i];
+                         }
+                     };
+                     return litetvm::ffi::Function::FromTyped(return_functor);
+                 })
+            .def("ffi.String", [](litetvm::ffi::String val) -> litetvm::ffi::String { return val; })
+            .def("ffi.Bytes", [](litetvm::ffi::Bytes val) -> litetvm::ffi::Bytes { return val; });
 });

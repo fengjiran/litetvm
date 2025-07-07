@@ -155,7 +155,7 @@ template<typename... Types>
 struct TypeTraits<Tuple<Types...>> : ObjectRefTypeTraitsBase<Tuple<Types...>> {
     using ObjectRefTypeTraitsBase<Tuple<Types...>>::CopyFromAnyViewAfterCheck;
 
-    static TVM_FFI_INLINE std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
+    TVM_FFI_INLINE static std::string GetMismatchTypeInfo(const TVMFFIAny* src) {
         if (src->type_index != kTVMFFIArray) {
             return TypeTraitsBase::GetMismatchTypeInfo(src);
         }
@@ -167,7 +167,7 @@ struct TypeTraits<Tuple<Types...>> : ObjectRefTypeTraitsBase<Tuple<Types...>> {
     }
 
     template<size_t I, typename T, typename... Rest>
-    static TVM_FFI_INLINE std::string GetMismatchTypeInfoHelper(const Any* arr) {
+    TVM_FFI_INLINE static std::string GetMismatchTypeInfoHelper(const Any* arr) {
         if constexpr (!std::is_same_v<T, Any>) {
             const Any& any_v = arr[I];
             if (!details::AnyUnsafe::CheckAnyStrict<T>(any_v) && !(any_v.try_cast<T>().has_value())) {
@@ -183,7 +183,7 @@ struct TypeTraits<Tuple<Types...>> : ObjectRefTypeTraitsBase<Tuple<Types...>> {
         TVM_FFI_UNREACHABLE();
     }
 
-    static TVM_FFI_INLINE bool CheckAnyStrict(const TVMFFIAny* src) {
+    TVM_FFI_INLINE static bool CheckAnyStrict(const TVMFFIAny* src) {
         if (src->type_index != kTVMFFIArray) return false;
         const auto* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
         if (n->size() != sizeof...(Types)) return false;
@@ -192,7 +192,7 @@ struct TypeTraits<Tuple<Types...>> : ObjectRefTypeTraitsBase<Tuple<Types...>> {
     }
 
     template<size_t I, typename T, typename... Rest>
-    static TVM_FFI_INLINE bool CheckAnyStrictHelper(const TVMFFIAny* src_arr) {
+    TVM_FFI_INLINE static bool CheckAnyStrictHelper(const TVMFFIAny* src_arr) {
         if constexpr (!std::is_same_v<T, Any>) {
             if (!TypeTraits<T>::CheckAnyStrict(src_arr + I)) {
                 return false;
@@ -204,7 +204,7 @@ struct TypeTraits<Tuple<Types...>> : ObjectRefTypeTraitsBase<Tuple<Types...>> {
         return true;
     }
 
-    static TVM_FFI_INLINE std::optional<Tuple<Types...>> TryCastFromAnyView(const TVMFFIAny* src) {
+    TVM_FFI_INLINE static std::optional<Tuple<Types...>> TryCastFromAnyView(const TVMFFIAny* src) {
         if (src->type_index != kTVMFFIArray) return std::nullopt;
         const auto* n = reinterpret_cast<const ArrayObj*>(src->v_obj);
         if (n->size() != sizeof...(Types)) return std::nullopt;
@@ -222,7 +222,7 @@ struct TypeTraits<Tuple<Types...>> : ObjectRefTypeTraitsBase<Tuple<Types...>> {
     }
 
     template<size_t I, typename T, typename... Rest>
-    static TVM_FFI_INLINE bool TryConvertElements(Any* arr) {
+    TVM_FFI_INLINE static bool TryConvertElements(Any* arr) {
         if constexpr (!std::is_same_v<T, Any>) {
             if (auto opt_convert = arr[I].try_cast<T>()) {
                 arr[I] = *std::move(opt_convert);
@@ -237,7 +237,7 @@ struct TypeTraits<Tuple<Types...>> : ObjectRefTypeTraitsBase<Tuple<Types...>> {
         }
     }
 
-    static TVM_FFI_INLINE std::string TypeStr() {
+    TVM_FFI_INLINE static std::string TypeStr() {
         return details::ContainerTypeStr<Types...>("Tuple");
     }
 };
