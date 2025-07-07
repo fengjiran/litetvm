@@ -164,7 +164,7 @@ public:
    */
     template<typename Func, typename... Extra>
     GlobalDef& def(const char* name, Func&& func, Extra&&... extra) {
-        RegisterFunc(name, ffi::Function::FromTyped(std::forward<Func>(func), std::string(name)),
+        RegisterFunc(name, Function::FromTyped(std::forward<Func>(func), std::string(name)),
                      std::forward<Extra>(extra)...);
         return *this;
     }
@@ -183,7 +183,7 @@ public:
    */
     template<typename Func, typename... Extra>
     GlobalDef& def_packed(const char* name, Func func, Extra&&... extra) {
-        RegisterFunc(name, ffi::Function::FromPacked(func), std::forward<Extra>(extra)...);
+        RegisterFunc(name, Function::FromPacked(func), std::forward<Extra>(extra)...);
         return *this;
     }
 
@@ -210,7 +210,7 @@ public:
 private:
     template<typename Func>
     TVM_FFI_INLINE static Function GetMethod_(std::string name, Func&& func) {
-        return ffi::Function::FromTyped(std::forward<Func>(func), name);
+        return Function::FromTyped(std::forward<Func>(func), name);
     }
 
     template<typename Class, typename R, typename... Args>
