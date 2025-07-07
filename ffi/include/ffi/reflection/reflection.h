@@ -109,7 +109,7 @@ protected:
                 // call method pointer
                 return (target.*func)(std::forward<Args>(params)...);
             };
-            return ffi::Function::FromTyped(fwrap, name);
+            return Function::FromTyped(fwrap, name);
         }
 
         if constexpr (std::is_base_of_v<Object, Class>) {
@@ -117,7 +117,7 @@ protected:
                 // call method pointer
                 return (const_cast<Class*>(target)->*func)(std::forward<Args>(params)...);
             };
-            return ffi::Function::FromTyped(fwrap, name);
+            return Function::FromTyped(fwrap, name);
         }
     }
 
@@ -130,7 +130,7 @@ protected:
                 // call method pointer
                 return (target.*func)(std::forward<Args>(params)...);
             };
-            return ffi::Function::FromTyped(fwrap, name);
+            return Function::FromTyped(fwrap, name);
         }
 
         if constexpr (std::is_base_of_v<Object, Class>) {
