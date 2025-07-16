@@ -11,7 +11,7 @@
 #include "ffi/container/map.h"
 #include "ffi/error.h"
 #include "ffi/memory.h"
-#include "ffi/reflection/reflection.h"
+#include "ffi/reflection/registry.h"
 #include "ffi/string.h"
 #include <utility>
 

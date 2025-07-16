@@ -7,7 +7,7 @@
 
 #include "ffi/memory.h"
 #include "ffi/object.h"
-#include "ffi/reflection/reflection.h"
+#include "ffi/reflection/registry.h"
 #include "ffi/string.h"
 
 namespace litetvm {

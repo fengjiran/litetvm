@@ -4,7 +4,7 @@
 #include "ffi/container/array.h"
 #include "ffi/container/map.h"
 #include "ffi/function.h"
-#include "ffi/reflection/reflection.h"
+#include "ffi/reflection/registry.h"
 
 #include <chrono>
 #include <iostream>

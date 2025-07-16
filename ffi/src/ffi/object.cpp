@@ -5,7 +5,7 @@
 #include "ffi/container/map.h"
 #include "ffi/error.h"
 #include "ffi/function.h"
-#include "ffi/reflection/reflection.h"
+#include "ffi/reflection/registry.h"
 
 #include <memory>
 #include <string>

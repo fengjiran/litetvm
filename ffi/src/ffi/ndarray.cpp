@@ -5,7 +5,7 @@
 #include "ffi/container/ndarray.h"
 #include "ffi/c_api.h"
 #include "ffi/function.h"
-#include "ffi/reflection/reflection.h"
+#include "ffi/reflection/registry.h"
 
 namespace litetvm {
 namespace ffi {

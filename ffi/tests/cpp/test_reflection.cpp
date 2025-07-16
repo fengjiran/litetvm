@@ -3,7 +3,8 @@
 //
 #include "ffi/container/map.h"
 #include "ffi/object.h"
-// #include "ffi/reflection/reflection.h"
+#include "ffi/reflection/accessor.h"
+#include "ffi/reflection/registry.h"
 #include "testing_object.h"
 
 #include <gtest/gtest.h>
