@@ -271,7 +271,7 @@ private:
         // obtain the method function
         info.method = AnyView(func).CopyToTVMFFIAny();
         // apply method info traits
-        ((ApplyMethodInfoTrait(&info, std::forward<Extra>(extra)), ...));
+        (ApplyMethodInfoTrait(&info, std::forward<Extra>(extra)), ...);
         TVM_FFI_CHECK_SAFE_CALL(TVMFFIFunctionSetGlobalFromMethodInfo(&info, 0));
     }
 };
@@ -370,7 +370,7 @@ private:
             info.creator = ObjectCreatorDefault<Class>;
         }
         // apply extra info traits
-        ((ApplyExtraInfoTrait(&info, std::forward<ExtraArgs>(extra_args)), ...));
+        (ApplyExtraInfoTrait(&info, std::forward<ExtraArgs>(extra_args)), ...);
         TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeRegisterExtraInfo(type_index_, &info));
     }
 

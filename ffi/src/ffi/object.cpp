@@ -209,7 +209,7 @@ public:
         }
         entry->extra_info_data = *extra_info;
         entry->extra_info_data.doc = this->CopyString(extra_info->doc);
-        entry->extra_info = &(entry->extra_info_data);
+        entry->extra_info = &entry->extra_info_data;
     }
 
     void Dump(int min_children_count) {
@@ -259,7 +259,7 @@ private:
             type_table_.emplace_back(nullptr);
         }
         // initialize the entry for object
-        GetOrAllocTypeIndex(Object::_type_key, Object::_type_index, Object::_type_depth,
+        this->GetOrAllocTypeIndex(Object::_type_key, Object::_type_index, Object::_type_depth,
                             Object::_type_child_slots, Object::_type_child_slots_can_overflow,
                             -1);
         TVMFFITypeExtraInfo info;
@@ -283,7 +283,7 @@ private:
     }
 
     void ReserveBuiltinTypeIndex(const char* type_key, int32_t static_type_index) {
-        GetOrAllocTypeIndex(type_key, static_type_index, 0, 0, false, -1);
+        this->GetOrAllocTypeIndex(type_key, static_type_index, 0, 0, false, -1);
     }
 
     TVMFFIByteArray CopyString(TVMFFIByteArray str) {
