@@ -199,6 +199,8 @@ public:
     static constexpr int32_t _type_index = kTVMFFIObject;
     // the static type depth of the class
     static constexpr int32_t _type_depth = 0;
+    // the structural equality and hash kind of the type
+    static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindUnsupported;
     // extra fields used by plug-ins for attribute visiting
     // and structural information
     static constexpr bool _type_has_method_sequal_reduce = false;

@@ -152,7 +152,6 @@ public:
 
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(Bytes, ObjectRef, BytesObj);
 
-private:
     /*!
    * \brief Compare two char sequence
    *
@@ -165,7 +164,7 @@ private:
    */
     static int memncmp(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count);
 
-    friend struct AnyEqual;
+private:
     friend class String;
 };
 

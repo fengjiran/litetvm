@@ -5,6 +5,7 @@
 #ifndef LITETVM_FFI_TESTING_OBJECT_H
 #define LITETVM_FFI_TESTING_OBJECT_H
 
+#include "ffi/container/array.h"
 #include "ffi/memory.h"
 #include "ffi/object.h"
 #include "ffi/reflection/registry.h"
@@ -28,6 +29,7 @@ class TNumberObj : public BasePad, public Object {
 public:
     // declare as one slot, with float as overflow
     static constexpr uint32_t _type_child_slots = 1;
+    static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindTreeNode;
     static constexpr const char* _type_key = "test.Number";
     TVM_FFI_DECLARE_BASE_OBJECT_INFO(TNumberObj, Object);
 };
@@ -49,6 +51,8 @@ public:
 
     static constexpr const char* _type_key = "test.Int";
 
+    inline static void RegisterReflection();
+
     TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TIntObj, TNumberObj);
 };
 
@@ -63,6 +67,13 @@ public:
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TInt, TNumber, TIntObj);
 };
 
+inline void TIntObj::RegisterReflection() {
+    namespace refl = litetvm::ffi::reflection;
+    refl::ObjectDef<TIntObj>()
+            .def_ro("value", &TIntObj::value)
+            .def_static("static_add", &TInt::StaticAdd, "static add method");
+}
+
 class TFloatObj : public TNumberObj {
 public:
     double value;
@@ -73,10 +84,10 @@ public:
     static void RegisterReflection() {
         namespace refl = litetvm::ffi::reflection;
         refl::ObjectDef<TFloatObj>()
-            .def_ro("value", &TFloatObj::value, "float value field", refl::DefaultValue(10.0))
-            .def("sub",
-                 [](const TFloatObj* self, double other) -> double { return self->value - other; })
-            .def("add", &TFloatObj::Add, "add method");
+                .def_ro("value", &TFloatObj::value, "float value field", refl::DefaultValue(10.0))
+                .def("sub",
+                     [](const TFloatObj* self, double other) -> double { return self->value - other; })
+                .def("add", &TFloatObj::Add, "add method");
     }
 
     static constexpr const char* _type_key = "test.Float";
@@ -100,7 +111,19 @@ public:
 
     TPrimExprObj(std::string dtype, double value) : dtype(dtype), value(value) {}
 
+    static void RegisterReflection() {
+        namespace refl = litetvm::ffi::reflection;
+        refl::ObjectDef<TPrimExprObj>()
+                .def_rw("dtype", &TPrimExprObj::dtype, "dtype field", refl::DefaultValue("float"))
+                .def_ro("value", &TPrimExprObj::value, "value field", refl::DefaultValue(0))
+                .def("sub", [](TPrimExprObj* self, double other) -> double {
+                    // this is ok because TPrimExprObj is declared asmutable
+                    return self->value - other;
+                });
+    }
+
     static constexpr const char* _type_key = "test.PrimExpr";
+    static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindTreeNode;
     static constexpr bool _type_mutable = true;
     TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TPrimExprObj, Object);
 };
@@ -112,6 +135,60 @@ public:
     }
 
     TVM_FFI_DEFINE_OBJECT_REF_METHODS(TPrimExpr, ObjectRef, TPrimExprObj);
+};
+
+class TVarObj : public Object {
+public:
+    std::string name;
+
+    TVarObj(std::string name) : name(name) {}
+
+    static void RegisterReflection() {
+        namespace refl = litetvm::ffi::reflection;
+        refl::ObjectDef<TVarObj>().def_ro("name", &TVarObj::name);
+    }
+
+    static constexpr const char* _type_key = "test.Var";
+    static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindFreeVar;
+    TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TVarObj, Object);
+};
+
+class TVar : public ObjectRef {
+public:
+    explicit TVar(std::string name) { data_ = make_object<TVarObj>(name); }
+
+    TVM_FFI_DEFINE_OBJECT_REF_METHODS(TVar, ObjectRef, TVarObj);
+};
+
+class TFuncObj : public Object {
+public:
+    Array<TVar> params;
+    Array<ObjectRef> body;
+    String comment;
+
+    TFuncObj(Array<TVar> params, Array<ObjectRef> body, String comment)
+        : params(params), body(body), comment(comment) {}
+
+    static void RegisterReflection() {
+        namespace refl = litetvm::ffi::reflection;
+        refl::ObjectDef<TFuncObj>()
+                .def_ro("params", &TFuncObj::params, refl::AttachFieldFlag::SEqHashDef())
+                .def_ro("body", &TFuncObj::body)
+                .def_ro("comment", &TFuncObj::comment, refl::AttachFieldFlag::SEqHashIgnore());
+    }
+
+    static constexpr const char* _type_key = "test.Func";
+    static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindTreeNode;
+    TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TFuncObj, Object);
+};
+
+class TFunc : public ObjectRef {
+public:
+    explicit TFunc(Array<TVar> params, Array<ObjectRef> body, String comment) {
+        data_ = make_object<TFuncObj>(params, body, comment);
+    }
+
+    TVM_FFI_DEFINE_OBJECT_REF_METHODS(TFunc, ObjectRef, TFuncObj);
 };
 }// namespace testing
 
