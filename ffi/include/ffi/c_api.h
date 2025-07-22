@@ -24,60 +24,14 @@
 #ifndef TVM_FFI_C_API_H_
 #define TVM_FFI_C_API_H_
 
+#include "ffi/macros.h"
 #include <cstdint>
 #include <dlpack/dlpack.h>
-
-// Macros to do weak linking
-#ifdef _MSC_VER
-#define TVM_FFI_WEAK __declspec(selectany)
-#else
-#define TVM_FFI_WEAK __attribute__((weak))
-#endif
 
 // Defines two macros
 // TVM_FFI_DLL: marks the function as a DLL export/import
 //              depending on whether TVM_FFI_EXPORTS is defined
 // TVM_FFI_DLL_EXPORT: always marks the function as a DLL export
-
-#if !defined(TVM_FFI_DLL) && defined(__EMSCRIPTEN__)
-#include <emscripten/emscripten.h>
-#define TVM_FFI_DLL EMSCRIPTEN_KEEPALIVE
-#define TVM_FFI_DLL_EXPORT EMSCRIPTEN_KEEPALIVE
-#endif
-#if !defined(TVM_FFI_DLL) && defined(_MSC_VER)
-#ifdef TVM_FFI_EXPORTS
-#define TVM_FFI_DLL __declspec(dllexport)
-#else
-#define TVM_FFI_DLL __declspec(dllimport)
-#endif
-#define TVM_FFI_DLL_EXPORT __declspec(dllexport)
-#endif
-#ifndef TVM_FFI_DLL
-#define TVM_FFI_DLL __attribute__((visibility("default")))
-#define TVM_FFI_DLL_EXPORT __attribute__((visibility("default")))
-#endif
-
-/*!
- * \brief Marks the API as extra c++ api that is defined in cc files.
- *
- * These APIs are extra features that depend on, but are not required to
- * support essential core functionality, such as function calling and object
- * access.
- *
- * They are implemented in cc files to reduce compile-time overhead.
- * The input/output only uses POD/Any/ObjectRef for ABI stability.
- * However, these extra APIs may have an issue across MSVC/Itanium ABI,
- *
- * Related features are also available through reflection based function
- * that is fully based on C API
- *
- * The project aims to minimize the number of extra C++ APIs and only
- * restrict the use to non-core functionalities.
- */
-#ifndef TVM_FFI_EXTRA_CXX_API
-#define TVM_FFI_EXTRA_CXX_API TVM_FFI_DLL
-#endif
-
 
 #ifdef __cplusplus
 extern "C" {

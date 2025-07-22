@@ -25,93 +25,12 @@
 #ifndef LITETVM_FFI_BASE_DETAILS_H_
 #define LITETVM_FFI_BASE_DETAILS_H_
 
-// #include "ffi/c_api.h"
+#include "ffi/macros.h"
 #include "ffi/endian.h"
 
 #include <cstddef>
 #include <type_traits>
 #include <utility>
-
-#if defined(_MSC_VER)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-#include <windows.h>
-
-#ifdef ERROR
-#undef ERROR
-#endif
-
-#endif
-
-#if defined(_MSC_VER)
-#define TVM_FFI_INLINE [[msvc::forceinline]] inline
-#else
-#define TVM_FFI_INLINE [[gnu::always_inline]] inline
-#endif
-
-/*!
- * \brief Macro helper to force a function not to be inlined.
- * It is only used in places that we know not inlining is good,
- * e.g. some logging functions.
- */
-#if defined(_MSC_VER)
-#define TVM_FFI_NO_INLINE [[msvc::noinline]]
-#else
-#define TVM_FFI_NO_INLINE [[gnu::noinline]]
-#endif
-
-#if defined(_MSC_VER)
-#define TVM_FFI_UNREACHABLE() __assume(false)
-#else
-#define TVM_FFI_UNREACHABLE() __builtin_unreachable()
-#endif
-
-/*! \brief helper macro to suppress unused warning */
-#define TVM_FFI_ATTRIBUTE_UNUSED [[maybe_unused]]
-
-#define TVM_FFI_STR_CONCAT_(__x, __y) __x##__y
-#define TVM_FFI_STR_CONCAT(__x, __y) TVM_FFI_STR_CONCAT_(__x, __y)
-
-#if defined(__GNUC__) || defined(__clang__)
-#define TVM_FFI_FUNC_SIG __PRETTY_FUNCTION__
-#elif defined(_MSC_VER)
-#define TVM_FFI_FUNC_SIG __FUNCSIG__
-#else
-#define TVM_FFI_FUNC_SIG __func__
-#endif
-
-#define TVM_FFI_STATIC_INIT_BLOCK_VAR_DEF \
-    TVM_FFI_ATTRIBUTE_UNUSED static inline int __##TVMFFIStaticInitReg
-
-/*! \brief helper macro to run code once during initialization */
-#define TVM_FFI_STATIC_INIT_BLOCK(Body) \
-    TVM_FFI_STR_CONCAT(TVM_FFI_STATIC_INIT_BLOCK_VAR_DEF, __COUNTER__) = []() { Body return 0; }()
-
-
-#ifdef __has_cpp_attribute
-#if __has_cpp_attribute(nodiscard)
-#define NODISCARD [[nodiscard]]
-#else
-#define NODISCARD
-#endif
-
-#if __has_cpp_attribute(maybe_unused)
-#define MAYBE_UNUSED [[maybe_unused]]
-#else
-#define MAYBE_UNUSED
-#endif
-#endif
-
-#define UNUSED(expr)   \
-    do {               \
-        (void) (expr); \
-    } while (false)
 
 /*
  * \brief Define the default copy/move constructor and assign operator
