@@ -42,36 +42,6 @@
     TypeName& operator=(const TypeName& other) = default;     \
     TypeName& operator=(TypeName&& other) = default;
 
-/**
- * \brief marks the begining of a C call that logs exception
- */
-#define TVM_FFI_LOG_EXCEPTION_CALL_BEGIN() \
-    try {                                  \
-    (void) 0
-
-/*!
- * \brief Marks the end of a C call that logs exception
- */
-#define TVM_FFI_LOG_EXCEPTION_CALL_END(Name)                      \
-    }                                                             \
-    catch (const std::exception& err) {                           \
-        std::cerr << "Exception caught during " << #Name << ":\n" \
-                  << err.what() << std::endl;                     \
-        exit(-1);                                                 \
-    }
-
-/*!
- * \brief Clear the padding parts so we can safely use v_int64 for hash
- *        and equality check even when the value stored is a pointer.
- *
- * This macro is used to clear the padding parts for hash and equality check
- * in 32bit platform.
- */
-#define TVM_FFI_CLEAR_PTR_PADDING_IN_FFI_ANY(result)                      \
-    if constexpr (sizeof((result)->v_obj) != sizeof((result)->v_int64)) { \
-        (result)->v_int64 = 0;                                            \
-    }
-
 namespace litetvm {
 namespace ffi {
 namespace details {
@@ -104,7 +74,7 @@ void for_each(const F& f, Args&&... args) {// NOLINT(*)
  * \param value The right operand.
  * \return the combined result.
  */
-template<typename T, std::enable_if_t<std::is_convertible<T, uint64_t>::value, bool> = true>
+template<typename T, std::enable_if_t<std::is_convertible_v<T, uint64_t>, bool> = true>
 TVM_FFI_INLINE uint64_t StableHashCombine(uint64_t key, const T& value) {
     // XXX: do not use std::hash in this function. This hash must be stable
     // across different platforms and std::hash is implementation dependent.
