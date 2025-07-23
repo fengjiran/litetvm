@@ -195,10 +195,6 @@ struct TVMFFIByteArray {
     const char* data;
     size_t size;
 };
-// typedef struct {
-//     const char* data;
-//     size_t size;
-// } TVMFFIByteArray;
 
 /*!
  * \brief Shape cell used in shape object following header.
@@ -340,7 +336,7 @@ typedef enum {
  * The meta-data record comparison method in tree node and DAG node.
  *
  * \code
- * x = VarNode()
+ * x = VarNode();
  * v0 = AddNode(x, 1)
  * v1 = AddNode(x, 1)
  * v2 = AddNode(v0, v0)
@@ -353,6 +349,7 @@ typedef enum {
  * treated as a DAG node, then v2 and v3 does not
  * structural equals to each other.
  */
+
 #ifdef __cplusplus
 enum TVMFFISEqHashKind : int32_t {
 #else
@@ -360,34 +357,37 @@ typedef enum {
 #endif
     /*! \brief Do not support structural eq/hash. */
     kTVMFFISEqHashKindUnsupported = 0,
+
     /*!
-         * \brief The object be compared as a tree node.
-         */
+     * \brief The object be compared as a tree node.
+     */
     kTVMFFISEqHashKindTreeNode = 1,
     /*!
-         * \brief The object is treated as a free variable that can be mapped
-         *        to another free variable in the definition region.
-         */
+     * \brief The object is treated as a free variable that can be mapped
+     *        to another free variable in the definition region.
+     */
     kTVMFFISEqHashKindFreeVar = 2,
     /*!
-         * \brief The field should be compared as a DAG node.
-         */
+     * \brief The field should be compared as a DAG node.
+     */
     kTVMFFISEqHashKindDAGNode = 3,
+
     /*!
-         * \brief The object is treated as a constant tree node.
-         *
-         * Same as tree node, but the object does not contain free var
-         * as any of its nested children.
-         *
-         * That means we can use pointer equality for equality.
-         */
+     * \brief The object is treated as a constant tree node.
+     *
+     * Same as tree node, but the object does not contain free var
+     * as any of its nested children.
+     *
+     * That means we can use pointer equality for equality.
+     */
     kTVMFFISEqHashKindConstTreeNode = 4,
+
     /*!
-         * \brief One can simply use pointer equality for equality.
-         *
-         * This is useful for "singleton"-style object that can
-         * is only an unique copy of each value.
-         */
+     * \brief One can simply use pointer equality for equality.
+     *
+     * This is useful for "singleton"-style object that can
+     * is only an unique copy of each value.
+     */
     kTVMFFISEqHashKindUniqueInstance = 5,
 #ifdef __cplusplus
 };
@@ -405,8 +405,10 @@ struct TVMFFIFieldInfo {
 
     /*! \brief The docstring about the field. */
     TVMFFIByteArray doc;
+
     /*! \brief The type schema of the field in JSON string. */
     TVMFFIByteArray type_schema;
+
     /*!
      * \brief bitmask flags of the field.
      */
@@ -420,11 +422,13 @@ struct TVMFFIFieldInfo {
 
     /*! \brief The getter to access the field. */
     TVMFFIFieldGetter getter;
+
     /*!
      * \brief The setter to access the field.
      * \note The setter is set even if the field is readonly for serialization.
      */
     TVMFFIFieldSetter setter;
+
     /*!
      * \brief The default value of the field, this field hold AnyView,
      *        valid when flags set TVMFFIFieldFlagBitMaskHasDefault
@@ -524,10 +528,9 @@ struct TVMFFITypeInfo {
     TVMFFIByteArray type_key;
 
     /*!
-   * \brief type_acenstors[depth] stores the type_index of the acenstors at depth level
-   * \note To keep things simple, we do not allow multiple inheritance so the
-   *       hieracy stays as a tree
-   */
+     * \brief type_acenstors[depth] stores the type_index of the acenstors at depth level
+     * \note To keep things simple, we do not allow multiple inheritance so the hieracy stays as a tree
+     */
     const TVMFFITypeInfo** type_acenstors;
 
     /*! \brief Cached hash value of the type key, used for consistent structural hashing. */
@@ -838,7 +841,6 @@ TVM_FFI_DLL int32_t TVMFFITypeGetOrAllocIndex(const TVMFFIByteArray* type_key,
  * \brief Get dynamic type info by type index.
  *
  * \param type_index The type index
- * \param result The output type information
  * \return The type info
  */
 TVM_FFI_DLL const TVMFFITypeInfo* TVMFFIGetTypeInfo(int32_t type_index);

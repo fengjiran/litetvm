@@ -68,7 +68,7 @@ public:
 };
 
 inline void TIntObj::RegisterReflection() {
-    namespace refl = litetvm::ffi::reflection;
+    namespace refl = reflection;
     refl::ObjectDef<TIntObj>()
             .def_ro("value", &TIntObj::value)
             .def_static("static_add", &TInt::StaticAdd, "static add method");
@@ -82,7 +82,7 @@ public:
 
     double Add(double other) const { return value + other; }
     static void RegisterReflection() {
-        namespace refl = litetvm::ffi::reflection;
+        namespace refl = reflection;
         refl::ObjectDef<TFloatObj>()
                 .def_ro("value", &TFloatObj::value, "float value field", refl::DefaultValue(10.0))
                 .def("sub",
@@ -112,7 +112,7 @@ public:
     TPrimExprObj(std::string dtype, double value) : dtype(dtype), value(value) {}
 
     static void RegisterReflection() {
-        namespace refl = litetvm::ffi::reflection;
+        namespace refl = reflection;
         refl::ObjectDef<TPrimExprObj>()
                 .def_rw("dtype", &TPrimExprObj::dtype, "dtype field", refl::DefaultValue("float"))
                 .def_ro("value", &TPrimExprObj::value, "value field", refl::DefaultValue(0))
@@ -144,7 +144,7 @@ public:
     TVarObj(std::string name) : name(name) {}
 
     static void RegisterReflection() {
-        namespace refl = litetvm::ffi::reflection;
+        namespace refl = reflection;
         refl::ObjectDef<TVarObj>().def_ro("name", &TVarObj::name);
     }
 
@@ -170,7 +170,7 @@ public:
         : params(params), body(body), comment(comment) {}
 
     static void RegisterReflection() {
-        namespace refl = litetvm::ffi::reflection;
+        namespace refl = reflection;
         refl::ObjectDef<TFuncObj>()
                 .def_ro("params", &TFuncObj::params, refl::AttachFieldFlag::SEqHashDef())
                 .def_ro("body", &TFuncObj::body)

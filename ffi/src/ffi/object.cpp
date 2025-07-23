@@ -97,7 +97,8 @@ public:
             if (parent_type_index < 0)
                 return nullptr;
             // try to allocate from parent's type table.
-            TVM_FFI_ICHECK_LT(parent_type_index, type_table_.size()) << " type_key=" << type_key << ", static_index=" << static_type_index;
+            TVM_FFI_ICHECK_LT(parent_type_index, type_table_.size())
+                    << " type_key=" << type_key << ", static_index=" << static_type_index;
             return type_table_[parent_type_index].get();
         }();
 
@@ -111,7 +112,11 @@ public:
                         << ToStringView(type_table_[static_type_index]->type_key) << " and " << type_key;
                 return static_type_index;
             }
+
+            // Step 1: allocate from parent's reserved slots
             TVM_FFI_ICHECK_NOTNULL(parent);
+
+            // total number of slots include the type itself.
             int num_slots = num_child_slots + 1;
             if (parent->allocated_slots + num_slots <= parent->num_slots) {
                 // allocate the slot from parent's reserved pool
@@ -120,8 +125,10 @@ public:
                 parent->allocated_slots += num_slots;
                 return tindex;
             }
+
             // Step 2: allocate from overflow
-            TVM_FFI_ICHECK(parent->child_slots_can_overflow) << "Reach maximum number of sub-classes for " << ToStringView(parent->type_key);
+            TVM_FFI_ICHECK(parent->child_slots_can_overflow)
+                    << "Reach maximum number of sub-classes for " << ToStringView(parent->type_key);
             // allocate new entries.
             int32_t tindex = type_counter_;
             type_counter_ += num_slots;
@@ -138,7 +145,6 @@ public:
         if (parent != nullptr && !parent->child_slots_can_overflow) {
             child_slots_can_overflow = false;
         }
-        // total number of slots include the type itself.
 
         if (parent != nullptr) {
             TVM_FFI_ICHECK_GT(allocated_tindex, parent->type_index);
@@ -171,14 +177,16 @@ public:
     void RegisterTypeField(int32_t type_index, const TVMFFIFieldInfo* info) {
         Entry* entry = GetTypeEntry(type_index);
         TVMFFIFieldInfo field_data = *info;
-        field_data.name = this->CopyString(info->name);
-        field_data.doc = this->CopyString(info->doc);
-        field_data.type_schema = this->CopyString(info->type_schema);
+
+        // field_data.name = CopyString(info->name);
+        // field_data.doc = CopyString(info->doc);
+        // field_data.type_schema = CopyString(info->type_schema);
         if (info->flags & kTVMFFIFieldFlagBitMaskHasDefault) {
-            field_data.default_value = this->CopyAny(AnyView::CopyFromTVMFFIAny(info->default_value)).CopyToTVMFFIAny();
+            field_data.default_value = CopyAny(AnyView::CopyFromTVMFFIAny(info->default_value)).CopyToTVMFFIAny();
         } else {
             field_data.default_value = AnyView(nullptr).CopyToTVMFFIAny();
         }
+
         entry->type_fields_data.push_back(field_data);
         // refresh ptr as the data can change
         entry->fields = entry->type_fields_data.data();
@@ -188,10 +196,10 @@ public:
     void RegisterTypeMethod(int32_t type_index, const TVMFFIMethodInfo* info) {
         Entry* entry = GetTypeEntry(type_index);
         TVMFFIMethodInfo method_data = *info;
-        method_data.name = this->CopyString(info->name);
-        method_data.doc = this->CopyString(info->doc);
-        method_data.type_schema = this->CopyString(info->type_schema);
-        method_data.method = this->CopyAny(AnyView::CopyFromTVMFFIAny(info->method)).CopyToTVMFFIAny();
+        method_data.name = CopyString(info->name);
+        method_data.doc = CopyString(info->doc);
+        method_data.type_schema = CopyString(info->type_schema);
+        method_data.method = CopyAny(AnyView::CopyFromTVMFFIAny(info->method)).CopyToTVMFFIAny();
         entry->type_methods_data.push_back(method_data);
         entry->methods = entry->type_methods_data.data();
         entry->num_methods = static_cast<int32_t>(entry->type_methods_data.size());
@@ -208,15 +216,15 @@ public:
                     << "Cross check the reflection registration.";
         }
         entry->extra_info_data = *extra_info;
-        entry->extra_info_data.doc = this->CopyString(extra_info->doc);
+        entry->extra_info_data.doc = CopyString(extra_info->doc);
         entry->extra_info = &entry->extra_info_data;
     }
 
     void Dump(int min_children_count) {
-        std::vector<int> num_children(type_table_.size(), 0);
+        std::vector num_children(type_table_.size(), 0);
         // expected child slots compute the expected slots
         // based on the current child slot setting
-        std::vector<int> expected_child_slots(type_table_.size(), 0);
+        std::vector expected_child_slots(type_table_.size(), 0);
         // reverse accumulation so we can get total counts in a bottom-up manner.
         for (auto it = type_table_.rbegin(); it != type_table_.rend(); ++it) {
             const Entry* ptr = it->get();
@@ -258,17 +266,19 @@ private:
         for (int32_t i = 0; i < kTVMFFIDynObjectBegin; ++i) {
             type_table_.emplace_back(nullptr);
         }
+
         // initialize the entry for object
-        this->GetOrAllocTypeIndex(Object::_type_key, Object::_type_index, Object::_type_depth,
+        GetOrAllocTypeIndex(Object::_type_key, Object::_type_index, Object::_type_depth,
                             Object::_type_child_slots, Object::_type_child_slots_can_overflow,
                             -1);
+
         TVMFFITypeExtraInfo info;
         info.total_size = sizeof(Object);
         info.creator = nullptr;
         info.doc = TVMFFIByteArray{nullptr, 0};
         RegisterTypeExtraInfo(Object::_type_index, &info);
 
-        // reserve the static types
+        // reserve the builtin types
         ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFINone, kTVMFFINone);
         ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIInt, kTVMFFIInt);
         ReserveBuiltinTypeIndex(StaticTypeKey::kTVMFFIFloat, kTVMFFIFloat);
@@ -283,7 +293,7 @@ private:
     }
 
     void ReserveBuiltinTypeIndex(const char* type_key, int32_t static_type_index) {
-        this->GetOrAllocTypeIndex(type_key, static_type_index, 0, 0, false, -1);
+        GetOrAllocTypeIndex(type_key, static_type_index, 0, 0, false, -1);
     }
 
     TVMFFIByteArray CopyString(TVMFFIByteArray str) {

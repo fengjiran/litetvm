@@ -21,7 +21,6 @@ namespace ffi {
 /*!
  * \brief Global function table.
  *
-
  * \note We do not use mutex to guard updating of GlobalFunctionTable
  *
  * The assumption is that updating of GlobalFunctionTable will be done
