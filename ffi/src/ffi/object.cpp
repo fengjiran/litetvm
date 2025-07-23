@@ -222,9 +222,9 @@ public:
 
     void Dump(int min_children_count) {
         std::vector num_children(type_table_.size(), 0);
-        // expected child slots compute the expected slots
-        // based on the current child slot setting
+        // compute the expected slots based on the current child slot setting
         std::vector expected_child_slots(type_table_.size(), 0);
+
         // reverse accumulation so we can get total counts in a bottom-up manner.
         for (auto it = type_table_.rbegin(); it != type_table_.rend(); ++it) {
             const Entry* ptr = it->get();
@@ -335,14 +335,13 @@ void MakeObjectFromPackedArgs(PackedArgs args, Any* ret) {
         TVM_FFI_THROW(RuntimeError) << "Type `" << TypeIndexToTypeKey(type_index)
                                     << "` does not support reflection creation";
     }
+
     TVMFFIObjectHandle handle;
     TVM_FFI_CHECK_SAFE_CALL(type_info->extra_info->creator(&handle));
-    ObjectPtr<Object> ptr =
-            details::ObjectUnsafe::ObjectPtrFromOwned<Object>(static_cast<TVMFFIObject*>(handle));
+    ObjectPtr<Object> ptr = details::ObjectUnsafe::ObjectPtrFromOwned<Object>(static_cast<TVMFFIObject*>(handle));
 
     std::vector<String> keys;
     std::vector<bool> keys_found;
-
     for (int i = 1; i < args.size(); i += 2) {
         keys.push_back(args[i].cast<String>());
     }
