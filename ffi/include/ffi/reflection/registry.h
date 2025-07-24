@@ -177,7 +177,7 @@ protected:
                 // call method pointer
                 return (target->*func)(std::forward<Args>(params)...);
             };
-            return ffi::Function::FromTyped(fwrap, name);
+            return Function::FromTyped(fwrap, name);
         }
     }
 
@@ -253,23 +253,23 @@ private:
     }
 
     template<typename Class, typename R, typename... Args>
-    TVM_FFI_INLINE static Function GetMethod_(std::string name, R (Class::*func)(Args...) const) {
-        return GetMethod<Class>(std::string(name), func);
-    }
-
-    template<typename Class, typename R, typename... Args>
     TVM_FFI_INLINE static Function GetMethod_(std::string name, R (Class::*func)(Args...)) {
         return GetMethod<Class>(std::string(name), func);
     }
 
+    template<typename Class, typename R, typename... Args>
+    TVM_FFI_INLINE static Function GetMethod_(std::string name, R (Class::*func)(Args...) const) {
+        return GetMethod<Class>(std::string(name), func);
+    }
+
     template<typename... Extra>
-    void RegisterFunc(const char* name, ffi::Function func, Extra&&... extra) {
+    void RegisterFunc(const char* name, Function func, Extra&&... extra) {
         TVMFFIMethodInfo info;
         info.name = TVMFFIByteArray{name, std::char_traits<char>::length(name)};
         info.doc = TVMFFIByteArray{nullptr, 0};
         info.type_schema = TVMFFIByteArray{nullptr, 0};
         info.flags = 0;
-        // obtain the method function
+        // get the method function
         info.method = AnyView(func).CopyToTVMFFIAny();
         // apply method info traits
         (ApplyMethodInfoTrait(&info, std::forward<Extra>(extra)), ...);
