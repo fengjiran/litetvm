@@ -62,7 +62,9 @@ public:
         data_ = make_object<TIntObj>(value);
     }
 
-    static TInt StaticAdd(TInt lhs, TInt rhs) { return TInt(lhs->value + rhs->value); }
+    static TInt StaticAdd(TInt lhs, TInt rhs) {
+        return TInt(lhs->value + rhs->value);
+    }
 
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TInt, TNumber, TIntObj);
 };
