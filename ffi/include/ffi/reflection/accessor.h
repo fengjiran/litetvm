@@ -133,7 +133,7 @@ inline Function GetMethod(std::string_view type_key, const char* method_name) {
  * \note This function calls both the child and parent type info.
  */
 template<typename Callback>
-inline void ForEachFieldInfo(const TypeInfo* type_info, Callback callback) {
+void ForEachFieldInfo(const TypeInfo* type_info, Callback callback) {
     using ResultType = decltype(callback(type_info->fields));
     static_assert(std::is_same_v<ResultType, void>, "Callback must return void");
     // iterate through acenstors in parent to child order
@@ -161,7 +161,7 @@ inline void ForEachFieldInfo(const TypeInfo* type_info, Callback callback) {
  * \note This function calls both the child and parent type info and can be used for searching.
  */
 template<typename Callback>
-inline bool ForEachFieldInfoWithEarlyStop(const TypeInfo* type_info,
+bool ForEachFieldInfoWithEarlyStop(const TypeInfo* type_info,
                                           Callback callback_with_early_stop) {
     // iterate through acenstors in parent to child order
     // skip the first one since it is always the root object

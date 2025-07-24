@@ -47,6 +47,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 });
 
 TEST(Reflection, GetFieldByteOffset) {
+    EXPECT_EQ(details::ObjectUnsafe::GetObjectOffsetToSubclass<TNumberObj>(), 32);
     EXPECT_EQ(reflection::GetFieldByteOffsetToObject(&TestObjA::x), sizeof(TVMFFIObject));
     EXPECT_EQ(reflection::GetFieldByteOffsetToObject(&TestObjA::y), 8 + sizeof(TVMFFIObject));
     EXPECT_EQ(reflection::GetFieldByteOffsetToObject(&TIntObj::value), sizeof(TVMFFIObject));

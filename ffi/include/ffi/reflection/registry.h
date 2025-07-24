@@ -43,9 +43,7 @@ class AttachFieldFlag : public FieldInfoTrait {
 public:
     /*!
      * \brief Attach a field flag to the field
-     *
      * \param flag The flag to be set
-     *
      * \return The trait object.
      */
     explicit AttachFieldFlag(int32_t flag) : flag_(flag) {}
@@ -56,6 +54,7 @@ public:
     TVM_FFI_INLINE static AttachFieldFlag SEqHashDef() {
         return AttachFieldFlag(kTVMFFIFieldFlagBitMaskSEqHashDef);
     }
+
     /*!
      * \brief Attach kTVMFFIFieldFlagBitMaskSEqHashIgnore
      */
@@ -63,7 +62,9 @@ public:
         return AttachFieldFlag(kTVMFFIFieldFlagBitMaskSEqHashIgnore);
     }
 
-    TVM_FFI_INLINE void Apply(TVMFFIFieldInfo* info) const { info->flags |= flag_; }
+    TVM_FFI_INLINE void Apply(TVMFFIFieldInfo* info) const {
+        info->flags |= flag_;
+    }
 
 private:
     int32_t flag_;
