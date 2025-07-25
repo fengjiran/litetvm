@@ -33,7 +33,9 @@ public:
     /*!
    * \brief The kind of the access pattern.
    */
+
     AccessKind kind;
+
     /*!
    * \brief The access key
    * \note for array access, it will always be integer

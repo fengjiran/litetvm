@@ -552,7 +552,7 @@ struct AnyUnsafe : ObjectUnsafe {
     }
 
     TVM_FFI_INLINE static const TVMFFIAny* TVMFFIAnyPtrFromAny(const Any& ref) {
-        return &(ref.data_);
+        return &ref.data_;
     }
 
     template<typename T>

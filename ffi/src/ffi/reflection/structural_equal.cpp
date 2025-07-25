@@ -22,40 +22,40 @@ class StructEqualHandler {
 public:
     StructEqualHandler() = default;
 
-    bool CompareAny(ffi::Any lhs, ffi::Any rhs) {
-        using ffi::details::AnyUnsafe;
+    bool CompareAny(Any lhs, Any rhs) {
+        using details::AnyUnsafe;
         const TVMFFIAny* lhs_data = AnyUnsafe::TVMFFIAnyPtrFromAny(lhs);
         const TVMFFIAny* rhs_data = AnyUnsafe::TVMFFIAnyPtrFromAny(rhs);
         if (lhs_data->type_index != rhs_data->type_index) {
             return false;
         }
-        if (lhs_data->type_index < TypeIndex::kTVMFFIStaticObjectBegin) {
+
+        if (lhs_data->type_index < kTVMFFIStaticObjectBegin) {
             // this is POD data, we can just compare the value
             return lhs_data->v_int64 == rhs_data->v_int64;
         }
+
         switch (lhs_data->type_index) {
-            case TypeIndex::kTVMFFIStr:
-            case TypeIndex::kTVMFFIBytes: {
+            case kTVMFFIStr:
+            case kTVMFFIBytes: {
                 // compare bytes
-                const BytesObjBase* lhs_str =
-                        AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
-                const BytesObjBase* rhs_str =
-                        AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
+                const BytesObjBase* lhs_str =AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
+                const BytesObjBase* rhs_str =AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
                 return Bytes::memncmp(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size) == 0;
             }
-            case TypeIndex::kTVMFFIArray: {
+            case kTVMFFIArray: {
                 return CompareArray(AnyUnsafe::MoveFromAnyAfterCheck<Array<Any>>(std::move(lhs)),
                                     AnyUnsafe::MoveFromAnyAfterCheck<Array<Any>>(std::move(rhs)));
             }
-            case TypeIndex::kTVMFFIMap: {
+            case kTVMFFIMap: {
                 return CompareMap(AnyUnsafe::MoveFromAnyAfterCheck<Map<Any, Any>>(std::move(lhs)),
                                   AnyUnsafe::MoveFromAnyAfterCheck<Map<Any, Any>>(std::move(rhs)));
             }
-            case TypeIndex::kTVMFFIShape: {
+            case kTVMFFIShape: {
                 return CompareShape(AnyUnsafe::MoveFromAnyAfterCheck<Shape>(std::move(lhs)),
                                     AnyUnsafe::MoveFromAnyAfterCheck<Shape>(std::move(rhs)));
             }
-            case TypeIndex::kTVMFFINDArray: {
+            case kTVMFFINDArray: {
                 return CompareNDArray(AnyUnsafe::MoveFromAnyAfterCheck<NDArray>(std::move(lhs)),
                                       AnyUnsafe::MoveFromAnyAfterCheck<NDArray>(std::move(rhs)));
             }
@@ -197,12 +197,13 @@ public:
         return false;
     }
 
-    bool CompareArray(ffi::Array<Any> lhs, ffi::Array<Any> rhs) {
+    bool CompareArray(Array<Any> lhs, Array<Any> rhs) {
         if (lhs.size() != rhs.size()) {
             // fast path, size mismatch, and there is no path tracing
-            // return false since we don't need informative error message
+            // return false since we don't need an informative error message
             if (mismatch_lhs_reverse_path_ == nullptr) return false;
         }
+
         for (size_t i = 0; i < std::min(lhs.size(), rhs.size()); ++i) {
             if (!CompareAny(lhs[i], rhs[i])) {
                 if (mismatch_lhs_reverse_path_ != nullptr) {
@@ -212,6 +213,7 @@ public:
                 return false;
             }
         }
+
         if (lhs.size() == rhs.size()) return true;
         if (mismatch_lhs_reverse_path_ != nullptr) {
             if (lhs.size() > rhs.size()) {
@@ -225,7 +227,7 @@ public:
         return false;
     }
 
-    bool CompareShape(Shape lhs, Shape rhs) {
+    static bool CompareShape(Shape lhs, Shape rhs) {
         if (lhs.size() != rhs.size()) {
             return false;
         }
@@ -237,7 +239,7 @@ public:
         return true;
     }
 
-    bool CompareNDArray(NDArray lhs, NDArray rhs) {
+    bool CompareNDArray(NDArray lhs, NDArray rhs) const {
         if (lhs.same_as(rhs)) return true;
         if (lhs->ndim != rhs->ndim) return false;
         for (int i = 0; i < lhs->ndim; ++i) {
@@ -251,16 +253,15 @@ public:
             TVM_FFI_ICHECK(rhs.IsContiguous()) << "Can only compare contiguous tensor";
             size_t data_size = GetDataSize(*(lhs.operator->()));
             return std::memcmp(lhs->data, rhs->data, data_size) == 0;
-        } else {
-            return true;
         }
+        return true;
     }
 
     Any MapLhsToRhs(Any lhs) const {
-        if (lhs.type_index() < TypeIndex::kTVMFFIStaticObjectBegin) {
+        if (lhs.type_index() < kTVMFFIStaticObjectBegin) {
             return lhs;
         }
-        ObjectRef lhs_obj = ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(lhs));
+        ObjectRef lhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(lhs));
         auto it = equal_map_lhs_.find(lhs_obj);
         if (it != equal_map_lhs_.end()) {
             return it->second;
@@ -269,10 +270,10 @@ public:
     }
 
     Any MapRhsToLhs(Any rhs) const {
-        if (rhs.type_index() < TypeIndex::kTVMFFIStaticObjectBegin) {
+        if (rhs.type_index() < kTVMFFIStaticObjectBegin) {
             return rhs;
         }
-        ObjectRef rhs_obj = ffi::details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(rhs));
+        ObjectRef rhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(rhs));
         auto it = equal_map_rhs_.find(rhs_obj);
         if (it != equal_map_rhs_.end()) {
             return it->second;
