@@ -44,7 +44,7 @@ public:
     AccessStepObj(AccessKind kind, Any key) : kind(kind), key(key) {}
 
     static void RegisterReflection() {
-        namespace refl = litetvm::ffi::reflection;
+        namespace refl = reflection;
         refl::ObjectDef<AccessStepObj>()
                 .def_ro("kind", &AccessStepObj::kind)
                 .def_ro("key", &AccessStepObj::key);
@@ -68,15 +68,21 @@ public:
         return AccessStep(AccessKind::kObjectField, field_name);
     }
 
-    static AccessStep ArrayIndex(int64_t index) { return AccessStep(AccessKind::kArrayIndex, index); }
+    static AccessStep ArrayIndex(int64_t index) {
+        return AccessStep(AccessKind::kArrayIndex, index);
+    }
 
     static AccessStep ArrayIndexMissing(int64_t index) {
         return AccessStep(AccessKind::kArrayIndexMissing, index);
     }
 
-    static AccessStep MapKey(Any key) { return AccessStep(AccessKind::kMapKey, key); }
+    static AccessStep MapKey(Any key) {
+        return AccessStep(AccessKind::kMapKey, key);
+    }
 
-    static AccessStep MapKeyMissing(Any key) { return AccessStep(AccessKind::kMapKeyMissing, key); }
+    static AccessStep MapKeyMissing(Any key) {
+        return AccessStep(AccessKind::kMapKeyMissing, key);
+    }
 
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(AccessStep, ObjectRef, AccessStepObj);
 };

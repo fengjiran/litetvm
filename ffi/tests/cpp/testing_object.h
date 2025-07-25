@@ -74,6 +74,10 @@ inline void TIntObj::RegisterReflection() {
     refl::ObjectDef<TIntObj>()
             .def_ro("value", &TIntObj::value)
             .def_static("static_add", &TInt::StaticAdd, "static add method");
+    // define extra type attributes
+    refl::TypeAttrDef<TIntObj>()
+        .def("test.GetValue", &TIntObj::GetValue)
+        .attr("test.size", sizeof(TIntObj));
 }
 
 class TFloatObj : public TNumberObj {
@@ -82,7 +86,10 @@ public:
 
     TFloatObj(double value) : value(value) {}
 
-    double Add(double other) const { return value + other; }
+    double Add(double other) const {
+        return value + other;
+    }
+
     static void RegisterReflection() {
         namespace refl = reflection;
         refl::ObjectDef<TFloatObj>()
@@ -119,7 +126,7 @@ public:
                 .def_rw("dtype", &TPrimExprObj::dtype, "dtype field", refl::DefaultValue("float"))
                 .def_ro("value", &TPrimExprObj::value, "value field", refl::DefaultValue(0))
                 .def("sub", [](TPrimExprObj* self, double other) -> double {
-                    // this is ok because TPrimExprObj is declared asmutable
+                    // this is ok because TPrimExprObj is declared as mutable
                     return self->value - other;
                 });
     }
