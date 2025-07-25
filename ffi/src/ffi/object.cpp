@@ -86,7 +86,7 @@ public:
         }
     };
 
-    struct TypeAttrColumnData : public TVMFFITypeAttrColumn {
+    struct TypeAttrColumnData : TVMFFITypeAttrColumn {
         std::vector<Any> data_;
     };
 
@@ -247,7 +247,8 @@ public:
         }
         column->data_[type_index] = value_view;
     }
-    const TVMFFITypeAttrColumn* GetTypeAttrColumn(const TVMFFIByteArray* name) {
+
+    const TVMFFITypeAttrColumn* GetTypeAttrColumn(const TVMFFIByteArray* name) const {
         String name_str(*name);
         auto it = type_attr_name_to_column_index_.find(name_str);
         if (it == type_attr_name_to_column_index_.end()) return nullptr;
