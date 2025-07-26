@@ -198,7 +198,7 @@ public:
 
     bool CompareArray(const Array<Any>& lhs, const Array<Any>& rhs) {
         if (lhs.size() != rhs.size()) {
-            // fast path, size mismatch, and there is no path tracing
+            // fast path, size mismatch, and there is no path tracing,
             // return false since we don't need an informative error message
             if (mismatch_lhs_reverse_path_ == nullptr) {
                 return false;
@@ -244,12 +244,24 @@ public:
     }
 
     bool CompareNDArray(const NDArray& lhs, const NDArray& rhs) const {
-        if (lhs.same_as(rhs)) return true;
-        if (lhs->ndim != rhs->ndim) return false;
-        for (int i = 0; i < lhs->ndim; ++i) {
-            if (lhs->shape[i] != rhs->shape[i]) return false;
+        if (lhs.same_as(rhs)) {
+            return true;
         }
-        if (lhs->dtype != rhs->dtype) return false;
+
+        if (lhs->ndim != rhs->ndim) {
+            return false;
+        }
+
+        for (int i = 0; i < lhs->ndim; ++i) {
+            if (lhs->shape[i] != rhs->shape[i]) {
+                return false;
+            }
+        }
+
+        if (lhs->dtype != rhs->dtype) {
+            return false;
+        }
+
         if (!skip_ndarray_content_) {
             TVM_FFI_ICHECK_EQ(lhs->device.device_type, kDLCPU) << "can only compare CPU tensor";
             TVM_FFI_ICHECK_EQ(rhs->device.device_type, kDLCPU) << "can only compare CPU tensor";
@@ -265,6 +277,7 @@ public:
         if (lhs.type_index() < kTVMFFIStaticObjectBegin) {
             return lhs;
         }
+
         auto lhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(lhs));
         auto it = equal_map_lhs_.find(lhs_obj);
         if (it != equal_map_lhs_.end()) {
@@ -277,6 +290,7 @@ public:
         if (rhs.type_index() < kTVMFFIStaticObjectBegin) {
             return rhs;
         }
+
         auto rhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(rhs));
         auto it = equal_map_rhs_.find(rhs_obj);
         if (it != equal_map_rhs_.end()) {
@@ -284,6 +298,7 @@ public:
         }
         return rhs_obj;
     }
+
     // whether we map free variables that are not defined
     bool map_free_vars_{false};
     // whether we compare ndarray data
