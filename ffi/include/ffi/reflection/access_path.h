@@ -64,26 +64,26 @@ public:
  */
 class AccessStep : public ObjectRef {
 public:
-    AccessStep(AccessKind kind, Any key) : ObjectRef(make_object<AccessStepObj>(kind, key)) {}
+    AccessStep(AccessKind kind, const Any& key) : ObjectRef(make_object<AccessStepObj>(kind, key)) {}
 
     static AccessStep ObjectField(String field_name) {
-        return AccessStep(AccessKind::kObjectField, field_name);
+        return {AccessKind::kObjectField, std::move(field_name)};
     }
 
     static AccessStep ArrayIndex(int64_t index) {
-        return AccessStep(AccessKind::kArrayIndex, index);
+        return {AccessKind::kArrayIndex, index};
     }
 
     static AccessStep ArrayIndexMissing(int64_t index) {
-        return AccessStep(AccessKind::kArrayIndexMissing, index);
+        return {AccessKind::kArrayIndexMissing, index};
     }
 
     static AccessStep MapKey(Any key) {
-        return AccessStep(AccessKind::kMapKey, key);
+        return {AccessKind::kMapKey, key};
     }
 
     static AccessStep MapKeyMissing(Any key) {
-        return AccessStep(AccessKind::kMapKeyMissing, key);
+        return {AccessKind::kMapKeyMissing, key};
     }
 
     TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(AccessStep, ObjectRef, AccessStepObj);

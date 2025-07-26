@@ -203,8 +203,7 @@ public:
    */
     template<typename Func, typename... Extra>
     GlobalDef& def(const char* name, Func&& func, Extra&&... extra) {
-        RegisterFunc(name, Function::FromTyped(std::forward<Func>(func), std::string(name)),
-                     std::forward<Extra>(extra)...);
+        RegisterFunc(name, Function::FromTyped(std::forward<Func>(func), std::string(name)), std::forward<Extra>(extra)...);
         return *this;
     }
 
@@ -241,8 +240,7 @@ public:
    */
     template<typename Func, typename... Extra>
     GlobalDef& def_method(const char* name, Func&& func, Extra&&... extra) {
-        RegisterFunc(name, GetMethod_(std::string(name), std::forward<Func>(func)),
-                     std::forward<Extra>(extra)...);
+        RegisterFunc(name, GetMethod_(std::string(name), std::forward<Func>(func)), std::forward<Extra>(extra)...);
         return *this;
     }
 
@@ -417,7 +415,7 @@ private:
         Function method = GetMethod<Class>(std::string(type_key_) + "." + name, std::forward<Func>(func));
         info.method = AnyView(method).CopyToTVMFFIAny();
         // apply method info traits
-        ((ApplyMethodInfoTrait(&info, std::forward<Extra>(extra)), ...));
+        (ApplyMethodInfoTrait(&info, std::forward<Extra>(extra)), ...);
         TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeRegisterMethod(type_index_, &info));
     }
 
@@ -445,8 +443,7 @@ public:
     template<typename Func>
     TypeAttrDef& def(const char* name, Func&& func) {
         TVMFFIByteArray name_array = {name, std::char_traits<char>::length(name)};
-        ffi::Function ffi_func =
-                GetMethod<Class>(std::string(type_key_) + "." + name, std::forward<Func>(func));
+        Function ffi_func = GetMethod<Class>(std::string(type_key_) + "." + name, std::forward<Func>(func));
         TVMFFIAny value_any = AnyView(ffi_func).CopyToTVMFFIAny();
         TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeRegisterAttr(type_index_, &name_array, &value_any));
         return *this;
@@ -483,8 +480,7 @@ private:
 inline void EnsureTypeAttrColumn(std::string_view name) {
     TVMFFIByteArray name_array = {name.data(), name.size()};
     AnyView any_view(nullptr);
-    TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeRegisterAttr(kTVMFFINone, &name_array,
-                                                   reinterpret_cast<const TVMFFIAny*>(&any_view)));
+    TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeRegisterAttr(kTVMFFINone, &name_array, reinterpret_cast<const TVMFFIAny*>(&any_view)));
 }
 }// namespace reflection
 }// namespace ffi

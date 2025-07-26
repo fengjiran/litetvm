@@ -39,8 +39,8 @@ public:
             case kTVMFFIStr:
             case kTVMFFIBytes: {
                 // compare bytes
-                const BytesObjBase* lhs_str =AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
-                const BytesObjBase* rhs_str =AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
+                const auto* lhs_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
+                const auto* rhs_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
                 return Bytes::memncmp(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size) == 0;
             }
             case kTVMFFIArray: {
@@ -126,19 +126,18 @@ public:
                 if (!success) {
                     // record the first mismatching field if we sub-rountine compare failed
                     if (mismatch_lhs_reverse_path_ != nullptr) {
-                        mismatch_lhs_reverse_path_->emplace_back(
-                                AccessStep::ObjectField(String(field_info->name)));
-                        mismatch_rhs_reverse_path_->emplace_back(
-                                AccessStep::ObjectField(String(field_info->name)));
+                        mismatch_lhs_reverse_path_->emplace_back(AccessStep::ObjectField(String(field_info->name)));
+                        mismatch_rhs_reverse_path_->emplace_back(AccessStep::ObjectField(String(field_info->name)));
                     }
                     // return true to indicate early stop
                     return true;
-                } else {
-                    // return false to continue checking other fields
-                    return false;
                 }
+
+                // return false to continue checking other fields
+                return false;
             });
         }
+
         if (success) {
             // if we have a success mapping and in graph/var mode, record the equality mapping
             if (structural_eq_hash_kind == kTVMFFISEqHashKindDAGNode ||
@@ -153,7 +152,7 @@ public:
         }
     }
 
-    bool CompareMap(Map<Any, Any> lhs, Map<Any, Any> rhs) {
+    bool CompareMap(const Map<Any, Any>& lhs, const Map<Any, Any>& rhs) {
         if (lhs.size() != rhs.size()) {
             // size mismatch, and there is no path tracing
             // return false since we don't need informative error message
@@ -197,11 +196,13 @@ public:
         return false;
     }
 
-    bool CompareArray(Array<Any> lhs, Array<Any> rhs) {
+    bool CompareArray(const Array<Any>& lhs, const Array<Any>& rhs) {
         if (lhs.size() != rhs.size()) {
             // fast path, size mismatch, and there is no path tracing
             // return false since we don't need an informative error message
-            if (mismatch_lhs_reverse_path_ == nullptr) return false;
+            if (mismatch_lhs_reverse_path_ == nullptr) {
+                return false;
+            }
         }
 
         for (size_t i = 0; i < std::min(lhs.size(), rhs.size()); ++i) {
@@ -214,7 +215,10 @@ public:
             }
         }
 
-        if (lhs.size() == rhs.size()) return true;
+        if (lhs.size() == rhs.size()) {
+            return true;
+        }
+
         if (mismatch_lhs_reverse_path_ != nullptr) {
             if (lhs.size() > rhs.size()) {
                 mismatch_lhs_reverse_path_->emplace_back(AccessStep::ArrayIndex(rhs.size()));
@@ -227,7 +231,7 @@ public:
         return false;
     }
 
-    static bool CompareShape(Shape lhs, Shape rhs) {
+    static bool CompareShape(const Shape& lhs, const Shape& rhs) {
         if (lhs.size() != rhs.size()) {
             return false;
         }
@@ -239,7 +243,7 @@ public:
         return true;
     }
 
-    bool CompareNDArray(NDArray lhs, NDArray rhs) const {
+    bool CompareNDArray(const NDArray& lhs, const NDArray& rhs) const {
         if (lhs.same_as(rhs)) return true;
         if (lhs->ndim != rhs->ndim) return false;
         for (int i = 0; i < lhs->ndim; ++i) {
@@ -261,7 +265,7 @@ public:
         if (lhs.type_index() < kTVMFFIStaticObjectBegin) {
             return lhs;
         }
-        ObjectRef lhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(lhs));
+        auto lhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(lhs));
         auto it = equal_map_lhs_.find(lhs_obj);
         if (it != equal_map_lhs_.end()) {
             return it->second;
@@ -273,7 +277,7 @@ public:
         if (rhs.type_index() < kTVMFFIStaticObjectBegin) {
             return rhs;
         }
-        ObjectRef rhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(rhs));
+        auto rhs_obj = details::AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(rhs));
         auto it = equal_map_rhs_.find(rhs_obj);
         if (it != equal_map_rhs_.end()) {
             return it->second;
@@ -293,17 +297,14 @@ public:
     std::unordered_map<ObjectRef, ObjectRef, ObjectPtrHash, ObjectPtrEqual> equal_map_rhs_;
 };
 
-bool StructuralEqual::Equal(const Any& lhs, const Any& rhs, bool map_free_vars,
-                            bool skip_ndarray_content) {
+bool StructuralEqual::Equal(const Any& lhs, const Any& rhs, bool map_free_vars, bool skip_ndarray_content) {
     StructEqualHandler handler;
     handler.map_free_vars_ = map_free_vars;
     handler.skip_ndarray_content_ = skip_ndarray_content;
     return handler.CompareAny(lhs, rhs);
 }
 
-Optional<AccessPathPair> StructuralEqual::GetFirstMismatch(const Any& lhs, const Any& rhs,
-                                                           bool map_free_vars,
-                                                           bool skip_ndarray_content) {
+Optional<AccessPathPair> StructuralEqual::GetFirstMismatch(const Any& lhs, const Any& rhs, bool map_free_vars, bool skip_ndarray_content) {
     StructEqualHandler handler;
     handler.map_free_vars_ = map_free_vars;
     handler.skip_ndarray_content_ = skip_ndarray_content;
@@ -321,8 +322,7 @@ Optional<AccessPathPair> StructuralEqual::GetFirstMismatch(const Any& lhs, const
 
 TVM_FFI_STATIC_INIT_BLOCK({
     namespace refl = litetvm::ffi::reflection;
-    refl::GlobalDef().def("ffi.reflection.GetFirstStructuralMismatch",
-                          StructuralEqual::GetFirstMismatch);
+    refl::GlobalDef().def("ffi.reflection.GetFirstStructuralMismatch", StructuralEqual::GetFirstMismatch);
 });
 
 }// namespace reflection

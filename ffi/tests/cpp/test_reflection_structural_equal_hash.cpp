@@ -16,7 +16,7 @@ namespace {
 
 using namespace litetvm::ffi;
 using namespace litetvm::ffi::testing;
-namespace refl = litetvm::ffi::reflection;
+namespace refl = reflection;
 
 TEST(StructuralEqualHash, Array) {
     Array<int> a = {1, 2, 3};
