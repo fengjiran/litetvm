@@ -110,9 +110,12 @@ public:
         bool success = true;
         if (structural_eq_hash_kind != kTVMFFISEqHashKindCustomTreeNode) {
             // We recursively compare the fields the object
-            ForEachFieldInfoWithEarlyStop(type_info, [&](const TVMFFIFieldInfo* field_info) {
-                // skip fields that are marked as structural eq hash ignore
-                if (field_info->flags & kTVMFFIFieldFlagBitMaskSEqHashIgnore) return false;
+            auto callback = [&](const TVMFFIFieldInfo* field_info) {
+                // skip fields that are marked as structural eq hash ignores
+                if (field_info->flags & kTVMFFIFieldFlagBitMaskSEqHashIgnore) {
+                    return false;
+                }
+
                 // get the field value from both side
                 FieldGetter getter(field_info);
                 Any lhs_value = getter(lhs);
@@ -126,6 +129,7 @@ public:
                 } else {
                     success = CompareAny(lhs_value, rhs_value);
                 }
+
                 if (!success) {
                     // record the first mismatching field if we sub-rountine compare failed
                     if (mismatch_lhs_reverse_path_ != nullptr) {
@@ -138,16 +142,17 @@ public:
 
                 // return false to continue checking other fields
                 return false;
-            });
+            };
+            ForEachFieldInfoWithEarlyStop(type_info, callback);
         } else {
-            static reflection::TypeAttrColumn custom_s_equal = reflection::TypeAttrColumn("__s_equal__");
+            static TypeAttrColumn custom_s_equal = TypeAttrColumn("__s_equal__");
             // run custom equal function defined via __s_equal__ type attribute
             if (s_equal_callback_ == nullptr) {
-                s_equal_callback_ = ffi::Function::FromTyped(
+                s_equal_callback_ = Function::FromTyped(
                         [this](AnyView lhs, AnyView rhs, bool def_region, AnyView field_name) {
                             // NOTE: we explicitly make field_name as AnyView to avoid copy overhead initially
                             // and only cast to string if mismatch happens
-                            bool success = true;
+                            bool success;
                             if (def_region) {
                                 bool allow_free_var = true;
                                 std::swap(allow_free_var, map_free_vars_);
@@ -156,6 +161,7 @@ public:
                             } else {
                                 success = CompareAny(lhs, rhs);
                             }
+
                             if (!success) {
                                 if (mismatch_lhs_reverse_path_ != nullptr) {
                                     String field_name_str = field_name.cast<String>();
@@ -170,7 +176,7 @@ public:
                     << "TypeAttr `__s_equal__` is not registered for type `" << String(type_info->type_key)
                     << "`";
             success = custom_s_equal[type_info->type_index]
-                              .cast<ffi::Function>()(lhs, rhs, s_equal_callback_)
+                              .cast<Function>()(lhs, rhs, s_equal_callback_)
                               .cast<bool>();
         }
 
@@ -184,9 +190,8 @@ public:
                     equal_map_lhs_[lhs] = rhs;
                     equal_map_rhs_[rhs] = lhs;
                     return true;
-                } else {
-                    return false;
                 }
+                return false;
             }
 
             // if we have a success mapping and in graph/var mode, record the equality mapping
@@ -355,7 +360,7 @@ public:
     std::vector<AccessStep>* mismatch_lhs_reverse_path_ = nullptr;
     std::vector<AccessStep>* mismatch_rhs_reverse_path_ = nullptr;
     // lazily initialize custom equal function
-    ffi::Function s_equal_callback_ = nullptr;
+    Function s_equal_callback_ = nullptr;
     // map from lhs to rhs
     std::unordered_map<ObjectRef, ObjectRef, ObjectPtrHash, ObjectPtrEqual> equal_map_lhs_;
     // map from rhs to lhs

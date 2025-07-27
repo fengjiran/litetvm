@@ -330,7 +330,7 @@ typedef enum {
  * \brief Optional meta-data for structural eq/hash.
  *
  * This meta-data is only useful when we want to leverage the information
- * to perform richer semantics aware structural comparison and hash.
+ * to perform richer semantics-aware structural comparison and hash.
  * It can be safely ignored if such information is not needed.
  *
  * The meta-data record comparison method in tree node and DAG node.
