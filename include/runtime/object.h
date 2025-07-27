@@ -109,78 +109,6 @@ static_assert(static_cast<int>(kCustomStaticIndex) >= static_cast<int>(kTVMFFISt
         return static_cast<ObjectName*>(data_.get());                \
     }
 
-
-/*!
- * \brief helper macro to declare a base object type that can be inherited.
- * \param TypeName The name of the current type.
- * \param ParentType The name of the ParentType
- */
-#define TVM_DECLARE_BASE_OBJECT_INFO(TypeName, ParentType)                                             \
-    static_assert(!ParentType::_type_final, "ParentObj marked as final");                              \
-                                                                                                       \
-    static uint32_t RuntimeTypeIndex() {                                                               \
-        static_assert(TypeName::_type_child_slots == 0 || ParentType::_type_child_slots == 0 ||        \
-                              TypeName::_type_child_slots < ParentType::_type_child_slots,             \
-                      "Need to set _type_child_slots when parent specifies it.");                      \
-        if (TypeName::_type_index != static_cast<uint32_t>(runtime::TypeIndex::kDynamic)) {            \
-            return TypeName::_type_index;                                                              \
-        }                                                                                              \
-        return _GetOrAllocRuntimeTypeIndex();                                                          \
-    }                                                                                                  \
-                                                                                                       \
-    static uint32_t _GetOrAllocRuntimeTypeIndex() {                                                    \
-        static uint32_t tindex = Object::GetOrAllocRuntimeTypeIndex(                                   \
-                TypeName::_type_key, TypeName::_type_index, ParentType::_GetOrAllocRuntimeTypeIndex(), \
-                TypeName::_type_child_slots, TypeName::_type_child_slots_can_overflow);                \
-        return tindex;                                                                                 \
-    }
-
-/*!
- * \brief helper macro to declare type information in a final class.
- * \param TypeName The name of the current type.
- * \param ParentType The name of the ParentType
- */
-#define TVM_DECLARE_FINAL_OBJECT_INFO(TypeName, ParentType) \
-    static const constexpr bool _type_final = true;         \
-    static const constexpr int _type_child_slots = 0;       \
-    TVM_DECLARE_BASE_OBJECT_INFO(TypeName, ParentType)
-
-
-/*! \brief helper macro to suppress unused warning */
-#if defined(__GNUC__)
-#define TVM_ATTRIBUTE_UNUSED __attribute__((unused))
-#else
-#define TVM_ATTRIBUTE_UNUSED
-#endif
-
-#define TVM_STR_CONCAT_(__x, __y) __x##__y
-#define TVM_STR_CONCAT(__x, __y) TVM_STR_CONCAT_(__x, __y)
-
-#define TVM_OBJECT_REG_VAR_DEF static TVM_ATTRIBUTE_UNUSED uint32_t __make_Object_tid
-
-/*!
- * \brief Helper macro to register the object type to runtime.
- *  Makes sure that the runtime type table is correctly populated.
- *
- *  Use this macro in the cc file for each terminal class.
- */
-#define TVM_REGISTER_OBJECT_TYPE(TypeName) \
-    TVM_STR_CONCAT(TVM_OBJECT_REG_VAR_DEF, __COUNTER__) = TypeName::_GetOrAllocRuntimeTypeIndex()
-
-// Object register type is now a nop
-#define TVM_REGISTER_OBJECT_TYPE(x)
-
-/*
- * \brief Define the default copy/move constructor and assign operator
- * \param TypeName The class typename.
- */
-#define TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName) \
-    TypeName(const TypeName& other) = default;            \
-    TypeName(TypeName&& other) = default;                 \
-    TypeName& operator=(const TypeName& other) = default; \
-    TypeName& operator=(TypeName&& other) = default;
-
-
 /*
  * \brief Define object reference methods.
  * \param TypeName The object type name
@@ -188,70 +116,25 @@ static_assert(static_cast<int>(kCustomStaticIndex) >= static_cast<int>(kTVMFFISt
  * \param ObjectName The type name of the object.
  */
 #define TVM_DEFINE_OBJECT_REF_METHODS_WITHOUT_DEFAULT_CONSTRUCTOR(TypeName, ParentType, ObjectName) \
-    explicit TypeName(runtime::ObjectPtr<runtime::Object> n) : ParentType(n) {}                     \
+    explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(n) {}       \
     TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                              \
     const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); }    \
     const ObjectName* get() const { return operator->(); }                                          \
     using ContainerType = ObjectName;
 
+#define TVM_DECLARE_BASE_OBJECT_INFO TVM_FFI_DECLARE_BASE_OBJECT_INFO
+#define TVM_DECLARE_FINAL_OBJECT_INFO TVM_FFI_DECLARE_FINAL_OBJECT_INFO
+#define TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS
 
-/*
- * \brief Define object reference methods.
- * \param TypeName The object type name
- * \param ParentType The parent type of the objectref
- * \param ObjectName The type name of the object.
- */
-#define TVM_DEFINE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName) \
-    TypeName() = default;                                               \
-    TVM_DEFINE_OBJECT_REF_METHODS_WITHOUT_DEFAULT_CONSTRUCTOR(TypeName, ParentType, ObjectName)
+#define TVM_DEFINE_MUTABLE_OBJECT_REF_METHODS TVM_FFI_DEFINE_MUTABLE_OBJECT_REF_METHODS
+#define TVM_DEFINE_OBJECT_REF_METHODS TVM_FFI_DEFINE_OBJECT_REF_METHODS
+#define TVM_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS TVM_FFI_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS
 
+#define TVM_STR_CONCAT_(__x, __y) __x##__y
+#define TVM_STR_CONCAT(__x, __y) TVM_STR_CONCAT_(__x, __y)
 
-/*
- * \brief Define object reference methods that is not nullable.
- *
- * \param TypeName The object type name
- * \param ParentType The parent type of the objectref
- * \param ObjectName The type name of the object.
- */
-#define TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)              \
-    explicit TypeName(runtime::ObjectPtr<runtime::Object> n) : ParentType(n) {}                  \
-    TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                           \
-    const ObjectName* operator->() const { return static_cast<const ObjectName*>(data_.get()); } \
-    const ObjectName* get() const { return operator->(); }                                       \
-    static constexpr bool _type_is_nullable = false;                                             \
-    using ContainerType = ObjectName;
-
-
-/*
- * \brief Define object reference methods of whose content is mutable.
- * \param TypeName The object type name
- * \param ParentType The parent type of the objectref
- * \param ObjectName The type name of the object.
- * \note We recommend making objects immutable when possible.
- *       This macro is only reserved for objects that stores runtime states.
- */
-#define TVM_DEFINE_MUTABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)      \
-    TypeName() = default;                                                            \
-    TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                               \
-    explicit TypeName(runtime::ObjectPtr<runtime::Object> n) : ParentType(n) {}      \
-    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); } \
-    using ContainerType = ObjectName;
-
-
-/*
- * \brief Define object reference methods that is both not nullable and mutable.
- *
- * \param TypeName The object type name
- * \param ParentType The parent type of the objectref
- * \param ObjectName The type name of the object.
- */
-#define TVM_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName) \
-    explicit TypeName(runtime::ObjectPtr<runtime::Object> n) : ParentType(n) {}             \
-    TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                      \
-    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }        \
-    ObjectName* get() const { return operator->(); }                                        \
-    static constexpr bool _type_is_nullable = false;                                        \
-    using ContainerType = ObjectName;
+// Object register type is now a nop
+#define TVM_REGISTER_OBJECT_TYPE(x)
 
 }// namespace runtime
 
