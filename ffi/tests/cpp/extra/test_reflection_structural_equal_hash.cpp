@@ -1,6 +1,7 @@
 //
 // Created by 赵丹 on 25-7-22.
 //
+#include "../testing_object.h"
 #include "ffi/container/array.h"
 #include "ffi/container/map.h"
 #include "ffi/object.h"
@@ -8,7 +9,6 @@
 #include "ffi/reflection/structural_equal.h"
 #include "ffi/reflection/structural_hash.h"
 #include "ffi/string.h"
-#include "testing_object.h"
 
 #include <gtest/gtest.h>
 
@@ -135,6 +135,31 @@ TEST(StructuralEqualHash, FuncDefAndIgnoreField) {
     TFunc fb = TFunc({y}, {TInt(1), y}, "comment b");
 
     TFunc fc = TFunc({x}, {TInt(1), TInt(2)}, "comment c");
+    EXPECT_TRUE(refl::StructuralEqual()(fa, fb));
+    EXPECT_EQ(refl::StructuralHash()(fa), refl::StructuralHash()(fb));
+
+    EXPECT_FALSE(refl::StructuralEqual()(fa, fc));
+    auto diff_fa_fc = refl::StructuralEqual::GetFirstMismatch(fa, fc);
+    auto expected_diff_fa_fc = refl::AccessPathPair(refl::AccessPath({
+                                                            refl::AccessStep::ObjectField("body"),
+                                                            refl::AccessStep::ArrayIndex(1),
+                                                    }),
+                                                    refl::AccessPath({
+                                                            refl::AccessStep::ObjectField("body"),
+                                                            refl::AccessStep::ArrayIndex(1),
+                                                    }));
+    EXPECT_TRUE(diff_fa_fc.has_value());
+    EXPECT_TRUE(refl::StructuralEqual()(diff_fa_fc, expected_diff_fa_fc));
+}
+
+TEST(StructuralEqualHash, CustomTreeNode) {
+    TVar x = TVar("x");
+    TVar y = TVar("y");
+    // comment fields are ignored
+    TCustomFunc fa = TCustomFunc({x}, {TInt(1), x}, "comment a");
+    TCustomFunc fb = TCustomFunc({y}, {TInt(1), y}, "comment b");
+
+    TCustomFunc fc = TCustomFunc({x}, {TInt(1), TInt(2)}, "comment c");
 
     EXPECT_TRUE(refl::StructuralEqual()(fa, fb));
     EXPECT_EQ(refl::StructuralHash()(fa), refl::StructuralHash()(fb));

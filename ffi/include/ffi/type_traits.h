@@ -286,7 +286,7 @@ struct TypeTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> : TypeTraitsBa
 template<typename IntEnum>
 struct TypeTraits<IntEnum, std::enable_if_t<std::is_enum_v<IntEnum> &&
                                             std::is_integral_v<std::underlying_type_t<IntEnum>>>>
-    : public TypeTraitsBase {
+    : TypeTraitsBase {
     static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIInt;
 
     TVM_FFI_INLINE static void CopyToAnyView(const IntEnum& src, TVMFFIAny* result) {

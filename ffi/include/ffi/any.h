@@ -541,7 +541,7 @@ struct AnyUnsafe : ObjectUnsafe {
     template<typename T>
     TVM_FFI_INLINE static T MoveFromAnyAfterCheck(Any&& ref) {
         if constexpr (!std::is_same_v<T, Any>) {
-            return TypeTraits<T>::MoveFromAnyAfterCheck(&(ref.data_));
+            return TypeTraits<T>::MoveFromAnyAfterCheck(&ref.data_);
         } else {
             return std::move(ref);
         }

@@ -43,22 +43,27 @@ public:
                 const auto* rhs_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
                 return Bytes::memncmp(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size) == 0;
             }
+
             case kTVMFFIArray: {
                 return CompareArray(AnyUnsafe::MoveFromAnyAfterCheck<Array<Any>>(std::move(lhs)),
                                     AnyUnsafe::MoveFromAnyAfterCheck<Array<Any>>(std::move(rhs)));
             }
+
             case kTVMFFIMap: {
                 return CompareMap(AnyUnsafe::MoveFromAnyAfterCheck<Map<Any, Any>>(std::move(lhs)),
                                   AnyUnsafe::MoveFromAnyAfterCheck<Map<Any, Any>>(std::move(rhs)));
             }
+
             case kTVMFFIShape: {
                 return CompareShape(AnyUnsafe::MoveFromAnyAfterCheck<Shape>(std::move(lhs)),
                                     AnyUnsafe::MoveFromAnyAfterCheck<Shape>(std::move(rhs)));
             }
+
             case kTVMFFINDArray: {
                 return CompareNDArray(AnyUnsafe::MoveFromAnyAfterCheck<NDArray>(std::move(lhs)),
                                       AnyUnsafe::MoveFromAnyAfterCheck<NDArray>(std::move(rhs)));
             }
+
             default: {
                 return CompareObject(AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(lhs)),
                                      AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(rhs)));
@@ -72,19 +77,23 @@ public:
         if (type_info->metadata == nullptr) {
             return lhs.same_as(rhs);
         }
-        auto structural_eq_hash_kind = type_info->metadata->structural_eq_hash_kind;
 
+        auto structural_eq_hash_kind = type_info->metadata->structural_eq_hash_kind;
         if (structural_eq_hash_kind == kTVMFFISEqHashKindUnsupported ||
             structural_eq_hash_kind == kTVMFFISEqHashKindUniqueInstance) {
             // use pointer comparison
             return lhs.same_as(rhs);
         }
+
         if (structural_eq_hash_kind == kTVMFFISEqHashKindConstTreeNode) {
             // fast path: constant tree node, pointer equality indicate equality and avoid content
             // comparison if false, we should still run content comparison
-            if (lhs.same_as(rhs)) return true;
+            if (lhs.same_as(rhs)) {
+                return true;
+            }
         }
-        // check recorded mapping for DAG and fre var
+
+        // check recorded mapping for DAG and free var
         if (structural_eq_hash_kind == kTVMFFISEqHashKindDAGNode ||
             structural_eq_hash_kind == kTVMFFISEqHashKindFreeVar) {
             // if there is pre-recorded mapping, need to cross check the pointer equality after mapping
@@ -99,13 +108,7 @@ public:
         }
 
         bool success = true;
-        if (structural_eq_hash_kind == kTVMFFISEqHashKindFreeVar) {
-            // we are in a free var case that is not yet mapped.
-            // in this case, either map_free_vars_ should be set to true, or map_free_vars_ should be set
-            if (!lhs.same_as(rhs) && !map_free_vars_) {
-                success = false;
-            }
-        } else {
+        if (structural_eq_hash_kind != kTVMFFISEqHashKindCustomTreeNode) {
             // We recursively compare the fields the object
             ForEachFieldInfoWithEarlyStop(type_info, [&](const TVMFFIFieldInfo* field_info) {
                 // skip fields that are marked as structural eq hash ignore
@@ -136,20 +139,65 @@ public:
                 // return false to continue checking other fields
                 return false;
             });
+        } else {
+            static reflection::TypeAttrColumn custom_s_equal = reflection::TypeAttrColumn("__s_equal__");
+            // run custom equal function defined via __s_equal__ type attribute
+            if (s_equal_callback_ == nullptr) {
+                s_equal_callback_ = ffi::Function::FromTyped(
+                        [this](AnyView lhs, AnyView rhs, bool def_region, AnyView field_name) {
+                            // NOTE: we explicitly make field_name as AnyView to avoid copy overhead initially
+                            // and only cast to string if mismatch happens
+                            bool success = true;
+                            if (def_region) {
+                                bool allow_free_var = true;
+                                std::swap(allow_free_var, map_free_vars_);
+                                success = CompareAny(lhs, rhs);
+                                std::swap(allow_free_var, map_free_vars_);
+                            } else {
+                                success = CompareAny(lhs, rhs);
+                            }
+                            if (!success) {
+                                if (mismatch_lhs_reverse_path_ != nullptr) {
+                                    String field_name_str = field_name.cast<String>();
+                                    mismatch_lhs_reverse_path_->emplace_back(AccessStep::ObjectField(field_name_str));
+                                    mismatch_rhs_reverse_path_->emplace_back(AccessStep::ObjectField(field_name_str));
+                                }
+                            }
+                            return success;
+                        });
+            }
+            TVM_FFI_ICHECK(custom_s_equal[type_info->type_index] != nullptr)
+                    << "TypeAttr `__s_equal__` is not registered for type `" << String(type_info->type_key)
+                    << "`";
+            success = custom_s_equal[type_info->type_index]
+                              .cast<ffi::Function>()(lhs, rhs, s_equal_callback_)
+                              .cast<bool>();
         }
 
         if (success) {
+            if (structural_eq_hash_kind == kTVMFFISEqHashKindFreeVar) {
+                // we are in a free var case that is not yet mapped.
+                // in this case, either map_free_vars_ should be set to true, or map_free_vars_ should be
+                // set
+                if (lhs.same_as(rhs) || map_free_vars_) {
+                    // record the equality
+                    equal_map_lhs_[lhs] = rhs;
+                    equal_map_rhs_[rhs] = lhs;
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
             // if we have a success mapping and in graph/var mode, record the equality mapping
-            if (structural_eq_hash_kind == kTVMFFISEqHashKindDAGNode ||
-                structural_eq_hash_kind == kTVMFFISEqHashKindFreeVar) {
+            if (structural_eq_hash_kind == kTVMFFISEqHashKindDAGNode) {
                 // record the equality
                 equal_map_lhs_[lhs] = rhs;
                 equal_map_rhs_[rhs] = lhs;
             }
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     bool CompareMap(const Map<Any, Any>& lhs, const Map<Any, Any>& rhs) {
@@ -306,6 +354,8 @@ public:
     // the root lhs for result printing
     std::vector<AccessStep>* mismatch_lhs_reverse_path_ = nullptr;
     std::vector<AccessStep>* mismatch_rhs_reverse_path_ = nullptr;
+    // lazily initialize custom equal function
+    ffi::Function s_equal_callback_ = nullptr;
     // map from lhs to rhs
     std::unordered_map<ObjectRef, ObjectRef, ObjectPtrHash, ObjectPtrEqual> equal_map_lhs_;
     // map from rhs to lhs
@@ -338,6 +388,8 @@ Optional<AccessPathPair> StructuralEqual::GetFirstMismatch(const Any& lhs, const
 TVM_FFI_STATIC_INIT_BLOCK({
     namespace refl = litetvm::ffi::reflection;
     refl::GlobalDef().def("ffi.reflection.GetFirstStructuralMismatch", StructuralEqual::GetFirstMismatch);
+    // ensure the type attribute column is presented in the system even if it is empty.
+    refl::EnsureTypeAttrColumn("__s_equal__");
 });
 
 }// namespace reflection
