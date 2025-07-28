@@ -19,14 +19,30 @@
 #ifdef ERROR
 #undef ERROR
 #endif
-
 #endif
+
+/*!
+ * \brief Macro helper for exception throwing.
+ */
+#define TVM_THROW_EXCEPTION noexcept(false)
 
 #if defined(_MSC_VER)
 #define TVM_FFI_INLINE [[msvc::forceinline]] inline
 #else
 #define TVM_FFI_INLINE [[gnu::always_inline]] inline
 #endif
+
+/*!
+ * \brief Macro helper to force a function to be inlined.
+ * It is only used in places that we know inline is important,
+ * e.g. some template expansion cases.
+ */
+#ifdef _MSC_VER
+#define TVM_ALWAYS_INLINE __forceinline
+#else
+#define TVM_ALWAYS_INLINE inline __attribute__((always_inline))
+#endif
+
 
 /*!
  * \brief Macro helper to force a function not to be inlined.
