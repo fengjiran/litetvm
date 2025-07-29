@@ -85,7 +85,7 @@ public:
 private:
     /*!
    * \brief Update the traceback of the error object.
-   * \param traceback The traceback to update.
+   * \param traceback_str The traceback to update.
    */
     static void UpdateTraceback(TVMFFIObjectHandle self, const TVMFFIByteArray* traceback_str) {
         auto* obj = static_cast<ErrorObjFromStd*>(self);
@@ -132,7 +132,7 @@ public:
         obj->update_traceback(obj, traceback_str);
     }
 
-    NODISCARD const char* what() const noexcept(true) override {
+    NODISCARD const char* what() const noexcept override {
         thread_local std::string what_data;
         auto* obj = static_cast<ErrorObj*>(data_.get());
         what_data = std::string("Traceback (most recent call last):\n") +
@@ -161,7 +161,7 @@ public:
 #pragma warning(disable : 4722)
 #endif
     // avoid inline to reduce binary size, error throw path do not need to be fast
-    [[noreturn]] ~ErrorBuilder() noexcept(false) {
+    [[noreturn]] ~ErrorBuilder() {
         Error error(kind_, stream_.str(), traceback_);
         if (log_before_throw_) {
             std::cerr << error.what();

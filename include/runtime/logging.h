@@ -21,7 +21,7 @@
 #include <vector>
 
 /*!
- * \brief Whether or not enable backtrace logging during a
+ * \brief Whether enable backtrace logging during a
  *        fatal error.
  *
  * \note TVM won't depend on LIBBACKTRACE or other exec_info
@@ -32,7 +32,7 @@
 #endif
 
 /*!
- * \brief Whether or not use libbacktrace library
+ * \brief Whether use libbacktrace library
  *        for getting backtrace information
  */
 #ifndef TVM_USE_LIBBACKTRACE
@@ -40,13 +40,17 @@
 #endif
 
 /*!
- * \brief Whether or not customize the logging output.
+ * \brief Whether customize the logging output.
  *  If log customize is enabled, the user must implement
  *  tvm::runtime::detail::LogFatalImpl and tvm::runtime::detail::LogMessageImpl.
  */
 #ifndef TVM_LOG_CUSTOMIZE
 #define TVM_LOG_CUSTOMIZE 0
 #endif
+
+// a technique that enables overriding macro names on the number of parameters. This is used
+// to define other macros below
+#define GET_MACRO(_1, _2, _3, _4, _5, NAME, ...) NAME
 
 
 namespace litetvm {

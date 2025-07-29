@@ -865,8 +865,7 @@ TVM_FFI_DLL int TVMFFIDataTypeToString(const DLDataType* dtype, TVMFFIObjectHand
  * \note filename func and lino are only used as a backup info, most cases they are not needed.
  *  The return value is set to const char* to be more compatible across dll boundaries.
  */
-TVM_FFI_DLL const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno,
-                                                   const char* func);
+TVM_FFI_DLL const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const char* func);
 
 /*!
  * \brief Initialize the type info during runtime.
