@@ -161,7 +161,7 @@ public:
 #pragma warning(disable : 4722)
 #endif
     // avoid inline to reduce binary size, error throw path do not need to be fast
-    [[noreturn]] ~ErrorBuilder() {
+    [[noreturn]] ~ErrorBuilder() noexcept(false) {
         Error error(kind_, stream_.str(), traceback_);
         if (log_before_throw_) {
             std::cerr << error.what();
