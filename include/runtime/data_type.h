@@ -266,7 +266,7 @@ public:
 
     /*! \return whether type is a Void type. */
     NODISCARD bool is_void() const {
-        return code() == static_cast<int>(TypeCode::kHandle) && bits() == 0 && lanes() == 0;
+        return code() == kHandle && bits() == 0 && lanes() == 0;
     }
 
     /*!
