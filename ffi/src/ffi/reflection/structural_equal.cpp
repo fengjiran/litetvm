@@ -9,6 +9,7 @@
 #include "ffi/reflection/accessor.h"
 #include "ffi/string.h"
 
+#include <cmath>
 #include <unordered_map>
 
 namespace litetvm {
@@ -31,6 +32,10 @@ public:
         }
 
         if (lhs_data->type_index < kTVMFFIStaticObjectBegin) {
+            // specially handle nan for float, as there can be multiple representations of nan
+            if (lhs_data->type_index == kTVMFFIFloat && std::isnan(lhs_data->v_float64)) {
+                return std::isnan(rhs_data->v_float64);
+            }
             // this is POD data, we can just compare the value
             return lhs_data->v_int64 == rhs_data->v_int64;
         }
@@ -75,12 +80,19 @@ public:
         // NOTE: invariant: lhs and rhs are already the same type
         const TVMFFITypeInfo* type_info = TVMFFIGetTypeInfo(lhs->type_index());
         if (type_info->metadata == nullptr) {
-            return lhs.same_as(rhs);
+            TVM_FFI_THROW(TypeError) << "Type metadata is not set for type `"
+                                     << String(type_info->type_key)
+                                     << "`, so StructuralHash is not supported for this type";
+        }
+
+        if (type_info->metadata->structural_eq_hash_kind == kTVMFFISEqHashKindUnsupported) {
+            TVM_FFI_THROW(TypeError) << "_type_s_eq_hash_kind is not set for type `"
+                                     << String(type_info->type_key)
+                                     << "`, so StructuralHash is not supported for this type";
         }
 
         auto structural_eq_hash_kind = type_info->metadata->structural_eq_hash_kind;
-        if (structural_eq_hash_kind == kTVMFFISEqHashKindUnsupported ||
-            structural_eq_hash_kind == kTVMFFISEqHashKindUniqueInstance) {
+        if (structural_eq_hash_kind == kTVMFFISEqHashKindUniqueInstance) {
             // use pointer comparison
             return lhs.same_as(rhs);
         }
@@ -107,8 +119,9 @@ public:
             }
         }
 
+        static TypeAttrColumn custom_s_equal = TypeAttrColumn("__s_equal__");
         bool success = true;
-        if (structural_eq_hash_kind != kTVMFFISEqHashKindCustomTreeNode) {
+        if (custom_s_equal[type_info->type_index] == nullptr) {
             // We recursively compare the fields the object
             auto callback = [&](const TVMFFIFieldInfo* field_info) {
                 // skip fields that are marked as structural eq hash ignores
@@ -145,7 +158,6 @@ public:
             };
             ForEachFieldInfoWithEarlyStop(type_info, callback);
         } else {
-            static TypeAttrColumn custom_s_equal = TypeAttrColumn("__s_equal__");
             // run custom equal function defined via __s_equal__ type attribute
             if (s_equal_callback_ == nullptr) {
                 s_equal_callback_ = Function::FromTyped(
@@ -172,9 +184,6 @@ public:
                             return success;
                         });
             }
-            TVM_FFI_ICHECK(custom_s_equal[type_info->type_index] != nullptr)
-                    << "TypeAttr `__s_equal__` is not registered for type `" << String(type_info->type_key)
-                    << "`";
             success = custom_s_equal[type_info->type_index]
                               .cast<Function>()(lhs, rhs, s_equal_callback_)
                               .cast<bool>();

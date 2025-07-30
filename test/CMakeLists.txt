@@ -7,7 +7,8 @@ find_package(glog REQUIRED)
 
 file(GLOB_RECURSE TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/*.cpp)
 
-add_executable(${PROJECT_NAME} ${TEST_SRC_FILES})
+#add_executable(${PROJECT_NAME} ${TEST_SRC_FILES})
+add_executable(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/test_logging.cpp)
 
 target_link_libraries(${PROJECT_NAME}
         litetvm

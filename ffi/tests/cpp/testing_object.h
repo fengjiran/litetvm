@@ -210,23 +210,20 @@ public:
     TCustomFuncObj(Array<TVar> params, Array<ObjectRef> body, String comment)
         : params(params), body(body), comment(comment) {}
 
-    bool SEqual(const TCustomFuncObj* other,
-                ffi::TypedFunction<bool(AnyView, AnyView, bool, AnyView)> cmp) const {
+    bool SEqual(const TCustomFuncObj* other, TypedFunction<bool(AnyView, AnyView, bool, AnyView)> cmp) const {
         if (!cmp(params, other->params, true, "params")) {
-            std::cout << "custom s_equal failed params" << std::endl;
             return false;
         }
         if (!cmp(body, other->body, false, "body")) {
-            std::cout << "custom s_equal failed body" << std::endl;
             return false;
         }
         return true;
     }
 
-    uint64_t SHash(uint64_t type_key_hash, ffi::TypedFunction<uint64_t(AnyView, bool)> hash) const {
-        uint64_t hash_value = type_key_hash;
-        hash_value = litetvm::ffi::details::StableHashCombine(hash_value, hash(params, true));
-        hash_value = litetvm::ffi::details::StableHashCombine(hash_value, hash(body, false));
+    uint64_t SHash(uint64_t init_hash, TypedFunction<uint64_t(AnyView, uint64_t, bool)> hash) const {
+        uint64_t hash_value = init_hash;
+        hash_value = hash(params, hash_value, true);
+        hash_value = hash(body, hash_value, false);
         return hash_value;
     }
 
@@ -242,7 +239,7 @@ public:
     }
 
     static constexpr const char* _type_key = "test.CustomFunc";
-    static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindCustomTreeNode;
+    static constexpr TVMFFISEqHashKind _type_s_eq_hash_kind = kTVMFFISEqHashKindTreeNode;
     TVM_FFI_DECLARE_FINAL_OBJECT_INFO(TCustomFuncObj, Object);
 };
 
