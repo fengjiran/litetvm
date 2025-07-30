@@ -32,7 +32,7 @@ public:
    * 2) kUInt is consistent with kDLUInt
    * 3) kFloat is consistent with kDLFloat
    */
-    enum class TypeCode {
+    enum TypeCode {
         kInt = kDLInt,
         kUInt = kDLUInt,
         kFloat = kDLFloat,
@@ -74,15 +74,25 @@ public:
         if (is_scalable) {
             ICHECK(lanes > 1) << "Invalid value for vscale factor: " << lanes;
         }
-        
+
         dtype_.lanes = is_scalable ? static_cast<uint16_t>(-lanes) : static_cast<uint16_t>(lanes);
 
-        if (code == static_cast<int>(TypeCode::kBFloat)) {
-            CHECK_EQ(bits, 16);
+        if (code == kBFloat) {
+            ICHECK_EQ(bits, 16);
         }
 
-        if (code == static_cast<int>(TypeCode::kFloat8_e4m3fn) || code == static_cast<int>(TypeCode::kFloat8_e5m2)) {
-            CHECK_EQ(bits, 8);
+        if (code == kFloat8_e3m4 || code == kFloat8_e4m3 || code == kFloat8_e4m3b11fnuz ||
+            code == kFloat8_e4m3fn || code == kFloat8_e4m3fnuz || code == kFloat8_e5m2 ||
+            code == kFloat8_e5m2fnuz || code == kFloat8_e8m0fnu) {
+            ICHECK_EQ(bits, 8);
+        }
+
+        if (code == kFloat6_e2m3fn || code == kFloat6_e3m2fn) {
+            ICHECK_EQ(bits, 6);
+        }
+
+        if (code == kFloat4_e2m1fn) {
+            ICHECK_EQ(bits, 4);
         }
     }
 
@@ -128,38 +138,81 @@ public:
     NODISCARD bool is_scalar() const {
         return !is_scalable_vector() && lanes() == 1;
     }
+
     /*! \return whether type is a scalar type. */
     NODISCARD bool is_bool() const {
-        return code() == static_cast<int>(TypeCode::kUInt) && bits() == 1;
+        return code() == kUInt && bits() == 1;
     }
+
     /*! \return whether type is a float type. */
     NODISCARD bool is_float() const {
-        return code() == static_cast<int>(TypeCode::kFloat);
+        return code() == kFloat;
     }
+
+    NODISCARD bool is_bfloat() const {
+        return code() == kBFloat;
+    }
+
     /*! \return whether type is a float8 type. */
     NODISCARD bool is_float8() const {
-        return (code() == static_cast<int>(TypeCode::kFloat) ||
-                code() == static_cast<int>(TypeCode::kFloat8_e4m3fn) ||
-                code() == static_cast<int>(TypeCode::kFloat8_e5m2)) &&
-               bits() == 8;
+        return bits() == 8 &&
+               (code() == kFloat8_e3m4 || code() == kFloat8_e4m3 ||
+                code() == kFloat8_e4m3b11fnuz || code() == kFloat8_e4m3fn ||
+                code() == kFloat8_e4m3fnuz || code() == kFloat8_e5m2 ||
+                code() == kFloat8_e5m2fnuz || code() == kFloat8_e8m0fnu);
     }
 
-    NODISCARD bool is_e4m3_float8() const {
-        return code() == static_cast<int>(TypeCode::kFloat8_e4m3fn) && bits() == 8;
+    NODISCARD bool is_float6() const {
+        return bits() == 6 && (code() == kFloat6_e2m3fn || code() == kFloat6_e3m2fn);
     }
 
-    NODISCARD bool is_e5m2_float8() const {
-        return code() == static_cast<int>(TypeCode::kFloat8_e5m2) && bits() == 8;
+    NODISCARD bool is_float4() const {
+        return bits() == 4 && code() == kFloat4_e2m1fn;
     }
 
-    /*! \return whether type is a float4 type. */
-    bool is_float4() const { return code() == static_cast<int>(TypeCode::kFloat4_e2m1fn) && bits() == 4; }
-    bool is_float8_e4m3fn() const { return code() == static_cast<int>(TypeCode::kFloat8_e4m3fn) && bits() == 8; }
-    bool is_float8_e5m2() const { return code() == static_cast<int>(TypeCode::kFloat8_e5m2) && bits() == 8; }
-    bool is_float4_e2m1fn() const { return code() == static_cast<int>(TypeCode::kFloat4_e2m1fn) && bits() == 4; }
+    NODISCARD bool is_float8_e3m4() const {
+        return bits() == 8 && code() == kFloat8_e3m4;
+    }
 
-    /*! \return whether type is a bfloat type. */
-    bool is_bfloat() const { return code() == static_cast<int>(TypeCode::kBFloat); }
+    NODISCARD bool is_float8_e4m3() const {
+        return bits() == 8 && code() == kFloat8_e4m3;
+    }
+
+    NODISCARD bool is_float8_e4m3b11fnuz() const {
+        return bits() == 8 && code() == kFloat8_e4m3b11fnuz;
+    }
+
+    NODISCARD bool is_float8_e4m3fn() const {
+        return bits() == 8 && code() == kFloat8_e4m3fn;
+    }
+
+    NODISCARD bool is_float8_e4m3fnuz() const {
+        return bits() == 8 && code() == kFloat8_e4m3fnuz;
+    }
+
+    NODISCARD bool is_float8_e5m2() const {
+        return bits() == 8 && code() == kFloat8_e5m2;
+    }
+
+    NODISCARD bool is_float8_e5m2fnuz() const {
+        return bits() == 8 && code() == kFloat8_e5m2fnuz;
+    }
+
+    NODISCARD bool is_float8_e8m0fnu() const {
+        return bits() == 8 && code() == kFloat8_e8m0fnu;
+    }
+
+    NODISCARD bool is_float6_e2m3fn() const {
+        return bits() == 6 && code() == kFloat6_e2m3fn;
+    }
+
+    NODISCARD bool is_float6_e3m2fn() const {
+        return bits() == 6 && code() == kFloat6_e3m2fn;
+    }
+
+    NODISCARD bool is_float4_e2m1fn() const {
+        return code() == kFloat4_e2m1fn && bits() == 4;
+    }
 
     /*! \return whether type is a float16 type. */
     NODISCARD bool is_float16() const {
@@ -167,22 +220,22 @@ public:
     }
     /*! \return whether type is a bfloat16 type. */
     NODISCARD bool is_bfloat16() const {
-        return code() == static_cast<int>(TypeCode::kBFloat) && bits() == 16;
+        return is_bfloat() && bits() == 16;
     }
 
     /*! \return whether type is an int type. */
     NODISCARD bool is_int() const {
-        return code() == (int) TypeCode::kInt;
+        return code() == kInt;
     }
 
     /*! \return whether type is an uint type. */
     NODISCARD bool is_uint() const {
-        return code() == static_cast<int>(TypeCode::kUInt);
+        return code() == kUInt;
     }
 
     /*! \return whether type is a handle type. */
     NODISCARD bool is_handle() const {
-        return code() == static_cast<int>(TypeCode::kHandle) && !is_void();
+        return code() == kHandle && !is_void();
     }
 
     /*! \return whether type is a vector type. */
