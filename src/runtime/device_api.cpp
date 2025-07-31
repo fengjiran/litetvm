@@ -25,6 +25,66 @@
 namespace litetvm {
 namespace runtime {
 
+class DeviceAPIManager {
+public:
+    static const int kMaxDeviceAPI = TVMDeviceExtType_End;
+
+    // Get API
+    static DeviceAPI* Get(const Device& dev) {
+        return Get(dev.device_type);
+    }
+
+    static DeviceAPI* Get(int dev_type, bool allow_missing = false) {
+        return Global()->GetAPI(dev_type, allow_missing);
+    }
+
+private:
+    std::array<DeviceAPI*, kMaxDeviceAPI> api_;
+    DeviceAPI* rpc_api_{nullptr};
+    std::mutex mutex_;
+
+    // constructor
+    DeviceAPIManager() {
+        std::fill(api_.begin(), api_.end(), nullptr);
+    }
+
+    DeviceAPIManager(const DeviceAPIManager&) = delete;
+    DeviceAPIManager& operator=(const DeviceAPIManager&) = delete;
+
+    // Global static variable.
+    static DeviceAPIManager* Global() {
+        static DeviceAPIManager inst;
+        return &inst;
+    }
+
+    // Get or initialize API.
+    DeviceAPI* GetAPI(int type, bool allow_missing) {
+        if (type < kRPCSessMask) {
+            if (api_[type] != nullptr) return api_[type];
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (api_[type] != nullptr) return api_[type];
+            api_[type] = GetAPI(DLDeviceType2Str(type), allow_missing);
+            return api_[type];
+        }
+        if (rpc_api_ != nullptr) return rpc_api_;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (rpc_api_ != nullptr) return rpc_api_;
+        rpc_api_ = GetAPI("rpc", allow_missing);
+        return rpc_api_;
+    }
+
+    static DeviceAPI* GetAPI(const std::string& name, bool allow_missing) {
+        std::string factory = "device_api." + name;
+        const auto f = ffi::Function::GetGlobal(factory);
+        if (!f.has_value()) {
+            ICHECK(allow_missing) << "Device API " << name << " is not enabled.";
+            return nullptr;
+        }
+        void* ptr = (*f)().cast<void*>();
+        return static_cast<DeviceAPI*>(ptr);
+    }
+};
+
 static size_t GetDataAlignment(const DLDataType dtype) {
     size_t align = dtype.bits / 8 * dtype.lanes;
     if (align < kAllocAlignment) {
@@ -93,7 +153,6 @@ void DeviceAPI::CopyDataFromTo(const void* from, size_t from_offset, void* to, s
 DeviceAPI* DeviceAPI::Get(Device dev, bool allow_missing) {
     return DeviceAPIManager::Get(dev.device_type, allow_missing);
 }
-
 
 
 }// namespace runtime
