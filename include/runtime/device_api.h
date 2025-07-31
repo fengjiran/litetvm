@@ -2,23 +2,40 @@
 // Created by richard on 2/1/25.
 //
 
-#ifndef DEVICE_API_H
-#define DEVICE_API_H
+#ifndef LITETVM_RUNTIME_DEVICE_API_H
+#define LITETVM_RUNTIME_DEVICE_API_H
 
-#include "runtime/c_runtime_api.h"
-#include "runtime/ndarray.h"
-#include "runtime/optional.h"
-#include "runtime/packed_func.h"
-#include "runtime/registry.h"
+#include "ffi/any.h"
+#include "ffi/optional.h"
+#include "runtime/base.h"
+#include "runtime/logging.h"
 
 #include <string>
 
-namespace litetvm::runtime {
+using TVMStreamHandle = void*;
+
+namespace litetvm {
+
+using Device = DLDevice;
+
+namespace runtime {
+
+#ifdef __cplusplus
+typedef enum : int32_t {
+#else
+typedef enum {
+#endif
+    // To help avoid accidental conflicts between `DLDeviceType`
+    // and this enumeration, start numbering the new enumerators
+    // a little higher than (currently) seems necessary.
+    TVMDeviceExtType_End = 36,// sentinel value
+} TVMDeviceExtType;
+
 
 /*!
  * \brief the query type into GetAttr
  */
-enum class DeviceAttrKind : int {
+enum DeviceAttrKind : int {
     kExist = 0,
     kMaxThreadsPerBlock = 1,
     kWarpSize = 2,
@@ -35,6 +52,7 @@ enum class DeviceAttrKind : int {
     kL2CacheSizeBytes = 13,
     kTotalGlobalMemory = 14,
     kAvailableGlobalMemory = 15,
+    kImagePitchAlignment = 16,
 };
 
 #ifdef TVM_KALLOC_ALIGNMENT
@@ -74,13 +92,13 @@ public:
     virtual void SetDevice(Device dev) = 0;
 
     /*!
-   * \brief Get attribute of specified device.
+   * \brief Get attribute of a specified device.
    * \param dev The device device
    * \param kind The result kind
    * \param rv The return value.
    * \sa DeviceAttrKind
    */
-    virtual void GetAttr(Device dev, DeviceAttrKind kind, TVMRetValue* rv) = 0;
+    virtual void GetAttr(Device dev, DeviceAttrKind kind, Any* rv) = 0;
 
     /*!
    * \brief Get the physical memory size required.
@@ -88,7 +106,7 @@ public:
    * \param mem_scope the memory scope if any
    * \return the memory size.
    */
-    virtual size_t GetDataSize(const DLTensor& arr, const Optional<String>& mem_scope = NullOpt);
+    virtual size_t GetDataSize(const DLTensor& arr, const Optional<String>& mem_scope = std::nullopt);
 
     /*!
    * \brief Query the device for specified properties.
@@ -96,7 +114,7 @@ public:
    * This is used to expand "-from_device=N" in the target string to
    * all properties that can be determined from that device.
    */
-    virtual void GetTargetProperty(Device dev, const std::string& property, TVMRetValue* rv) {}
+    virtual void GetTargetProperty(Device dev, const std::string& property, Any* rv) {}
 
     /*!
    * \brief Allocate a data space on device.
@@ -107,8 +125,7 @@ public:
    * as OpenGL, as nbytes & alignment are sufficient for most backends.
    * \return The allocated device pointer.
    */
-    virtual void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment,
-                                 DLDataType type_hint) = 0;
+    virtual void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment, DLDataType type_hint) = 0;
 
     /*!
    * \brief Allocate a data space on device with memory scope support.
@@ -120,7 +137,7 @@ public:
    * \return The allocated device pointer.
    */
     virtual void* AllocDataSpace(Device dev, int ndim, const int64_t* shape, DLDataType dtype,
-                                 const Optional<String>& mem_scope = NullOpt);
+                                 const Optional<String>& mem_scope = std::nullopt);
 
     /*!
    * \brief Free a data space on device.
@@ -140,12 +157,15 @@ public:
    *       Call StreamSync to ensure the copy completes from host's pov.
    */
     virtual void CopyDataFromTo(DLTensor* from, DLTensor* to, TVMStreamHandle stream);
+
     /*!
   * \brief Create a new stream of execution.
   *
   * \param dev The device of allocation.
   */
-    virtual TVMStreamHandle CreateStream(Device dev);
+    virtual TVMStreamHandle CreateStream(Device dev) {
+        return nullptr;
+    }
 
     /*!
   * \brief Free a stream of execution
@@ -153,7 +173,7 @@ public:
   * \param dev The device of the stream
   * \param stream The pointer to be freed.
   */
-    virtual void FreeStream(Device dev, TVMStreamHandle stream);
+    virtual void FreeStream(Device dev, TVMStreamHandle stream) {}
 
     /*!
    * \brief Synchronize the stream
@@ -161,18 +181,23 @@ public:
    * \param stream The stream to be sync.
    */
     virtual void StreamSync(Device dev, TVMStreamHandle stream) = 0;
+
     /*!
    * \brief Set the stream
    * \param dev The device to set stream.
    * \param stream The stream to be set.
    */
     virtual void SetStream(Device dev, TVMStreamHandle stream) {}
+
     /*!
    * \brief Get the current stream
    * \param dev The device to get stream.
    * \return The current stream of the device.
    */
-    virtual TVMStreamHandle GetCurrentStream(Device dev);
+    virtual TVMStreamHandle GetCurrentStream(Device dev) {
+        return nullptr;
+    }
+
     /*!
    * \brief Synchronize 2 streams of execution.
    *
@@ -185,7 +210,8 @@ public:
    * \param event_src The source stream to synchronize.
    * \param event_dst The destination stream to synchronize.
    */
-    virtual void SyncStreamFromTo(Device dev, TVMStreamHandle event_src, TVMStreamHandle event_dst);
+    virtual void SyncStreamFromTo(Device dev, TVMStreamHandle event_src, TVMStreamHandle event_dst) {}
+
     /*!
    * \brief Allocate temporal workspace for backend execution.
    *
@@ -203,6 +229,7 @@ public:
    * as OpenGL, as nbytes is sufficient for most backends.
    */
     virtual void* AllocWorkspace(Device dev, size_t nbytes, DLDataType type_hint = {});
+
     /*!
    * \brief Free temporal workspace in backend execution.
    *
@@ -225,8 +252,7 @@ public:
    * \param device_type The device type.
    */
     static bool NeedSetDevice(int device_type) {
-        return device_type != static_cast<int>(DLDeviceType::kDLCPU) &&
-               device_type != static_cast<int>(TVMDeviceExtType::kDLMicroDev);
+        return device_type != kDLCPU;
     }
 
     /*!
@@ -255,14 +281,56 @@ protected:
                                 DLDataType type_hint, TVMStreamHandle stream);
 };
 
+/*!
+ * \brief The name of DLDeviceType.
+ * \param type The device type.
+ * \return the device name.
+ */
+inline const char* DLDeviceType2Str(int type) {
+    switch (type) {
+        case kDLCPU:
+            return "cpu";
+        case kDLCUDA:
+            return "cuda";
+        case kDLCUDAHost:
+            return "cuda_host";
+        case kDLCUDAManaged:
+            return "cuda_managed";
+        case kDLOpenCL:
+            return "opencl";
+        case kDLVulkan:
+            return "vulkan";
+        case kDLMetal:
+            return "metal";
+        case kDLVPI:
+            return "vpi";
+        case kDLROCM:
+            return "rocm";
+        case kDLROCMHost:
+            return "rocm_host";
+        case kDLExtDev:
+            return "ext_dev";
+        case kDLOneAPI:
+            return "oneapi";
+        case kDLWebGPU:
+            return "webgpu";
+        case kDLHexagon:
+            return "hexagon";
+        default:
+            LOG(FATAL) << "unknown type = " << type;
+    }
+    throw;
+}
+
+
 /*! \brief The device type bigger than this is RPC device */
 constexpr int kRPCSessMask = 128;
-static_assert(kRPCSessMask >= static_cast<int>(TVMDeviceExtType::TVMDeviceExtType_End));
+static_assert(kRPCSessMask >= TVMDeviceExtType_End);
 
 /*!
  * \brief Return true if a Device is owned by an RPC session.
  */
-inline bool IsRPCSessionDevice(Device dev) { return (static_cast<int>(dev.device_type) / kRPCSessMask) > 0; }
+inline bool IsRPCSessionDevice(Device dev) { return static_cast<int>(dev.device_type) / kRPCSessMask > 0; }
 
 /*!
  * \brief Return the RPCSessTable index of the RPC Session that owns this device.
@@ -290,7 +358,7 @@ inline std::ostream& operator<<(std::ostream& os, DLDevice dev) {// NOLINT(*)
         os << "remote[" << GetRPCSessionIndex(dev) << "]-";
         dev = RemoveRPCSessionMask(dev);
     }
-    os << DLDeviceType2Str(static_cast<int>(dev.device_type)) << ":" << dev.device_id;
+    os << DLDeviceType2Str(dev.device_type) << ":" << dev.device_id;
     return os;
 }
 
@@ -304,18 +372,17 @@ inline std::ostream& operator<<(std::ostream& os, DLDevice dev) {// NOLINT(*)
 inline Device AddRPCSessionMask(Device dev, int session_table_index) {
     CHECK(!IsRPCSessionDevice(dev)) << "AddRPCSessionMask: dev already non-zero RPCSessionIndex: "
                                     << dev;
-    dev.device_type =
-            static_cast<DLDeviceType>(static_cast<int>(dev.device_type) | (kRPCSessMask * (session_table_index + 1)));
+    dev.device_type = static_cast<DLDeviceType>(static_cast<int>(dev.device_type) | kRPCSessMask * (session_table_index + 1));
     return dev;
 }
 
 class DeviceAPIManager {
 public:
-    static const int kMaxDeviceAPI = static_cast<int>(TVMDeviceExtType::TVMDeviceExtType_End);
+    static const int kMaxDeviceAPI = TVMDeviceExtType_End;
 
     // Get API
     static DeviceAPI* Get(const Device& dev) {
-        return Get(static_cast<int>(dev.device_type));
+        return Get(dev.device_type);
     }
 
     static DeviceAPI* Get(int dev_type, bool allow_missing = false) {
@@ -374,6 +441,9 @@ private:
     }
 };
 
-}// namespace litetvm::runtime
+}// namespace runtime
 
-#endif//DEVICE_API_H
+}// namespace litetvm
+
+
+#endif//LITETVM_RUNTIME_DEVICE_API_H
