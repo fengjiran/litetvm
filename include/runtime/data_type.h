@@ -13,7 +13,8 @@
 #include <string>
 #include <type_traits>
 
-namespace litetvm::runtime {
+namespace litetvm {
+namespace runtime {
 
 using tvm_index_t = ffi::Shape::index_type;
 /*!
@@ -340,7 +341,7 @@ public:
      * \return The constructed data type.
      */
     static DataType Void() {
-        return {static_cast<uint8_t>(TypeCode::kHandle), 0, 0};
+        return {kHandle, 0, 0};
     }
 
     /*!
@@ -358,7 +359,7 @@ public:
    * \return The constructed data type.
    */
     static DataType Int(int bits, int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kInt), bits, lanes};
+        return {kInt, bits, lanes};
     }
 
     /*!
@@ -369,7 +370,7 @@ public:
    * \return The constructed data type.
    */
     static DataType UInt(int bits, int lanes = 1, bool is_scalable = false) {
-        return {static_cast<uint8_t>(TypeCode::kUInt), bits, lanes, is_scalable};
+        return {kUInt, bits, lanes, is_scalable};
     }
 
     /*!
@@ -379,7 +380,7 @@ public:
    * \return The constructed data type.
    */
     static DataType Float(int bits, int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kFloat), bits, lanes};
+        return {kFloat, bits, lanes};
     }
 
     /*!
@@ -389,25 +390,106 @@ public:
    * \return The constructed data type.
    */
     static DataType BFloat(int bits, int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kBFloat), bits, lanes};
+        return {kBFloat, bits, lanes};
     }
 
     /*!
-   * \brief Construct NV float8 e4m3 datatype.
+   * \brief Construct float8 e3m4 datatype.
    * \param lanes The number of lanes
    * \return The constructed data type.
    */
-    static DataType NVFloat8E4M3(int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kFloat8_e4m3fn), 8, lanes};
+    static DataType Float8E3M4(int lanes = 1) {
+        return {kFloat8_e3m4, 8, lanes};
     }
 
     /*!
-   * \brief Construct NV float8 e5m2 datatype.
+   * \brief Construct float8 e4m3 datatype.
    * \param lanes The number of lanes
    * \return The constructed data type.
    */
-    static DataType NVFloat8E5M2(int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kFloat8_e5m2), 8, lanes};
+    static DataType Float8E4M3(int lanes = 1) {
+        return {kFloat8_e4m3, 8, lanes};
+    }
+
+    /*!
+   * \brief Construct float8 e4m3b11fnuz datatype.
+   * \param lanes The number of lanes
+   * \return The constructed data type.
+   */
+    static DataType Float8E4M3B11FNUZ(int lanes = 1) {
+        return {kFloat8_e4m3b11fnuz, 8, lanes};
+    }
+
+    /*!
+   * \brief Construct float8 e4m3fn datatype.
+   * \param lanes The number of lanes
+   * \return The constructed data type.
+   */
+    static DataType Float8E4M3FN(int lanes = 1) {
+        return {kFloat8_e4m3fn, 8, lanes};
+    }
+
+    /*!
+   * \brief Construct float8 e4m3fnuz datatype.
+   * \param lanes The number of lanes
+   * \return The constructed data type.
+   */
+    static DataType Float8E4M3FNUZ(int lanes = 1) {
+        return {kFloat8_e4m3fnuz, 8, lanes};
+    }
+
+    /*!
+     * \brief Construct float8 e5m2 datatype.
+     * \param lanes The number of lanes
+     * \return The constructed data type.
+     */
+    static DataType Float8E5M2(int lanes = 1) {
+        return {kFloat8_e5m2, 8, lanes};
+    }
+
+    /*!
+   * \brief Construct float8 e5m2fnuz datatype.
+   * \param lanes The number of lanes
+   * \return The constructed data type.
+   */
+    static DataType Float8E5M2FNUZ(int lanes = 1) {
+        return {kFloat8_e5m2fnuz, 8, lanes};
+    }
+
+    /*!
+     * \brief Construct float8 e8m0fnu datatype.
+     * \param lanes The number of lanes
+     * \return The constructed data type.
+     */
+    static DataType Float8E8M0FNU(int lanes = 1) {
+        return {kFloat8_e8m0fnu, 8, lanes};
+    }
+
+    /*!
+     * \brief Construct float6 e2m3fn datatype.
+     * \param lanes The number of lanes
+     * \return The constructed data type.
+     */
+    static DataType Float6E2M3FN(int lanes = 1) {
+        return {kFloat6_e2m3fn, 6, lanes};
+    }
+
+    /*!
+     * \brief Construct float6 e3m2fn datatype.
+     * \param lanes The number of lanes
+     * \return The constructed data type.
+     */
+    static DataType Float6E3M2FN(int lanes = 1) {
+        return {kFloat6_e3m2fn, 6, lanes};
+    }
+
+    /*!
+     * \brief Construct float4 e2m1fn datatype.
+     * \param lanes The number of lanes
+     * \return The constructed data type.
+     */
+    static DataType Float4E2M1FN(int lanes = 1) {
+        return {kFloat4_e2m1fn, 4, lanes};
     }
 
     /*!
@@ -427,7 +509,7 @@ public:
    * \return The constructed data type.
    */
     static DataType Handle(int bits = 64, int lanes = 1) {
-        return {static_cast<uint8_t>(TypeCode::kHandle), bits, lanes};
+        return {kHandle, bits, lanes};
     }
 
     /*!
@@ -437,9 +519,8 @@ public:
     static DataType ShapeIndex() {
         if (std::is_signed_v<tvm_index_t>) {
             return Int(sizeof(tvm_index_t) * 8);
-        } else {
-            return UInt(sizeof(tvm_index_t) * 8);
         }
+        return UInt(sizeof(tvm_index_t) * 8);
     }
 
 private:
@@ -452,15 +533,15 @@ private:
  * \return Number of bytes needed.
  */
 inline int GetVectorBytes(DataType dtype) {
-    if (dtype == DataType::Bool() ||
-        dtype == DataType::Int(1) ||
-        dtype == DataType::Int(4) ||
-        dtype == DataType::UInt(4)) {
+    // allow bool to exist
+    if (dtype == DataType::Bool() || dtype == DataType::Int(4) || dtype == DataType::UInt(4) ||
+        dtype == DataType::Int(1) || dtype == DataType::Float4E2M1FN() ||
+        dtype == DataType::Float6E2M3FN() || dtype == DataType::Float6E3M2FN()) {
         return 1;
     }
 
     int bits = dtype.bits() * dtype.lanes();
-    CHECK_EQ(bits % 8, 0U) << "Need to load/store by multiple of bytes";
+    ICHECK_EQ(bits % 8, 0U) << "Need to load/store by multiple of bytes";
     return bits / 8;
 }
 
@@ -484,173 +565,76 @@ inline bool TypeEqual(DLDataType lhs, DLDataType rhs) {
     return lhs.code == rhs.code && lhs.bits == rhs.bits && lhs.lanes == rhs.lanes;
 }
 
-/*!
- * \brief Runtime utility for getting custom type name from code
- * \param type_code Custom type code
- * \return Custom type name
- */
-std::string GetCustomTypeName(uint8_t type_code);
-
-/*!
- * \brief Runtime utility for checking whether custom type is registered
- * \param type_code Custom type code
- * \return Bool representing whether type is registered
- */
-bool GetCustomTypeRegistered(uint8_t type_code);
-
-/*!
- * \brief Runtime utility for parsing string of the form "custom[<typename>]"
- * \param s String to parse
- * \param scan pointer to parsing pointer, which is scanning across s
- * \return type code of custom type parsed
- */
-uint8_t ParseCustomDatatype(const std::string& s, const char** scan);
-
-/*!
- * \brief Convert type code to its name
- * \param type_code The type code .
- * \return The name of type code.
- */
-inline const char* DLDataTypeCode2Str(DLDataTypeCode type_code);
-
-/*!
- * \brief convert a string to TVM type.
- * \param s The string to be converted.
- * \return The corresponding tvm type.
- */
-inline DLDataType String2DLDataType(const std::string& s);
-
-/*!
- * \brief convert a TVM type to string.
- * \param t The type to be converted.
- * \return The corresponding tvm type in string.
- */
-inline std::string DLDataType2String(DLDataType t);
-
-// implementation details
-inline const char* DLDataTypeCode2Str(DLDataTypeCode type_code) {
-    switch (static_cast<int>(type_code)) {
-        case static_cast<int>(DLDataTypeCode::kDLInt):
-            return "int";
-        case static_cast<int>(DLDataTypeCode::kDLUInt):
-            return "uint";
-        case static_cast<int>(DLDataTypeCode::kDLFloat):
-            return "float";
-        case static_cast<int>(DataType::TypeCode::kHandle):
-            return "handle";
-        case static_cast<int>(DLDataTypeCode::kDLBfloat):
-            return "bfloat";
-        case static_cast<int>(DataType::TypeCode::kFloat8_e4m3fn):
-            return "e4m3_float";
-        case static_cast<int>(DataType::TypeCode::kFloat8_e5m2):
-            return "e5m2_float";
-        default:
-            LOG(FATAL) << "unknown type_code=" << static_cast<int>(type_code);
-    }
-    throw;
-}
-
-inline std::ostream& operator<<(std::ostream& os, DLDataType t) {// NOLINT(*)
-    if (t.bits == 1 && t.lanes == 1 && t.code == static_cast<int>(DLDataTypeCode::kDLUInt)) {
-        os << "bool";
-        return os;
-    }
-    if (DataType(t).is_void()) {
-        return os << "void";
-    }
-    if (t.code < static_cast<uint8_t>(DataType::TypeCode::kCustomBegin)) {
-        os << DLDataTypeCode2Str(static_cast<DLDataTypeCode>(t.code));
-    } else {
-        os << "custom[" << GetCustomTypeName(t.code) << "]";
-    }
-
-    if (t.code == static_cast<uint8_t>(TVMArgTypeCode::kTVMOpaqueHandle))
-        return os;
-
-    auto lanes = static_cast<int16_t>(t.lanes);
-    os << static_cast<int>(t.bits);
-    if (lanes > 1) {
-        os << 'x' << lanes;
-    } else if (lanes < -1) {
-        os << "xvscalex" << -lanes;
-    }
-    return os;
-}
+using ffi::DLDataTypeToString;
+using ffi::StringToDLDataType;
 
 inline std::ostream& operator<<(std::ostream& os, const DataType& dtype) {// NOLINT(*)
     return os << dtype.operator DLDataType();
 }
 
-inline std::string DLDataType2String(DLDataType t) {
-    if (t.bits == 0) return "";
-    std::ostringstream os;
-    os << t;
-    return os.str();
-}
+}// namespace runtime
 
-inline DLDataType String2DLDataType(const std::string& s) {
-    DLDataType t;
-    // handle void type
-    if (s.empty() || s == "void") {
-        t = DataType::Void();
-        return t;
-    }
-    t.bits = 32;
-    t.lanes = 1;
-    const char* scan;
-    if (s.substr(0, 3) == "int") {
-        t.code = static_cast<uint8_t>(DLDataTypeCode::kDLInt);
-        scan = s.c_str() + 3;
-    } else if (s.substr(0, 4) == "uint") {
-        t.code = static_cast<uint8_t>(DLDataTypeCode::kDLUInt);
-        scan = s.c_str() + 4;
-    } else if (s.substr(0, 5) == "float") {
-        t.code = static_cast<uint8_t>(DLDataTypeCode::kDLFloat);
-        scan = s.c_str() + 5;
-    } else if (s.substr(0, 6) == "handle") {
-        t.code = static_cast<uint8_t>(TVMArgTypeCode::kTVMOpaqueHandle);
-        t.bits = 64;// handle uses 64 bit by default.
-        scan = s.c_str() + 6;
-    } else if (s == "bool") {
-        t.code = static_cast<uint8_t>(DLDataTypeCode::kDLUInt);
-        t.bits = 1;
-        t.lanes = 1;
-        return t;
-    } else if (s.substr(0, 6) == "bfloat") {
-        t.code = static_cast<uint8_t>(DataType::TypeCode::kBFloat);
-        t.bits = 16;
-        scan = s.c_str() + 6;
-    } else if (s.substr(0, 10) == "e4m3_float") {
-        t.code = static_cast<uint8_t>(DataType::TypeCode::kFloat8_e4m3fn);
-        t.bits = 8;
-        scan = s.c_str() + 10;
-    } else if (s.substr(0, 10) == "e5m2_float") {
-        t.code = static_cast<uint8_t>(DataType::TypeCode::kFloat8_e5m2);
-        t.bits = 8;
-        scan = s.c_str() + 10;
-    } else if (s.substr(0, 6) == "custom") {
-        t.code = ParseCustomDatatype(s, &scan);
-    } else {
-        scan = s.c_str();
-        LOG(FATAL) << "unknown type " << s;
-    }
-    char* xdelim;// emulate sscanf("%ux%u", bits, lanes)
-    uint8_t bits = static_cast<uint8_t>(strtoul(scan, &xdelim, 10));
-    if (bits != 0) t.bits = bits;
-    int scalable_multiplier = 1;
-    if (strncmp(xdelim, "xvscale", 7) == 0) {
-        scalable_multiplier = -1;
-        xdelim += 7;
-    }
-    char* endpt = xdelim;
-    if (*xdelim == 'x') {
-        t.lanes = static_cast<uint16_t>(scalable_multiplier * strtoul(xdelim + 1, &endpt, 10));
-    }
-    CHECK(endpt == s.c_str() + s.length()) << "unknown type " << s;
-    return t;
-}
+using DataType = runtime::DataType;
 
-}// namespace litetvm::runtime
+namespace ffi {
 
+template<>
+struct TypeTraits<DataType> : TypeTraitsBase {
+    static constexpr int32_t field_static_type_index = kTVMFFIDataType;
+
+    TVM_FFI_INLINE static void CopyToAnyView(const DataType& src, TVMFFIAny* result) {
+        // clear padding part to ensure the equality check can always check the v_uint64 part
+        result->v_uint64 = 0;
+        result->type_index = kTVMFFIDataType;
+        result->v_dtype = src;
+    }
+
+    TVM_FFI_INLINE static void MoveToAny(DataType src, TVMFFIAny* result) {
+        // clear padding part to ensure the equality check can always check the v_uint64 part
+        result->v_uint64 = 0;
+        result->type_index = kTVMFFIDataType;
+        result->v_dtype = src;
+    }
+
+    TVM_FFI_INLINE static std::optional<DataType> TryCastFromAnyView(const TVMFFIAny* src) {
+        auto opt_dtype = TypeTraits<DLDataType>::TryCastFromAnyView(src);
+        if (opt_dtype) {
+            return DataType(opt_dtype.value());
+        }
+        return std::nullopt;
+    }
+
+    TVM_FFI_INLINE static bool CheckAnyStrict(const TVMFFIAny* src) {
+        return TypeTraits<DLDataType>::CheckAnyStrict(src);
+    }
+
+    TVM_FFI_INLINE static DataType CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
+        return DataType(TypeTraits<DLDataType>::CopyFromAnyViewAfterCheck(src));
+    }
+
+    TVM_FFI_INLINE static std::string TypeStr() {
+        return StaticTypeKey::kTVMFFIDataType;
+    }
+};
+
+}// namespace ffi
+}// namespace litetvm
+
+namespace std {
+template<>
+struct hash<litetvm::DataType> {
+    NODISCARD int cantor_pairing_function(int a, int b) const {
+        return (a + b) * (a + b + 1) / 2 + b;
+    }
+
+    std::size_t operator()(litetvm::DataType const& dtype) const {
+        int a = dtype.code();
+        int b = dtype.bits();
+        int c = dtype.lanes();
+        int d = cantor_pairing_function(a, b);
+        return cantor_pairing_function(c, d);
+    }
+};
+}// namespace std
 
 #endif//LITETVM_RUNTIME_DATA_TYPE_H
