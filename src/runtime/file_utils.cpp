@@ -2,11 +2,14 @@
 // Created by 赵丹 on 25-2-13.
 //
 
-#include "runtime/file_utils.h"
-#include "runtime/registry.h"
+#include "file_utils.h"
+#include "ffi/function.h"
+#include "ffi/reflection/registry.h"
+#include "runtime/logging.h"
+#include "runtime/serializer.h"
+
 #include <dmlc/json.h>
 #include <dmlc/memory_io.h>
-
 #include <fstream>
 #include <unordered_map>
 #include <vector>
@@ -17,12 +20,17 @@ namespace runtime {
 void FunctionInfo::Save(dmlc::JSONWriter* writer) const {
     std::vector<std::string> sarg_types(arg_types.size());
     for (size_t i = 0; i < arg_types.size(); ++i) {
-        sarg_types[i] = DLDataType2String(arg_types[i]);
+        sarg_types[i] = DLDataTypeToString(arg_types[i]);
     }
     writer->BeginObject();
     writer->WriteObjectKeyValue("name", name);
     writer->WriteObjectKeyValue("arg_types", sarg_types);
     writer->WriteObjectKeyValue("launch_param_tags", launch_param_tags);
+    std::vector<int> iarg_extra_tags(arg_extra_tags.size());
+    for (size_t i = 0; i < arg_extra_tags.size(); ++i) {
+        iarg_extra_tags[i] = static_cast<int>(arg_extra_tags[i]);
+    }
+    writer->WriteObjectKeyValue("arg_extra_tags", iarg_extra_tags);
     writer->EndObject();
 }
 
@@ -34,10 +42,16 @@ void FunctionInfo::Load(dmlc::JSONReader* reader) {
     helper.DeclareOptionalField("launch_param_tags", &launch_param_tags);
     helper.DeclareOptionalField("thread_axis_tags",
                                 &launch_param_tags);// for backward compatibility
+    std::vector<int> iarg_extra_tags;
+    helper.DeclareOptionalField("arg_extra_tags", &iarg_extra_tags);
+    arg_extra_tags.resize(iarg_extra_tags.size());
+    for (size_t i = 0; i < arg_extra_tags.size(); ++i) {
+        arg_extra_tags[i] = static_cast<ArgExtraTags>(iarg_extra_tags[i]);
+    }
     helper.ReadAllFields(reader);
     arg_types.resize(sarg_types.size());
     for (size_t i = 0; i < arg_types.size(); ++i) {
-        arg_types[i] = String2DLDataType(sarg_types[i]);
+        arg_types[i] = StringToDLDataType(sarg_types[i]);
     }
 }
 
@@ -45,12 +59,14 @@ void FunctionInfo::Save(dmlc::Stream* writer) const {
     writer->Write(name);
     writer->Write(arg_types);
     writer->Write(launch_param_tags);
+    writer->Write(arg_extra_tags);
 }
 
 bool FunctionInfo::Load(dmlc::Stream* reader) {
     if (!reader->Read(&name)) return false;
     if (!reader->Read(&arg_types)) return false;
     if (!reader->Read(&launch_param_tags)) return false;
+    if (!reader->Read(&arg_extra_tags)) return false;
     return true;
 }
 
@@ -165,6 +181,7 @@ Map<String, NDArray> LoadParams(const std::string& param_blob) {
     dmlc::MemoryStringStream strm(const_cast<std::string*>(&param_blob));
     return LoadParams(&strm);
 }
+
 Map<String, NDArray> LoadParams(dmlc::Stream* strm) {
     Map<String, NDArray> params;
     uint64_t header, reserved;
@@ -216,27 +233,24 @@ std::string SaveParams(const Map<String, NDArray>& params) {
     return bytes;
 }
 
-TVM_REGISTER_GLOBAL("runtime.SaveParams").set_body_typed([](const Map<String, NDArray>& params) {
-    std::string s = SaveParams(params);
-    // copy return array so it is owned by the ret value
-    TVMRetValue rv;
-    rv = TVMByteArray{s.data(), s.size()};
-    return rv;
-});
-
-TVM_REGISTER_GLOBAL("runtime.SaveParamsToFile")
-        .set_body_typed([](const Map<String, NDArray>& params, const String& path) {
-            SimpleBinaryFileStream strm(path, "wb");
-            SaveParams(&strm, params);
-        });
-
-TVM_REGISTER_GLOBAL("runtime.LoadParams").set_body_typed([](const String& s) {
-    return LoadParams(s);
-});
-
-TVM_REGISTER_GLOBAL("runtime.LoadParamsFromFile").set_body_typed([](const String& path) {
-    SimpleBinaryFileStream strm(path, "rb");
-    return LoadParams(&strm);
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef()
+            .def("runtime.SaveParams",
+                 [](const Map<String, NDArray>& params) {
+                     std::string s = ::litetvm::runtime::SaveParams(params);
+                     return ffi::Bytes(std::move(s));
+                 })
+            .def("runtime.SaveParamsToFile",
+                 [](const Map<String, NDArray>& params, const String& path) {
+                     litetvm::runtime::SimpleBinaryFileStream strm(path, "wb");
+                     SaveParams(&strm, params);
+                 })
+            .def("runtime.LoadParams", [](const ffi::Bytes& s) { return ::litetvm::runtime::LoadParams(s); })
+            .def("runtime.LoadParamsFromFile", [](const String& path) {
+                litetvm::runtime::SimpleBinaryFileStream strm(path, "rb");
+                return LoadParams(&strm);
+            });
 });
 
 }// namespace runtime

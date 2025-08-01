@@ -3,8 +3,9 @@
 //
 
 #include "runtime/module.h"
-#include "runtime/registry.h"
 #include "runtime/file_utils.h"
+#include "runtime/registry.h"
+#include "runtime/logging.h"
 
 #include <unordered_set>
 
@@ -39,9 +40,9 @@ void ModuleNode::Import(Module other) {
 }
 
 
-PackedFunc ModuleNode::GetFunction(const String& name, bool query_imports) {
+ffi::Function ModuleNode::GetFunction(const String& name, bool query_imports) {
     ModuleNode* self = this;
-    PackedFunc pf = self->GetFunction(name, GetObjectPtr<Object>(this));
+    ffi::Function pf = self->GetFunction(name, GetObjectPtr<Object>(this));
     if (pf != nullptr) return pf;
     if (query_imports) {
         for (Module& m: self->imports_) {
@@ -56,18 +57,18 @@ PackedFunc ModuleNode::GetFunction(const String& name, bool query_imports) {
 
 Module Module::LoadFromFile(const String& file_name, const String& format) {
     std::string fmt = GetFileFormat(file_name, format);
-    CHECK(fmt.length() != 0) << "Cannot deduce format of file " << file_name;
+    ICHECK(fmt.length() != 0) << "Cannot deduce format of file " << file_name;
     if (fmt == "dll" || fmt == "dylib" || fmt == "dso") {
         fmt = "so";
     }
     std::string load_f_name = "runtime.module.loadfile_" + fmt;
     VLOG(1) << "Loading module from '" << file_name << "' of format '" << fmt << "'";
-    const PackedFunc* f = RegistryManager::Global().Get(load_f_name);
-    CHECK(f != nullptr) << "Loader for `." << format << "` files is not registered,"
-                        << " resolved to (" << load_f_name << ") in the global registry."
-                        << "Ensure that you have loaded the correct runtime code, and"
-                        << "that you are on the correct hardware architecture.";
-    Module m = static_cast<Module>((*f)(file_name, format));
+    const auto f = ffi::Function::GetGlobal(load_f_name);
+    ICHECK(f.has_value()) << "Loader for `." << format << "` files is not registered,"
+                          << " resolved to (" << load_f_name << ") in the global registry."
+                          << "Ensure that you have loaded the correct runtime code, and"
+                          << "that you are on the correct hardware architecture.";
+    Module m = (*f)(file_name, format).cast<Module>();
     return m;
 }
 

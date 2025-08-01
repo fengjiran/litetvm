@@ -80,7 +80,7 @@ private:
             ICHECK(allow_missing) << "Device API " << name << " is not enabled.";
             return nullptr;
         }
-        void* ptr = (*f)().cast<void*>();
+        auto* ptr = (*f)().cast<void*>();
         return static_cast<DeviceAPI*>(ptr);
     }
 };
@@ -154,6 +154,105 @@ DeviceAPI* DeviceAPI::Get(Device dev, bool allow_missing) {
     return DeviceAPIManager::Get(dev.device_type, allow_missing);
 }
 
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef()
+            .def("runtime.Device_StreamCreate",
+                 [](DLDevice dev) {
+                     return reinterpret_cast<int64_t>(DeviceAPIManager::Get(dev)->CreateStream(dev));
+                 })
+            .def("runtime.Device_StreamFree",
+                 [](DLDevice dev, int64_t stream) {
+                     DeviceAPIManager::Get(dev)->FreeStream(dev, reinterpret_cast<TVMStreamHandle>(stream));
+                 })
+            .def("runtime.Device_SetStream",
+                 [](DLDevice dev, int64_t stream) {
+                     DeviceAPIManager::Get(dev)->SetStream(dev, reinterpret_cast<TVMStreamHandle>(stream));
+                 })
+            .def("runtime.Device_StreamSync",
+                 [](DLDevice dev, int64_t stream) {
+                     DeviceAPIManager::Get(dev)->StreamSync(dev, reinterpret_cast<TVMStreamHandle>(stream));
+                 })
+            .def("runtime.Device_StreamSyncFromTo", [](DLDevice dev, int64_t src, int64_t dst) {
+                DeviceAPIManager::Get(dev)->SyncStreamFromTo(dev, reinterpret_cast<TVMStreamHandle>(src),
+                                                             reinterpret_cast<TVMStreamHandle>(dst));
+            });
+});
+
+// set device api
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef()
+            .def_packed(litetvm::runtime::symbol::tvm_set_device,
+                        [](litetvm::ffi::PackedArgs args, litetvm::ffi::Any* ret) {
+                            DLDevice dev;
+                            dev.device_type = static_cast<DLDeviceType>(args[0].cast<int>());
+                            dev.device_id = args[1].cast<int>();
+                            DeviceAPIManager::Get(dev)->SetDevice(dev);
+                        })
+            .def_packed("runtime.GetDeviceAttr",
+                        [](litetvm::ffi::PackedArgs args, litetvm::ffi::Any* ret) {
+                            DLDevice dev;
+                            dev.device_type = static_cast<DLDeviceType>(args[0].cast<int>());
+                            dev.device_id = args[1].cast<int>();
+
+                            DeviceAttrKind kind = static_cast<DeviceAttrKind>(args[2].cast<int>());
+                            if (kind == kExist) {
+                                DeviceAPI* api = DeviceAPIManager::Get(dev.device_type, true);
+                                if (api != nullptr) {
+                                    api->GetAttr(dev, kind, ret);
+                                } else {
+                                    *ret = 0;
+                                }
+                            } else {
+                                DeviceAPIManager::Get(dev)->GetAttr(dev, kind, ret);
+                            }
+                        })
+            .def("runtime.TVMSetStream", [](int device_type, int device_id, void* stream) {
+                Device dev;
+                dev.device_type = static_cast<DLDeviceType>(device_type);
+                dev.device_id = device_id;
+                DeviceAPIManager::Get(dev)->SetStream(dev, stream);
+            });
+});
 
 }// namespace runtime
 }// namespace litetvm
+
+using namespace litetvm::runtime;
+int TVMBackendGetFuncFromEnv(void* mod_node, const char* func_name, TVMFFIObjectHandle* func) {
+    TVM_FFI_SAFE_CALL_BEGIN();
+    *func = const_cast<litetvm::ffi::FunctionObj*>(
+            static_cast<ModuleNode*>(mod_node)->GetFuncFromEnv(func_name)->get());
+    TVM_FFI_SAFE_CALL_END();
+}
+
+void* TVMBackendAllocWorkspace(int device_type, int device_id, uint64_t size, int dtype_code_hint,
+                               int dtype_bits_hint) {
+    DLDevice dev;
+    dev.device_type = static_cast<DLDeviceType>(device_type);
+    dev.device_id = device_id;
+
+    DLDataType type_hint;
+    type_hint.code = static_cast<decltype(type_hint.code)>(dtype_code_hint);
+    type_hint.bits = static_cast<decltype(type_hint.bits)>(dtype_bits_hint);
+    type_hint.lanes = 1;
+
+    return DeviceAPIManager::Get(dev)->AllocWorkspace(dev, size, type_hint);
+}
+
+int TVMBackendFreeWorkspace(int device_type, int device_id, void* ptr) {
+    DLDevice dev;
+    dev.device_type = static_cast<DLDeviceType>(device_type);
+    dev.device_id = device_id;
+    DeviceAPIManager::Get(dev)->FreeWorkspace(dev, ptr);
+    return 0;
+}
+
+int TVMBackendRunOnce(void** handle, int (*f)(void*), void* cdata, int nbytes) {
+    if (*handle == nullptr) {
+        *handle = reinterpret_cast<void*>(1);
+        return (*f)(cdata);
+    }
+    return 0;
+}

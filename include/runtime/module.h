@@ -2,18 +2,21 @@
 // Created by richard on 2/4/25.
 //
 
-#ifndef MODULE_H
-#define MODULE_H
+#ifndef LITETVM_RUNTIME_MODULE_H
+#define LITETVM_RUNTIME_MODULE_H
 
-#include "runtime/c_runtime_api.h"
+#include "ffi/function.h"
+#include "ffi/string.h"
+#include "runtime/base.h"
 #include "runtime/object.h"
-#include "runtime/string.h"
 
 #include <dmlc/io.h>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
-#include <mutex>
 
 namespace litetvm::runtime {
 
@@ -21,7 +24,7 @@ namespace litetvm::runtime {
  * \brief Property of runtime module
  * We classify the property of runtime module into the following categories.
  */
-enum class ModulePropertyMask : int {
+enum ModulePropertyMask : int {
     /*! \brief kBinarySerializable
    *  we can serialize the module to the stream of bytes. CUDA/OpenCL/JSON
    * runtime are representative examples. A binary exportable module can be integrated into final
@@ -47,26 +50,28 @@ enum class ModulePropertyMask : int {
 };
 
 class ModuleNode;
-class PackedFunc;
 
 /*!
  * \brief Module container of TVM.
  */
 class Module : public ObjectRef {
 public:
-    Module() {}
+    Module() = default;
+
     // constructor from container.
     explicit Module(ObjectPtr<Object> n) : ObjectRef(n) {}
+
     /*!
    * \brief Get packed function from current module by name.
    *
    * \param name The name of the function.
    * \param query_imports Whether also query dependency modules.
    * \return The result function.
-   *  This function will return PackedFunc(nullptr) if function do not exist.
+   *  This function will return Function(nullptr) if function do not exist.
    * \note Implemented in packed_func.cc
    */
-    inline PackedFunc GetFunction(const String& name, bool query_imports = false);
+    inline ffi::Function GetFunction(const String& name, bool query_imports = false);
+
     // The following functions requires link with runtime.
     /*!
    * \brief Import another module into this module.
@@ -76,6 +81,7 @@ public:
    *  An error will be thrown when cyclic dependency is detected.
    */
     inline void Import(Module other);
+
     /*! \return internal container */
     inline ModuleNode* operator->();
     /*! \return internal container */
@@ -87,7 +93,7 @@ public:
    * \note This function won't load the import relationship.
    *  Re-create import relationship by calling Import.
    */
-    static Module LoadFromFile(const String& file_name, const String& format = "");
+    TVM_DLL static Module LoadFromFile(const String& file_name, const String& format = "");
     // refer to the corresponding container.
     using ContainerType = ModuleNode;
     friend class ModuleNode;
@@ -141,7 +147,7 @@ public:
    *   If the function need resource from the module(e.g. late linking),
    *   it should capture sptr_to_self.
    */
-    virtual PackedFunc GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) = 0;
+    virtual ffi::Function GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) = 0;
     /*!
    * \brief Save the module to file.
    * \param file_name The file to be saved to.
@@ -177,7 +183,8 @@ public:
    *  This function will return PackedFunc(nullptr) if function do not exist.
    * \note Implemented in packed_func.cc
    */
-    PackedFunc GetFunction(const String& name, bool query_imports = false);
+    ffi::Function GetFunction(const String& name, bool query_imports = false);
+
     /*!
    * \brief Import another module into this module.
    * \param other The module to be imported.
@@ -253,7 +260,12 @@ private:
  * \param target The target module name.
  * \return Whether runtime is enabled.
  */
-bool RuntimeEnabled(const String& target);
+TVM_DLL bool RuntimeEnabled(const String& target);
+
+// implementation of Module::GetFunction
+inline ffi::Function Module::GetFunction(const String& name, bool query_imports) {
+    return (*this)->GetFunction(name, query_imports);
+}
 
 /*! \brief namespace for constant symbols */
 namespace symbol {
@@ -301,4 +313,4 @@ inline std::ostream& operator<<(std::ostream& out, const Module& module) {
 
 }// namespace litetvm::runtime
 
-#endif//MODULE_H
+#endif//LITETVM_RUNTIME_MODULE_H
