@@ -2,10 +2,10 @@
 // Created by richard on 2/5/25.
 //
 
-#include <dmlc/thread_local.h>
 #include "runtime/device_api.h"
 #include "runtime/registry.h"
-#include "runtime/workspace_pool.h"
+#include "workspace_pool.h"
+#include <dmlc/thread_local.h>
 
 #include <iostream>
 

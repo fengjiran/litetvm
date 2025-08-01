@@ -5,9 +5,9 @@
 #ifndef LITETVM_TIR_SCHEDULE_ANALYSIS_H
 #define LITETVM_TIR_SCHEDULE_ANALYSIS_H
 
+#include "../../../src/runtime/thread_storage_scope.h"
 #include "arith/analyzer.h"
 #include "ir/op.h"
-#include "runtime/thread_storage_scope.h"
 #include "tir/index_map.h"
 #include "tir/schedule/schedule.h"
 #include "tir/schedule/state.h"

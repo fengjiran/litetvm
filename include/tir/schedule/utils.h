@@ -5,10 +5,10 @@
 #ifndef LITETVM_TIR_SCHEDULE_UTILS_H
 #define LITETVM_TIR_SCHEDULE_UTILS_H
 
+#include "../../../src/runtime/thread_storage_scope.h"
 #include "arith/iter_affine_map.h"
 #include "arith/pattern_match.h"
 #include "node/serialization.h"
-#include "runtime/thread_storage_scope.h"
 #include "support/nd_int_set.h"
 #include "tir/analysis.h"
 #include "tir/op.h"
@@ -18,9 +18,9 @@
 #include "tir/schedule/instruction_traits.h"
 #include "tir/schedule/primitive.h"
 #include "tir/schedule/schedule.h"
-#include "tir/schedule/transform.h"
 #include "tir/schedule/state.h"
 #include "tir/schedule/trace.h"
+#include "tir/schedule/transform.h"
 #include "tir/stmt_functor.h"
 #include "tir/utils.h"
 #include "tir/var.h"
