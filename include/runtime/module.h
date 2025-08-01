@@ -125,11 +125,13 @@ class ModuleNode : public Object {
 public:
     /*! \brief virtual destructor */
     virtual ~ModuleNode() = default;
+
     /*!
    * \return The per module type key.
    * \note This key is used to for serializing custom modules.
    */
-    virtual const char* type_key() const = 0;
+    NODISCARD virtual const char* type_key() const = 0;
+
     /*!
    * \brief Get a PackedFunc from module.
    *
@@ -148,12 +150,14 @@ public:
    *   it should capture sptr_to_self.
    */
     virtual ffi::Function GetFunction(const String& name, const ObjectPtr<Object>& sptr_to_self) = 0;
+
     /*!
    * \brief Save the module to file.
    * \param file_name The file to be saved to.
    * \param format The format of the file.
    */
     virtual void SaveToFile(const String& file_name, const String& format);
+
     /*!
    * \brief Save the module to binary stream.
    * \param stream The binary stream to save to.
@@ -169,11 +173,13 @@ public:
    * \return Possible source code when available.
    */
     virtual String GetSource(const String& format = "");
+
     /*!
    * \brief Get the format of the module, when available.
    * \return Possible format when available.
    */
     virtual String GetFormat();
+
     /*!
    * \brief Get packed function from current module by name.
    *
@@ -193,6 +199,7 @@ public:
    *  An error will be thrown when cyclic dependency is detected.
    */
     void Import(Module other);
+
     /*!
    * \brief Get a function from current environment
    *  The environment includes all the imports as well as Global functions.
@@ -200,29 +207,35 @@ public:
    * \param name name of the function.
    * \return The corresponding function.
    */
-    const PackedFunc* GetFuncFromEnv(const String& name);
+    const ffi::Function* GetFuncFromEnv(const String& name);
 
     /*! \brief Clear all imports of the module. */
-    void ClearImports() { imports_.clear(); }
+    void ClearImports() {
+        imports_.clear();
+    }
 
     /*! \return The module it imports from */
-    const std::vector<Module>& imports() const { return imports_; }
+    NODISCARD const std::vector<Module>& imports() const {
+        return imports_;
+    }
 
     /*!
    * \brief Returns bitmap of property.
    * By default, none of the property is set. Derived class can override this function and set its
    * own property.
    */
-    virtual int GetPropertyMask() const { return 0b000; }
+    NODISCARD virtual int GetPropertyMask() const {
+        return 0b000;
+    }
 
     /*! \brief Returns true if this module is 'DSO exportable'. */
-    bool IsDSOExportable() const {
-        return (GetPropertyMask() & static_cast<int>(ModulePropertyMask::kDSOExportable)) != 0;
+    NODISCARD bool IsDSOExportable() const {
+        return (GetPropertyMask() & kDSOExportable) != 0;
     }
 
     /*! \brief Returns true if this module is 'Binary Serializable'. */
-    bool IsBinarySerializable() const {
-        return (GetPropertyMask() & static_cast<int>(ModulePropertyMask::kBinarySerializable)) != 0;
+    NODISCARD bool IsBinarySerializable() const {
+        return (GetPropertyMask() & kBinarySerializable) != 0;
     }
 
     /*!
@@ -237,11 +250,11 @@ public:
     virtual bool ImplementsFunction(const String& name, bool query_imports = false);
 
     // integration with the existing components.
-    static constexpr uint32_t _type_index = static_cast<uint32_t>(TypeIndex::kRuntimeModule);
+    static constexpr uint32_t _type_index = ffi::TypeIndex::kTVMFFIModule;
     static constexpr const char* _type_key = "runtime.Module";
     // NOTE: ModuleNode can still be sub-classed
     //
-    TVM_DECLARE_FINAL_OBJECT_INFO(ModuleNode, Object);
+    TVM_FFI_DECLARE_STATIC_OBJECT_INFO(ModuleNode, Object);
 
 protected:
     friend class Module;
@@ -251,7 +264,7 @@ protected:
 
 private:
     /*! \brief Cache used by GetImport */
-    std::unordered_map<std::string, std::shared_ptr<PackedFunc>> import_cache_;
+    std::unordered_map<std::string, std::shared_ptr<ffi::Function>> import_cache_;
     std::mutex mutex_;
 };
 
@@ -269,12 +282,10 @@ inline ffi::Function Module::GetFunction(const String& name, bool query_imports)
 
 /*! \brief namespace for constant symbols */
 namespace symbol {
-/*! \brief A PackedFunc that retrieves exported metadata. */
-constexpr const char* tvm_get_c_metadata = "get_c_metadata";
-/*! \brief Global variable to store module context. */
-constexpr const char* tvm_module_ctx = "__tvm_module_ctx";
-/*! \brief Global variable to store device module blob */
-constexpr const char* tvm_dev_mblob = "__tvm_dev_mblob";
+/*! \brief Global variable to store context pointer for a library module. */
+constexpr const char* tvm_ffi_library_ctx = "__tvm_ffi_library_ctx";
+/*! \brief Global variable to store binary data alongside a library module. */
+constexpr const char* tvm_ffi_library_bin = "__tvm_ffi_library_bin";
 /*! \brief global function to set device */
 constexpr const char* tvm_set_device = "__tvm_set_device";
 /*! \brief Auxiliary counter to global barrier. */
@@ -283,13 +294,7 @@ constexpr const char* tvm_global_barrier_state = "__tvm_global_barrier_state";
 constexpr const char* tvm_prepare_global_barrier = "__tvm_prepare_global_barrier";
 /*! \brief Placeholder for the module's entry function. */
 constexpr const char* tvm_module_main = "__tvm_main__";
-/*! \brief Prefix for parameter symbols emitted into the main program. */
-constexpr const char* tvm_param_prefix = "__tvm_param__";
-/*! \brief A PackedFunc that looks up linked parameters by storage_id. */
-constexpr const char* tvm_lookup_linked_param = "_lookup_linked_param";
-/*! \brief Model entrypoint generated as an interface to the AOT function outside of TIR */
-constexpr const char* tvm_entrypoint_suffix = "run";
-}  // namespace symbol
+}// namespace symbol
 
 inline void Module::Import(Module other) {
     return (*this)->Import(other);
@@ -311,6 +316,85 @@ inline std::ostream& operator<<(std::ostream& out, const Module& module) {
     return out;
 }
 
+namespace details {
+
+template<typename T>
+struct ModuleVTableEntryHelper {};
+
+template<typename T, typename R, typename... Args>
+struct ModuleVTableEntryHelper<R (T::*)(Args...) const> {
+    using MemFnType = R (T::*)(Args...) const;
+    static TVM_ALWAYS_INLINE void Call(ffi::Any* rv, T* self, MemFnType f, ffi::PackedArgs args) {
+        auto wrapped = [self, f](Args... args) -> R { return (self->*f)(std::forward<Args>(args)...); };
+        ffi::details::unpack_call<R>(std::make_index_sequence<sizeof...(Args)>{}, nullptr, wrapped,
+                                     args.data(), args.size(), rv);
+    }
+};
+
+template<typename T, typename R, typename... Args>
+struct ModuleVTableEntryHelper<R (T::*)(Args...)> {
+    using MemFnType = R (T::*)(Args...);
+    static TVM_ALWAYS_INLINE void Call(ffi::Any* rv, T* self, MemFnType f, ffi::PackedArgs args) {
+        auto wrapped = [self, f](Args... args) -> R { return (self->*f)(std::forward<Args>(args)...); };
+        ffi::details::unpack_call<R>(std::make_index_sequence<sizeof...(Args)>{}, nullptr, wrapped,
+                                     args.data(), args.size(), rv);
+    }
+};
+
+template<typename T, typename... Args>
+struct ModuleVTableEntryHelper<void (T::*)(Args...) const> {
+    using MemFnType = void (T::*)(Args...) const;
+    static TVM_ALWAYS_INLINE void Call(ffi::Any* rv, T* self, MemFnType f, ffi::PackedArgs args) {
+        auto wrapped = [self, f](Args... args) -> void { (self->*f)(std::forward<Args>(args)...); };
+        ffi::details::unpack_call<void>(std::make_index_sequence<sizeof...(Args)>{}, nullptr, wrapped,
+                                        args.data(), args.size(), rv);
+    }
+};
+
+template<typename T, typename... Args>
+struct ModuleVTableEntryHelper<void (T::*)(Args...)> {
+    using MemFnType = void (T::*)(Args...);
+    static TVM_ALWAYS_INLINE void Call(ffi::Any* rv, T* self, MemFnType f, ffi::PackedArgs args) {
+        auto wrapped = [self, f](Args... args) -> void { (self->*f)(std::forward<Args>(args)...); };
+        ffi::details::unpack_call<void>(std::make_index_sequence<sizeof...(Args)>{}, nullptr, wrapped,
+                                        args.data(), args.size(), rv);
+    }
+};
+}// namespace details
+
 }// namespace litetvm::runtime
+
+#define TVM_MODULE_VTABLE_BEGIN(TypeKey)                                                      \
+    const char* type_key() const final { return TypeKey; }                                    \
+    ffi::Function GetFunction(const String& _name, const ObjectPtr<Object>& _self) override { \
+        using SelfPtr = std::remove_cv_t<decltype(this)>;
+
+#define TVM_MODULE_VTABLE_END()    \
+    return ffi::Function(nullptr); \
+    }
+
+#define TVM_MODULE_VTABLE_END_WITH_DEFAULT(MemFunc) \
+    {                                               \
+        auto f = (MemFunc);                         \
+        return (this->*f)(_name);                   \
+    }                                               \
+    }// NOLINT(*)
+
+#define TVM_MODULE_VTABLE_ENTRY(Name, MemFunc)                                                  \
+    if (_name == Name) {                                                                        \
+        return ffi::Function::FromPacked([_self](ffi::PackedArgs args, ffi::Any* rv) -> void {  \
+            using Helper = ::tvm::runtime::details::ModuleVTableEntryHelper<decltype(MemFunc)>; \
+            SelfPtr self = static_cast<SelfPtr>(_self.get());                                   \
+            Helper::Call(rv, self, MemFunc, args);                                              \
+        });                                                                                     \
+    }
+
+#define TVM_MODULE_VTABLE_ENTRY_PACKED(Name, MemFunc)                              \
+    if (_name == Name) {                                                           \
+        return ffi::Function([_self](ffi::PackedArgs args, ffi::Any* rv) -> void { \
+            (static_cast<SelfPtr>(_self.get())->*(MemFunc))(args, rv);             \
+        });                                                                        \
+    }
+
 
 #endif//LITETVM_RUNTIME_MODULE_H
