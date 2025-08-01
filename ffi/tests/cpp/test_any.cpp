@@ -379,6 +379,8 @@ TEST(Any, ObjectMove) {
     EXPECT_EQ(v0->value, 3.14);
     EXPECT_EQ(v0.use_count(), 1);
     EXPECT_TRUE(any1 == nullptr);
+
+
 }
 
 }// namespace

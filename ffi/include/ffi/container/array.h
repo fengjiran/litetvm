@@ -471,7 +471,7 @@ public:
    * \param i The index
    * \return the i-th element.
    */
-    T operator[](int64_t i) const {
+    const T operator[](int64_t i) const {
         ArrayObj* p = GetArrayObj();
         if (p == nullptr) {
             TVM_FFI_THROW(IndexError) << "cannot index a null array";
@@ -500,7 +500,7 @@ public:
     }
 
     /*! \return The first element of the array */
-    T front() const {
+    const T front() const {
         ArrayObj* p = GetArrayObj();
         if (p == nullptr || p->size_ == 0) {
             TVM_FFI_THROW(IndexError) << "cannot index a empty array";
@@ -509,7 +509,7 @@ public:
     }
 
     /*! \return The last element of the array */
-    T back() const {
+    const T back() const {
         ArrayObj* p = GetArrayObj();
         if (p == nullptr || p->size_ == 0) {
             TVM_FFI_THROW(IndexError) << "cannot index a empty array";

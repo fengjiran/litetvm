@@ -728,11 +728,11 @@ struct ObjectPtrEqual {
  * \note We recommend making objects immutable when possible.
  *       This macro is only reserved for objects that stores runtime states.
  */
-#define TVM_FFI_DEFINE_MUTABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                      \
-    TypeName() = default;                                                                                \
-    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                               \
-    explicit TypeName(::tvm::runtime::ObjectPtr<::tvm::runtime::Object> n) : ParentType(std::move(n)) {} \
-    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }                     \
+#define TVM_FFI_DEFINE_MUTABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                              \
+    TypeName() = default;                                                                                        \
+    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                                       \
+    explicit TypeName(::litetvm::runtime::ObjectPtr<::litetvm::runtime::Object> n) : ParentType(std::move(n)) {} \
+    ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }                             \
     using ContainerType = ObjectName;
 
 /*

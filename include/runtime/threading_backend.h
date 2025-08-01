@@ -58,14 +58,14 @@ public:
    *        `worker_callback` will only be called for values >= 1. This
    *        allows use of the main thread as a worker.
    */
-    LITETVM_API ThreadGroup(int num_workers, std::function<void(int)> worker_callback,
+    TVM_DLL ThreadGroup(int num_workers, std::function<void(int)> worker_callback,
                             bool exclude_worker0 = false);
-    LITETVM_API ~ThreadGroup();
+    TVM_DLL ~ThreadGroup();
 
     /*!
    * \brief Blocks until all non-main threads in the pool finish.
    */
-    LITETVM_API void Join();
+    TVM_DLL void Join();
 
     enum AffinityMode : int {
         kBig = 1,
@@ -88,7 +88,7 @@ public:
    *
    * \return The number of workers to use.
    */
-    LITETVM_API int Configure(AffinityMode mode, int nthreads, bool exclude_worker0,
+    TVM_DLL int Configure(AffinityMode mode, int nthreads, bool exclude_worker0,
                               std::vector<unsigned int> cpus = {});
 
 private:
@@ -98,22 +98,22 @@ private:
 /*!
  * \brief Platform-agnostic no-op.
  */
-LITETVM_API void Yield();
+TVM_DLL void Yield();
 /*!
  * \return the maximum number of effective workers for this system.
  */
-LITETVM_API int MaxConcurrency();
+TVM_DLL int MaxConcurrency();
 /*!
  * \brief Setting the maximum number of available cores.
  */
-LITETVM_API void SetMaxConcurrency(int value);
+TVM_DLL void SetMaxConcurrency(int value);
 /*!
  * \brief Reset the threads in the pool. All current threads are destroyed and
  * new ones are created.
  *
  * Note that this does nothing when openmp is used.
  */
-LITETVM_API void ResetThreadPool();
+TVM_DLL void ResetThreadPool();
 
 /*!
  * \brief Configuring the CPU affinity mode for the working threads.
@@ -122,14 +122,14 @@ LITETVM_API void ResetThreadPool();
  * \param nthreads The number of threads to use (0 = use all).
  * \param cpus A list of CPUs is used to set the 'cpu affinity' for the worker threads.
  */
-LITETVM_API void Configure(ThreadGroup::AffinityMode mode, int nthreads,
+TVM_DLL void Configure(ThreadGroup::AffinityMode mode, int nthreads,
                            std::vector<unsigned int> cpus);
 
 /*!
  * \brief Get the number of threads being used by the TVM runtime
  * \returns The number of threads used.
  */
-LITETVM_API int32_t NumThreads();
+TVM_DLL int32_t NumThreads();
 
 }// namespace threading
 

@@ -2,73 +2,65 @@
 // Created by richard on 1/31/25.
 //
 
-#ifndef NDARRAY_H
-#define NDARRAY_H
+#ifndef LITETVM_RUNTIME_NDARRAY_H
+#define LITETVM_RUNTIME_NDARRAY_H
 
-#include <dmlc/io.h>
-#include <utility>
-
-#include "runtime/c_runtime_api.h"
+#include "ffi/container/ndarray.h"
+#include "ffi/container/shape.h"
+#include "ffi/optional.h"
+#include "ffi/string.h"
+#include "runtime/base.h"
 #include "runtime/data_type.h"
-#include "runtime/object.h"
-#include "runtime/optional.h"
-#include "runtime/shape_tuple.h"
-#include "runtime/string.h"
+#include "runtime/device_api.h"
+#include "runtime/serializer.h"
+
+
+#include <functional>
+#include <utility>
+#include <vector>
 
 // nested namespace
 namespace litetvm::runtime {
 
-using Device = DLDevice;
+using ffi::GetDataSize;
+using ffi::IsAligned;
+using ffi::IsContiguous;
+using ffi::Object;
+using ffi::ObjectPtr;
+using ffi::ObjectRef;
 
-class NDArray : public ObjectRef {
+/*!
+ * \brief Managed NDArray.
+ *  The array is backed by reference counted blocks.
+ */
+class NDArray : public ffi::NDArray {
 public:
-    class ContainerBase;
-    class Container;
-    /*! \brief Container type for Object system. */
-    using ContainerType = Container;
-
-    // internal namespace
-    struct Internal;
-
-    /*! \brief default constructor */
+    using Container = ffi::NDArrayObj;
     NDArray() = default;
-
     /*!
    * \brief constructor.
    * \param data ObjectPtr to the data container.
    */
-    explicit NDArray(ObjectPtr<Object> data) : ObjectRef(std::move(data)) {}
+    explicit NDArray(ObjectPtr<Object> data) : ffi::NDArray(data) {}
+    NDArray(ffi::NDArray&& other) : ffi::NDArray(std::move(other)) {}// NOLINT(*)
+    NDArray(const ffi::NDArray& other) : ffi::NDArray(other) {}      // NOLINT(*)
 
-    /*! \brief reset the content of NDArray to be nullptr */
-    // inline void reset();
-
-    /*!
-   * \return the reference counter
-   * \note this number is approximate in multi-threaded setting.
-   */
-    NODISCARD int use_count() const {
-        return data_.use_count();
+    ffi::Shape Shape() const {
+        return this->shape();
     }
 
-    /*! \return Pointer to content of DLTensor */
-    inline const DLTensor* operator->() const;
+    runtime::DataType DataType() const {
+        return runtime::DataType(this->dtype());
+    }
 
-    /*! \return Whether the tensor is contiguous */
-    NODISCARD inline bool IsContiguous() const;
+    // DLPack handling
+    static NDArray FromDLPack(DLManagedTensor* tensor) {
+        return ffi::NDArray::FromDLPack(tensor, kAllocAlignment, true);
+    }
 
-    NODISCARD ShapeTuple Shape() const;
-
-    NODISCARD runtime::DataType DataType() const;
-
-    /*!
-   * \brief Function to copy data from one array to another.
-   * \param from The source array.
-   * \param to The target array.
-   * \param stream The stream used in copy.
-   */
-    static void CopyFromTo(const DLTensor* from, DLTensor* to,
-                           TVMStreamHandle stream = nullptr);
-
+    static NDArray FromDLPackVersioned(DLManagedTensorVersioned* tensor) {
+        return ffi::NDArray::FromDLPackVersioned(tensor, kAllocAlignment, true);
+    }
     /*!
    * \brief Copy data content from another array.
    * \param other The source array to be copied from.
@@ -77,7 +69,14 @@ public:
    */
     inline void CopyFrom(const DLTensor* other) const;
     inline void CopyFrom(const NDArray& other) const;
-
+    /*!
+   * \brief Copy data content from a byte buffer.
+   * \param data The source bytes to be copied from.
+   * \param nbytes The size of the buffer in bytes
+   *        Must be equal to the size of the NDArray.
+   * \note The copy always triggers a TVMSynchronize.
+   */
+    TVM_DLL void CopyFromBytes(const void* data, size_t nbytes);
     /*!
    * \brief Copy data content into another array.
    * \param other The source array to be copied from.
@@ -86,25 +85,6 @@ public:
    */
     inline void CopyTo(DLTensor* other) const;
     inline void CopyTo(const NDArray& other) const;
-
-    /*!
-   * \brief Copy the data to another device.
-   * \param dev The target device.
-   * \param mem_scope The memory scope of the target array.
-   * \return The array under another device.
-   * \note The copy always triggers a TVMSynchronize.
-   */
-    NODISCARD NDArray CopyTo(const Device& dev, const Optional<String>& mem_scope = NullOpt) const;
-
-    /*!
-   * \brief Copy data content from a byte buffer.
-   * \param data The source bytes to be copied from.
-   * \param nbytes The size of the buffer in bytes
-   *        Must be equal to the size of the NDArray.
-   * \note The copy always triggers a TVMSynchronize.
-   */
-    void CopyFromBytes(const void* data, size_t nbytes) const;
-
     /*!
    * \brief Copy data content into another array.
    * \param data The source bytes to be copied from.
@@ -112,7 +92,26 @@ public:
    *        Must be equal to the size of the NDArray.
    * \note The copy always triggers a TVMSynchronize.
    */
-    void CopyToBytes(void* data, size_t nbytes) const;
+    TVM_DLL void CopyToBytes(void* data, size_t nbytes) const;
+    /*!
+   * \brief Copy the data to another device.
+   * \param dev The target device.
+   * \param mem_scope The memory scope of the target array.
+   * \return The array under another device.
+   * \note The copy always triggers a TVMSynchronize.
+   */
+    TVM_DLL NDArray CopyTo(const Device& dev, Optional<String> mem_scope = std::nullopt) const;
+    /*!
+   * \brief Load NDArray from stream
+   * \param stream The input data stream
+   * \return Whether load is successful
+   */
+    inline bool Load(dmlc::Stream* stream);
+    /*!
+   * \brief Save NDArray to stream
+   * \param stream The output data stream
+   */
+    inline void Save(dmlc::Stream* stream) const;
 
     /*!
    * \brief Create a NDArray that shares the data memory with the current one.
@@ -134,15 +133,8 @@ public:
    *       outside the bounds of the current array, this function will
    *       raise an exception.
    */
-    NODISCARD NDArray CreateView(const ShapeTuple& shape, DLDataType dtype, uint64_t relative_byte_offset = 0) const;
-
-    /*!
-   * \brief Create a reference view of NDArray that
-   *  represents as DLManagedTensor.
-   * \return A DLManagedTensor
-   */
-    NODISCARD DLManagedTensor* ToDLPack() const;
-
+    TVM_DLL NDArray CreateView(ffi::Shape shape, DLDataType dtype,
+                               uint64_t relative_byte_offset = 0) const;
     /*!
    * \brief Create an empty NDArray.
    * \param shape The shape of the new array.
@@ -151,108 +143,26 @@ public:
    * \param mem_scope The memory scope of the array.
    * \return The created Array
    */
-    static NDArray Empty(const ShapeTuple& shape, DLDataType dtype, Device dev,
-                         const Optional<String>& mem_scope = NullOpt);
-
+    TVM_DLL static NDArray Empty(ffi::Shape shape, DLDataType dtype, Device dev,
+                                 Optional<String> mem_scope = std::nullopt);
     /*!
-   * \brief Create a NDArray backed by an external DLTensor without memory copying.
-   *
-   * If DLTensor is not contiguous or has bad aligned data, It fails.
-   * This allows us to create a NDArray using the memory
-   * allocated by an external source. Responsibility for memory
-   * retaining lies with the external source.
-   * \param dl_tensor The DLTensor for NDArray base.
-   * \return The created NDArray view.
+   * \brief Function to copy data from one array to another.
+   * \param from The source array.
+   * \param to The target array.
+   * \param stream The stream used in copy.
    */
-    static NDArray FromExternalDLTensor(const DLTensor& dl_tensor);
+    TVM_DLL static void CopyFromTo(const DLTensor* from, DLTensor* to,
+                                   TVMStreamHandle stream = nullptr);
 
     /*!
-   * \brief Create new NDArray, data is copied from DLTensor.
-   *
-   * \param dl_tensor The DLTensor to copy from.
-   * \param dev device location of the created NDArray.
-   * \return The created NDArray view.
+   * \brief Function to copy data from one array to a byte buffer.
+   * \param from The source array.
+   * \param to The target byte buffer.
+   * \param nbytes The size of the data buffer.
+   * \param stream The stream used in copy.
    */
-    static NDArray NewFromDLTensor(const DLTensor* dl_tensor, const Device& dev);
-
-    /*!
-     * \brief Create a NDArray backed by a dlpack tensor.
-     *
-     * This allows us to create a NDArray using the memory
-     * allocated by an external deep learning framework
-     * that is DLPack compatible.
-     *
-     * The memory is retained until the NDArray went out of scope.
-     * \param tensor The DLPack tensor to copy from.
-     * \return The created NDArray view.
-     */
-    static NDArray FromDLPack(DLManagedTensor* tensor);
-
-    /*!
-   * \brief Check conditions for construction NDArray over DLTensor without copying.
-   * There are three conditions to check:
-   * 1. Destination device is the same as DLTensor device
-   * 2. Destination device id is the same as DLTensor device id
-   * 3. Memory in DLTensor is aligned as expected for NDArray
-   * \param tensor the DLTensor.
-   * \param dev destination device.
-   * \return true if all conditions are satisfied.
-   */
-    static bool AbilityOfZeroCopyForDLTensor(DLTensor* tensor, const Device& dev);
-
-    /*!
-   * \brief Load NDArray from stream
-   * \param stream The input data stream
-   * \return Whether load is successful
-   */
-    inline bool Load(dmlc::Stream* stream);
-    /*!
-     * \brief Save NDArray to stream
-     * \param stream The output data stream
-     */
-    inline void Save(dmlc::Stream* stream) const;
-
-protected:
-    /*!
-   * \brief Get mutable internal container pointer.
-   * \return a mutable container pointer.
-   */
-    NODISCARD inline Container* get_mutable() const;
-
-    // Helper functions for FFI handling.
-    /*!
-     * \brief Construct NDArray's Data field from array handle in FFI.
-     * \param handle The array handle.
-     * \return The corresponding ObjectPtr to the constructed container object.
-     *
-     * \note We keep a special calling convention for NDArray by passing
-     *       ContainerBase pointer in FFI.
-     *       As a result, the argument is compatible to DLTensor*.
-     */
-    inline static ObjectPtr<Object> FFIDataFromHandle(TVMArrayHandle handle);
-
-    /*!
-   * \brief DecRef resource managed by an FFI array handle.
-   * \param handle The array handle.
-   */
-    inline static void FFIDecRef(TVMArrayHandle handle);
-
-    /*!
-   * \brief Get FFI Array handle from ndarray.
-   * \param nd The object with ndarray type.
-   * \return The result array handle.
-   */
-    inline static TVMArrayHandle FFIGetHandle(const ObjectRef& nd);
-
-private:
-    static bool IsAligned(const DLTensor& tensor);
-
-protected:
-    friend class TVMPODValue_;
-    template<typename Derived>
-    friend class TVMPODValue_CRTP_;
-    friend class TVMRetValue;
-    friend class TVMArgsSetter;
+    TVM_DLL static void CopyToBytes(const DLTensor* from, void* to, size_t nbytes,
+                                    TVMStreamHandle stream = nullptr);
 };
 
 /*!
@@ -262,196 +172,33 @@ protected:
  */
 inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor);
 
-/*!
- * \brief The container base structure
- *        contains all the fields except for the Object header.
- *
- * \note We explicitly declare this structure in order to pass
- *       PackedFunc argument using ContainerBase*.
- */
-class NDArray::ContainerBase {
-public:
-    /*!
-     * \brief The corresponding dl_tensor field.
-     * \note it is important that the first field is DLTensor
-     *  So that this data structure is DLTensor compatible.
-     *  The head ptr of this struct can be viewed as DLTensor*.
-     */
-    DLTensor dl_tensor{};
-
-    /*!
-     * \brief additional context, reserved for recycling
-     * \note We can attach additional content here
-     *  which the current container depend on
-     *  (e.g. reference to original memory when creating views).
-     */
-    void* manager_ctx{nullptr};
-
-protected:
-    /*!
-     * \brief The shape container,
-     *  can be used for shape data.
-     */
-    ShapeTuple shape_;
-};
-
-/*!
- * \brief Object container class that backs NDArray.
- * \note do not use this function directly, use NDArray.
- */
-class NDArray::Container : public Object, public ContainerBase {
-public:
-    /*! \brief default constructor */
-    Container() {
-        // Initialize the type index.
-        type_index_ = RuntimeTypeIndex();
-        dl_tensor.data = nullptr;
-        dl_tensor.ndim = 0;
-        dl_tensor.shape = nullptr;
-        dl_tensor.strides = nullptr;
-        dl_tensor.byte_offset = 0;
-    }
-
-    Container(void* data, ShapeTuple shape, DLDataType dtype, Device dev) {
-        // Initialize the type index.
-        type_index_ = RuntimeTypeIndex();
-        dl_tensor.data = data;
-        shape_ = std::move(shape);
-        dl_tensor.ndim = static_cast<int>(shape_.size());
-        dl_tensor.shape = const_cast<ShapeTuple::index_type*>(shape_.data());
-        dl_tensor.dtype = dtype;
-        dl_tensor.strides = nullptr;
-        dl_tensor.byte_offset = 0;
-        dl_tensor.device = dev;
-    }
-
-    /*!
-   * \brief Set the deleter field.
-   * \param deleter The deleter.
-   */
-    void SetDeleter(FDeleter deleter) {
-        deleter_ = std::move(deleter);
-    }
-
-    // Expose DecRef and IncRef as public function
-    // NOTE: they are only for developer purposes only.
-    using Object::DecRef;
-    using Object::IncRef;
-
-    // Information for object protocol.
-    static constexpr uint32_t _type_index = static_cast<uint32_t>(TypeIndex::kRuntimeNDArray);
-    static constexpr uint32_t _type_child_slots = 0;
-    static constexpr uint32_t _type_child_slots_can_overflow = true;
-    static constexpr const char* _type_key = "runtime.NDArray";
-    TVM_DECLARE_BASE_OBJECT_INFO(NDArray::Container, Object);
-
-protected:
-    // friend class RPCWrappedFunc;
-    friend class NDArray;
-};
-
-// implementations of inline functions
-/*!
- * \brief return the size of data the DLTensor hold, in terms of number of bytes
- *
- *  \param arr the input DLTensor
- *  \return number of bytes of data in the DLTensor.
- */
-inline size_t GetDataSize(const DLTensor& arr) {
-    size_t size = 1;
-    for (tvm_index_t i = 0; i < arr.ndim; ++i) {
-        size *= static_cast<size_t>(arr.shape[i]);
-    }
-    size *= (arr.dtype.bits * arr.dtype.lanes + 7) / 8;
-    return size;
-}
-
-/*!
- * \brief check if a DLTensor is contiguous.
- * \param arr The input DLTensor.
- * \return The check result.
- */
-static bool IsContiguous(const DLTensor& arr) {
-    if (arr.strides == nullptr) return true;
-    int64_t expected_stride = 1;
-    for (int32_t i = arr.ndim; i != 0; --i) {
-        int32_t k = i - 1;
-        if (arr.shape[k] == 1) {
-            // Skip stride check if shape[k] is 1, where the dimension is contiguous
-            // regardless of the value of stride.
-            //
-            // For example, PyTorch will normalize stride to 1 if shape is 1 when exporting
-            // to DLPack.
-            // More context: https://github.com/pytorch/pytorch/pull/83158
-            continue;
-        }
-        if (arr.strides[k] != expected_stride) return false;
-        expected_stride *= arr.shape[k];
-    }
-    return true;
-}
-
-inline bool NDArray::IsContiguous() const {
-    return runtime::IsContiguous(get_mutable()->dl_tensor);
-}
-
 inline void NDArray::CopyFrom(const DLTensor* other) const {
-    CHECK(data_ != nullptr);
-    CopyFromTo(other, &get_mutable()->dl_tensor);
+    ICHECK(data_ != nullptr);
+    CopyFromTo(other, get_mutable());
 }
 
 inline void NDArray::CopyFrom(const NDArray& other) const {
-    CHECK(data_ != nullptr);
-    CHECK(other.data_ != nullptr);
-    CopyFromTo(&other.get_mutable()->dl_tensor, &get_mutable()->dl_tensor);
+    ICHECK(data_ != nullptr);
+    ICHECK(other.data_ != nullptr);
+    CopyFromTo(other.get_mutable(), get_mutable());
 }
 
 inline void NDArray::CopyTo(DLTensor* other) const {
-    CHECK(data_ != nullptr);
-    CopyFromTo(&get_mutable()->dl_tensor, other);
+    ICHECK(data_ != nullptr);
+    CopyFromTo(get_mutable(), other);
 }
 
 inline void NDArray::CopyTo(const NDArray& other) const {
-    CHECK(data_ != nullptr);
-    CHECK(other.data_ != nullptr);
-    CopyFromTo(&get_mutable()->dl_tensor, &other.get_mutable()->dl_tensor);
-}
-
-inline const DLTensor* NDArray::operator->() const {
-    return &get_mutable()->dl_tensor;
-}
-
-inline NDArray::Container* NDArray::get_mutable() const {
-    return static_cast<Container*>(data_.get());
-}
-
-inline ObjectPtr<Object> NDArray::FFIDataFromHandle(TVMArrayHandle handle) {
-    return GetObjectPtr<Object>(static_cast<Container*>(reinterpret_cast<ContainerBase*>(handle)));
-}
-
-inline void NDArray::FFIDecRef(TVMArrayHandle handle) {
-    static_cast<Container*>(reinterpret_cast<ContainerBase*>(handle))->DecRef();
-}
-
-inline TVMArrayHandle NDArray::FFIGetHandle(const ObjectRef& nd) {
-    // NOTE: it is necessary to cast to container then to base
-    //       so that the FFI handle uses the ContainerBase address.
-    auto ptr = reinterpret_cast<TVMArrayHandle>(static_cast<ContainerBase*>(
-            static_cast<Container*>(const_cast<Object*>(nd.get()))));
-    return ptr;
-}
-
-
-inline Object* TVMArrayHandleToObjectHandle(TVMArrayHandle handle) {
-    return static_cast<NDArray::Container*>(reinterpret_cast<NDArray::ContainerBase*>(handle));
+    ICHECK(data_ != nullptr);
+    ICHECK(other.data_ != nullptr);
+    CopyFromTo(get_mutable(), other.get_mutable());
 }
 
 /*! \brief Magic number for NDArray file */
 constexpr uint64_t kTVMNDArrayMagic = 0xDD5E40F096B4A13F;
 
 inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
-    uint64_t header = kTVMNDArrayMagic;
-    uint64_t reserved = 0;
+    uint64_t header = kTVMNDArrayMagic, reserved = 0;
     strm->Write(header);
     strm->Write(reserved);
     // Always save data as CPU context
@@ -464,7 +211,7 @@ inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
     // We can always do array.CopyTo(target_dev) to get a corresponding
     // array in the target context.
     Device cpu_dev;
-    cpu_dev.device_type = DLDeviceType::kDLCPU;
+    cpu_dev.device_type = kDLCPU;
     cpu_dev.device_id = 0;
     strm->Write(cpu_dev);
     strm->Write(tensor->ndim);
@@ -479,16 +226,13 @@ inline bool SaveDLTensor(dmlc::Stream* strm, const DLTensor* tensor) {
     int64_t data_byte_size = type_bytes * num_elems;
     strm->Write(data_byte_size);
 
-    if (DMLC_IO_NO_ENDIAN_SWAP &&
-        tensor->device.device_type == DLDeviceType::kDLCPU &&
-        tensor->strides == nullptr &&
-        tensor->byte_offset == 0) {
+    if (DMLC_IO_NO_ENDIAN_SWAP && tensor->device.device_type == kDLCPU &&
+        tensor->strides == nullptr && tensor->byte_offset == 0) {
         // quick path
         strm->Write(tensor->data, data_byte_size);
     } else {
         std::vector<uint8_t> bytes(data_byte_size);
-        CHECK_EQ(TVMArrayCopyToBytes(const_cast<DLTensor*>(tensor), dmlc::BeginPtr(bytes), data_byte_size), 0)
-                << TVMGetLastError();
+        NDArray::CopyToBytes(tensor, dmlc::BeginPtr(bytes), data_byte_size);
         if (!DMLC_IO_NO_ENDIAN_SWAP) {
             dmlc::ByteSwap(dmlc::BeginPtr(bytes), type_bytes, num_elems);
         }
@@ -503,34 +247,33 @@ inline void NDArray::Save(dmlc::Stream* strm) const {
 
 inline bool NDArray::Load(dmlc::Stream* strm) {
     uint64_t header, reserved;
-    CHECK(strm->Read(&header)) << "Invalid DLTensor file format";
-    CHECK(strm->Read(&reserved)) << "Invalid DLTensor file format";
-    CHECK(header == kTVMNDArrayMagic) << "Invalid DLTensor file format";
+    ICHECK(strm->Read(&header)) << "Invalid DLTensor file format";
+    ICHECK(strm->Read(&reserved)) << "Invalid DLTensor file format";
+    ICHECK(header == kTVMNDArrayMagic) << "Invalid DLTensor file format";
     Device dev;
     int ndim;
     DLDataType dtype;
-    CHECK(strm->Read(&dev)) << "Invalid DLTensor file format";
-    CHECK(strm->Read(&ndim)) << "Invalid DLTensor file format";
-    CHECK(strm->Read(&dtype)) << "Invalid DLTensor file format";
-    CHECK_EQ(static_cast<int>(dev.device_type), static_cast<int>(DLDeviceType::kDLCPU))
-            << "Invalid DLTensor device: can only save as CPU tensor";
+    ICHECK(strm->Read(&dev)) << "Invalid DLTensor file format";
+    ICHECK(strm->Read(&ndim)) << "Invalid DLTensor file format";
+    ICHECK(strm->Read(&dtype)) << "Invalid DLTensor file format";
+    ICHECK_EQ(dev.device_type, kDLCPU) << "Invalid DLTensor device: can only save as CPU tensor";
     std::vector<int64_t> shape(ndim);
     if (ndim != 0) {
-        CHECK(strm->ReadArray(&shape[0], ndim)) << "Invalid DLTensor file format";
+        ICHECK(strm->ReadArray(&shape[0], ndim)) << "Invalid DLTensor file format";
     }
-    NDArray ret = Empty(ShapeTuple(shape), dtype, dev);
+    NDArray ret = Empty(ffi::Shape(shape), dtype, dev);
     int64_t num_elems = 1;
     int elem_bytes = (ret->dtype.bits + 7) / 8;
     for (int i = 0; i < ret->ndim; ++i) {
         num_elems *= ret->shape[i];
     }
     int64_t data_byte_size;
-    CHECK(strm->Read(&data_byte_size)) << "Invalid DLTensor file format";
-    CHECK(data_byte_size == num_elems * elem_bytes) << "Invalid DLTensor file format";
+    ICHECK(strm->Read(&data_byte_size)) << "Invalid DLTensor file format";
+    ICHECK(data_byte_size == num_elems * elem_bytes) << "Invalid DLTensor file format";
     auto read_ret = strm->Read(ret->data, data_byte_size);
     // Only check non-empty data
     if (ndim > 0 && shape[0] != 0) {
-        CHECK(read_ret) << "Invalid DLTensor file format";
+        ICHECK(read_ret) << "Invalid DLTensor file format";
     }
     if (!DMLC_IO_NO_ENDIAN_SWAP) {
         dmlc::ByteSwap(ret->data, elem_bytes, num_elems);
@@ -538,7 +281,6 @@ inline bool NDArray::Load(dmlc::Stream* strm) {
     *this = ret;
     return true;
 }
-
 /*!
  * \brief Get the preferred host device from the input device.
  * - For CUDA and ROCm, CUDAHost and ROCMHost will be returned for pinned memory,
@@ -546,34 +288,34 @@ inline bool NDArray::Load(dmlc::Stream* strm) {
  * - For other devices, CPU is returned as a fallback.
  */
 inline Device GetPreferredHostDevice(Device device) {
-    if (device.device_type == DLDeviceType::kDLCUDA) {
-        return Device{DLDeviceType::kDLCUDAHost, 0};
+    if (device.device_type == kDLCUDA) {
+        return Device{kDLCUDAHost, 0};
     }
 
-    if (device.device_type == DLDeviceType::kDLROCM) {
-        return Device{DLDeviceType::kDLROCMHost, 0};
+    if (device.device_type == kDLROCM) {
+        return Device{kDLROCMHost, 0};
     }
 
     // Fallback to CPU.
-    return Device{DLDeviceType::kDLCPU, 0};
+    return Device{kDLCPU, 0};
 }
 
 }// namespace litetvm::runtime
 
 namespace std {
 template<>
-struct hash<litetvm::runtime::Device> {
-    std::size_t operator()(const litetvm::runtime::Device& dev) const noexcept {
-        return dev.device_id << 8 | static_cast<int32_t>(dev.device_type);
+struct hash<litetvm::Device> {
+    std::size_t operator()(const litetvm::Device& dev) const noexcept {
+        return dev.device_id << 8 | dev.device_type;
     }
 };
 
 template<>
-struct equal_to<litetvm::runtime::Device> {
-    bool operator()(const litetvm::runtime::Device& lhs, const litetvm::runtime::Device& rhs) const {
+struct equal_to<litetvm::Device> {
+    bool operator()(const litetvm::Device& lhs, const litetvm::Device& rhs) const {
         return lhs.device_type == rhs.device_type && lhs.device_id == rhs.device_id;
     }
 };
 }// namespace std
 
-#endif//NDARRAY_H
+#endif//LITETVM_RUNTIME_NDARRAY_H

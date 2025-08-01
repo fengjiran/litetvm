@@ -1,11 +1,12 @@
 //
 // Created by 赵丹 on 25-3-5.
 //
-#include "runtime/registry.h"
-#include "runtime/threading_backend.h"
 
-#include <algorithm>
-#include <thread>
+#include "runtime/threading_backend.h"
+#include "ffi/container/shape.h"
+#include "ffi/function.h"
+#include "ffi/reflection/registry.h"
+#include "runtime/logging.h"
 
 #if defined(__linux__) || defined(__ANDROID__)
 #if __ANDROID_API__ >= 21
@@ -421,11 +422,14 @@ int MaxConcurrency() {
 
 // This global function can be used by disco runtime to bind processes
 // to CPUs.
-TVM_REGISTER_GLOBAL("tvm.runtime.threading.set_current_thread_affinity")
-        .set_body_typed([](IntTuple cpu_ids) {
-            SetThreadAffinity(CURRENT_THREAD_HANDLE,
-                              std::vector<unsigned int>{cpu_ids.begin(), cpu_ids.end()});
-        });
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef().def(
+            "litetvm.runtime.threading.set_current_thread_affinity", [](ffi::Shape cpu_ids) {
+                SetThreadAffinity(CURRENT_THREAD_HANDLE,
+                                  std::vector<unsigned int>{cpu_ids.begin(), cpu_ids.end()});
+            });
+});
 
 }// namespace threading
 }// namespace runtime
