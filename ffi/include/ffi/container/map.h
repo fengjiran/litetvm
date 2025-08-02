@@ -18,6 +18,7 @@
 #include <utility>
 
 namespace litetvm {
+
 namespace ffi {
 
 #if TVM_FFI_DEBUG_WITH_ABI_CHANGE
@@ -1236,7 +1237,7 @@ inline ObjectPtr<MapObj> MapObj::CopyFrom(MapObj* from) {
     }
 }
 
-template <typename IterType>
+template<typename IterType>
 ObjectPtr<Object> MapObj::CreateFromRange(IterType first, IterType last) {
     int64_t _cap = std::distance(first, last);
     if (_cap < 0) {
@@ -1646,5 +1647,6 @@ inline constexpr bool type_contains_v<Map<K, V>, Map<KU, VU>> =
 // Rationale: convinience and no ambiguity
 using ffi::Map;
 }// namespace litetvm
+
 
 #endif//LITETVM_FFI_CONTAINER_MAP_H

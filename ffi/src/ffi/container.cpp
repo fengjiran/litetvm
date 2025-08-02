@@ -39,6 +39,18 @@ private:
     MapObj::iterator end_;
 };
 
+TVM_FFI_STATIC_INIT_BLOCK(
+        {
+            namespace refl = litetvm::ffi::reflection;
+            refl::GlobalDef().def("test0_def111222333", [](int a, int b) { return a + b; });
+        });
+
+TVM_FFI_STATIC_INIT_BLOCK(
+        {
+            namespace refl = litetvm::ffi::reflection;
+            refl::GlobalDef().def("test1_def111222333", [](int a, int b) { return a + b; });
+        });
+
 
 TVM_FFI_STATIC_INIT_BLOCK({
     namespace refl = litetvm::ffi::reflection;
