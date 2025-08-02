@@ -2,14 +2,14 @@
 // Created by 赵丹 on 25-7-22.
 //
 
-#ifndef LITETVM_FFI_REFLECTION_STRUCTURAL_HASH_H
-#define LITETVM_FFI_REFLECTION_STRUCTURAL_HASH_H
+#ifndef LITETVM_FFI_EXTRA_STRUCTURAL_HASH_H
+#define LITETVM_FFI_EXTRA_STRUCTURAL_HASH_H
 
 #include "ffi/any.h"
+#include "ffi/extra/base.h"
 
 namespace litetvm {
 namespace ffi {
-namespace reflection {
 
 /*
  * \brief Structural hash
@@ -33,9 +33,7 @@ public:
      */
     TVM_FFI_INLINE uint64_t operator()(const Any& value) const { return Hash(value); }
 };
-
-}// namespace reflection
 }// namespace ffi
 }// namespace litetvm
 
-#endif//LITETVM_FFI_REFLECTION_STRUCTURAL_HASH_H
+#endif//LITETVM_FFI_EXTRA_STRUCTURAL_HASH_H

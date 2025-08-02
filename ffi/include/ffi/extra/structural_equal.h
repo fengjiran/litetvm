@@ -2,16 +2,16 @@
 // Created by 赵丹 on 25-7-22.
 //
 
-#ifndef LITETVM_FFI_REFLECTION_STRUCTURAL_EQUAL_H
-#define LITETVM_FFI_REFLECTION_STRUCTURAL_EQUAL_H
+#ifndef LITETVM_FFI_EXTRA_STRUCTURAL_EQUAL_H
+#define LITETVM_FFI_EXTRA_STRUCTURAL_EQUAL_H
 
 #include "ffi/any.h"
+#include "ffi/extra/base.h"
 #include "ffi/optional.h"
 #include "ffi/reflection/access_path.h"
 
 namespace litetvm {
 namespace ffi {
-namespace reflection {
 /*
  * \brief Structural equality comparators
  */
@@ -41,7 +41,7 @@ public:
    * \return If comparison fails, return the first mismatch AccessPath pair,
    *         otherwise return std::nullopt.
    */
-    TVM_FFI_EXTRA_CXX_API static Optional<AccessPathPair> GetFirstMismatch(
+    TVM_FFI_EXTRA_CXX_API static Optional<reflection::AccessPathPair> GetFirstMismatch(
             const Any& lhs, const Any& rhs, bool map_free_vars = false,
             bool skip_ndarray_content = false);
 
@@ -56,8 +56,7 @@ public:
     }
 };
 
-}// namespace reflection
 }// namespace ffi
 }// namespace litetvm
 
-#endif//LITETVM_FFI_REFLECTION_STRUCTURAL_EQUAL_H
+#endif//LITETVM_FFI_EXTRA_STRUCTURAL_EQUAL_H

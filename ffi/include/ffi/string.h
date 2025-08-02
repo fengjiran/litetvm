@@ -24,7 +24,7 @@
 
 namespace litetvm {
 namespace ffi {
-
+namespace details {
 /*! \brief Base class for bytes and string. */
 class BytesObjBase : public Object, public TVMFFIByteArray {};
 
@@ -50,8 +50,6 @@ public:
     static constexpr bool _type_final = true;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(StringObj, Object);
 };
-
-namespace details {
 
 // String moved from std::string
 // without having to trigger a copy
@@ -92,21 +90,21 @@ public:
    *
    * \param data a char array.
    */
-    Bytes(const char* data, size_t size) : ObjectRef(details::MakeInplaceBytes<BytesObj>(data, size)) {}
+    Bytes(const char* data, size_t size) : ObjectRef(details::MakeInplaceBytes<details::BytesObj>(data, size)) {}
 
     /*!
    * \brief constructor from char [N]
    *
    * \param bytes a char array.
    */
-    Bytes(const TVMFFIByteArray& bytes) : ObjectRef(details::MakeInplaceBytes<BytesObj>(bytes.data, bytes.size)) {}
+    Bytes(const TVMFFIByteArray& bytes) : ObjectRef(details::MakeInplaceBytes<details::BytesObj>(bytes.data, bytes.size)) {}
 
     /*!
    * \brief constructor from char [N]
    *
    * \param other a char array.
    */
-    Bytes(std::string other) : ObjectRef(make_object<details::BytesObjStdImpl<BytesObj>>(std::move(other))) {}
+    Bytes(std::string other) : ObjectRef(make_object<details::BytesObjStdImpl<details::BytesObj>>(std::move(other))) {}
 
     /*!
    * \brief Swap this String with another string
@@ -150,7 +148,7 @@ public:
         return std::string{get()->data, size()};
     }
 
-    TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(Bytes, ObjectRef, BytesObj);
+    TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(Bytes, ObjectRef, details::BytesObj);
 
     /*!
    * \brief Compare two char sequence
@@ -162,7 +160,35 @@ public:
    * \return int zero if both char sequences compare equal. negative if this
    * appear before other, positive otherwise.
    */
-    static int memncmp(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count);
+    static int memncmp(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count) {
+        if (lhs == rhs && lhs_count == rhs_count) return 0;
+
+        for (size_t i = 0; i < lhs_count && i < rhs_count; ++i) {
+            if (lhs[i] < rhs[i]) return -1;
+            if (lhs[i] > rhs[i]) return 1;
+        }
+        if (lhs_count < rhs_count) {
+            return -1;
+        } else if (lhs_count > rhs_count) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    /*!
+   * \brief Compare two char sequence for equality
+   *
+   * \param lhs Pointers to the char array to compare
+   * \param rhs Pointers to the char array to compare
+   * \param lhs_count Length of the char array to compare
+   * \param rhs_count Length of the char array to compare
+   *
+   * \return true if the two char sequences are equal, false otherwise.
+   */
+    static bool memequal(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count) {
+        return lhs_count == rhs_count && (lhs == rhs || std::memcmp(lhs, rhs, lhs_count) == 0);
+    }
 
 private:
     friend class String;
@@ -204,7 +230,7 @@ public:
    * \param other a char array.
    */
     template<size_t N>
-    String(const char other[N]) : ObjectRef(details::MakeInplaceBytes<StringObj>(other, N)) {}
+    String(const char other[N]) : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other, N)) {}
 
     /*!
    * \brief constructor
@@ -216,26 +242,26 @@ public:
    *
    * \param other a char array.
    */
-    String(const char* other) : ObjectRef(details::MakeInplaceBytes<StringObj>(other, std::strlen(other))) {}
+    String(const char* other) : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other, std::strlen(other))) {}
 
     /*!
    * \brief constructor from raw string
    *
    * \param other a char array.
    */
-    String(const char* other, size_t size) : ObjectRef(details::MakeInplaceBytes<StringObj>(other, size)) {}
+    String(const char* other, size_t size) : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other, size)) {}
 
     /*!
    * \brief Construct a new string object
    * \param other The std::string object to be copied
    */
-    String(const std::string& other) : ObjectRef(details::MakeInplaceBytes<StringObj>(other.data(), other.size())) {}
+    String(const std::string& other) : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other.data(), other.size())) {}
 
     /*!
    * \brief Construct a new string object
    * \param other The std::string object to be moved
    */
-    String(std::string&& other) : ObjectRef(make_object<details::BytesObjStdImpl<StringObj>>(std::move(other))) {}
+    String(std::string&& other) : ObjectRef(make_object<details::BytesObjStdImpl<details::StringObj>>(std::move(other))) {}
 
     /*!
    * \brief constructor from TVMFFIByteArray
@@ -243,7 +269,7 @@ public:
    * \param other a TVMFFIByteArray.
    */
     explicit String(TVMFFIByteArray other)
-        : ObjectRef(details::MakeInplaceBytes<StringObj>(other.data, other.size)) {}
+        : ObjectRef(details::MakeInplaceBytes<details::StringObj>(other.data, other.size)) {}
 
 
     /*!
@@ -294,7 +320,18 @@ public:
    * before other, positive otherwise.
    */
     int compare(const char* other) const {
-        return Bytes::memncmp(data(), other, size(), std::strlen(other));
+        const char* this_data = data();
+        size_t this_size = size();
+        for (size_t i = 0; i < this_size; ++i) {
+            // other is shorter than this
+            if (other[i] == '\0') return 1;
+            if (this_data[i] < other[i]) return -1;
+            if (this_data[i] > other[i]) return 1;
+        }
+        // other equals this
+        if (other[this_size] == '\0') return 0;
+        // other longer than this
+        return -1;
     }
 
     /*!
@@ -377,7 +414,7 @@ public:
         return std::string{get()->data, size()};
     }
 
-    TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(String, ObjectRef, StringObj);
+    TVM_FFI_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(String, ObjectRef, details::StringObj);
 
 private:
     /*!
@@ -659,15 +696,15 @@ inline bool operator>=(const char* lhs, const String& rhs) {
 
 // Overload == operator
 inline bool operator==(const String& lhs, const std::string& rhs) {
-    return lhs.compare(rhs) == 0;
+    return Bytes::memequal(lhs.data(), rhs.data(), lhs.size(), rhs.size());
 }
 
 inline bool operator==(const std::string& lhs, const String& rhs) {
-    return rhs.compare(lhs) == 0;
+    return Bytes::memequal(lhs.data(), rhs.data(), lhs.size(), rhs.size());
 }
 
 inline bool operator==(const String& lhs, const String& rhs) {
-    return lhs.compare(rhs) == 0;
+    return Bytes::memequal(lhs.data(), rhs.data(), lhs.size(), rhs.size());
 }
 
 inline bool operator==(const String& lhs, const char* rhs) {
@@ -702,32 +739,6 @@ inline bool operator!=(const char* lhs, const String& rhs) {
 inline std::ostream& operator<<(std::ostream& out, const String& input) {
     out.write(input.data(), input.size());
     return out;
-}
-
-inline int Bytes::memncmp(const char* lhs, const char* rhs, size_t lhs_count, size_t rhs_count) {
-    if (lhs == rhs && lhs_count == rhs_count) {
-        return 0;
-    }
-
-    for (size_t i = 0; i < lhs_count && i < rhs_count; ++i) {
-        if (lhs[i] < rhs[i]) {
-            return -1;
-        }
-
-        if (lhs[i] > rhs[i]) {
-            return 1;
-        }
-    }
-
-    if (lhs_count < rhs_count) {
-        return -1;
-    }
-
-    if (lhs_count > rhs_count) {
-        return 1;
-    }
-
-    return 0;
 }
 }// namespace ffi
 

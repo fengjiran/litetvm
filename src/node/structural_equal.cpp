@@ -2,7 +2,7 @@
 // Created by richard on 8/2/25.
 //
 
-#include "ffi/reflection/structural_equal.h"
+#include "../../ffi/include/ffi/extra/structural_equal.h"
 #include "ffi/function.h"
 #include "ffi/reflection/access_path.h"
 #include "ffi/reflection/registry.h"

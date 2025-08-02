@@ -1,7 +1,7 @@
 //
 // Created by 赵丹 on 25-7-22.
 //
-#include "ffi/reflection/structural_hash.h"
+#include "ffi/extra/structural_hash.h"
 #include "ffi/container/array.h"
 #include "ffi/container/map.h"
 #include "ffi/container/ndarray.h"
@@ -17,7 +17,6 @@
 
 namespace litetvm {
 namespace ffi {
-namespace reflection {
 /**
  * \brief Internal Handler class for structural hash.
  */
@@ -45,7 +44,7 @@ public:
             case kTVMFFIStr:
             case kTVMFFIBytes: {
                 // return same hash as AnyHash
-                const BytesObjBase* src_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(src);
+                const auto* src_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(src);
                 return details::StableHashCombine(src_data->type_index,
                                                   details::StableHashBytes(src_str->data, src_str->size));
             }
@@ -93,16 +92,16 @@ public:
             return it->second;
         }
 
-        static TypeAttrColumn custom_s_hash = TypeAttrColumn("__s_hash__");
+        static auto custom_s_hash = reflection::TypeAttrColumn("__s_hash__");
         // compute the hash value
         uint64_t hash_value = obj->GetTypeKeyHash();
         if (custom_s_hash[type_info->type_index] == nullptr) {
             // go over the content and hash the fields
-            ForEachFieldInfo(type_info, [&](const TVMFFIFieldInfo* field_info) {
+            reflection::ForEachFieldInfo(type_info, [&](const TVMFFIFieldInfo* field_info) {
                 // skip fields that are marked as structural eq hash ignore
                 if (!(field_info->flags & kTVMFFIFieldFlagBitMaskSEqHashIgnore)) {
                     // get the field value from both side
-                    FieldGetter getter(field_info);
+                    reflection::FieldGetter getter(field_info);
                     Any field_value = getter(obj);
                     // field is in def region, enable free var mapping
                     if (field_info->flags & kTVMFFIFieldFlagBitMaskSEqHashDef) {
@@ -175,8 +174,8 @@ public:
         } else {
             if (src_data->type_index == TypeIndex::kTVMFFIStr ||
                 src_data->type_index == TypeIndex::kTVMFFIBytes) {
-                const BytesObjBase* src_str =
-                        AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(src);
+                const auto* src_str =
+                        AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(src);
                 // return same hash as AnyHash
                 return details::StableHashCombine(src_data->type_index,
                                                   details::StableHashBytes(src_str->data, src_str->size));
@@ -275,10 +274,9 @@ uint64_t StructuralHash::Hash(const Any& value, bool map_free_vars, bool skip_nd
 
 TVM_FFI_STATIC_INIT_BLOCK({
     namespace refl = litetvm::ffi::reflection;
-    refl::GlobalDef().def("ffi.reflection.StructuralHash", StructuralHash::Hash);
+    refl::GlobalDef().def("ffi.StructuralHash", StructuralHash::Hash);
     refl::EnsureTypeAttrColumn("__s_hash__");
 });
 
-}// namespace reflection
 }// namespace ffi
 }// namespace litetvm

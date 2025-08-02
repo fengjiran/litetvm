@@ -1,7 +1,7 @@
 //
 // Created by 赵丹 on 25-7-22.
 //
-#include "ffi/reflection/structural_equal.h"
+#include "ffi/extra/structural_equal.h"
 #include "ffi/container/array.h"
 #include "ffi/container/map.h"
 #include "ffi/container/ndarray.h"
@@ -14,8 +14,6 @@
 
 namespace litetvm {
 namespace ffi {
-namespace reflection {
-
 /**
  * \brief Internal Handler class for structural equal comparison.
  */
@@ -44,8 +42,8 @@ public:
             case kTVMFFIStr:
             case kTVMFFIBytes: {
                 // compare bytes
-                const auto* lhs_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(lhs);
-                const auto* rhs_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const BytesObjBase*>(rhs);
+                const auto* lhs_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
+                const auto* rhs_str = AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(rhs);
                 return Bytes::memncmp(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size) == 0;
             }
 
@@ -119,7 +117,7 @@ public:
             }
         }
 
-        static TypeAttrColumn custom_s_equal = TypeAttrColumn("__s_equal__");
+        static auto custom_s_equal = reflection::TypeAttrColumn("__s_equal__");
         bool success = true;
         if (custom_s_equal[type_info->type_index] == nullptr) {
             // We recursively compare the fields the object
@@ -130,7 +128,7 @@ public:
                 }
 
                 // get the field value from both side
-                FieldGetter getter(field_info);
+                reflection::FieldGetter getter(field_info);
                 Any lhs_value = getter(lhs);
                 Any rhs_value = getter(rhs);
                 // field is in def region, enable free var mapping
@@ -146,8 +144,8 @@ public:
                 if (!success) {
                     // record the first mismatching field if we sub-rountine compare failed
                     if (mismatch_lhs_reverse_path_ != nullptr) {
-                        mismatch_lhs_reverse_path_->emplace_back(AccessStep::ObjectField(String(field_info->name)));
-                        mismatch_rhs_reverse_path_->emplace_back(AccessStep::ObjectField(String(field_info->name)));
+                        mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::ObjectField(String(field_info->name)));
+                        mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::ObjectField(String(field_info->name)));
                     }
                     // return true to indicate early stop
                     return true;
@@ -156,7 +154,7 @@ public:
                 // return false to continue checking other fields
                 return false;
             };
-            ForEachFieldInfoWithEarlyStop(type_info, callback);
+            reflection::ForEachFieldInfoWithEarlyStop(type_info, callback);
         } else {
             // run custom equal function defined via __s_equal__ type attribute
             if (s_equal_callback_ == nullptr) {
@@ -177,8 +175,8 @@ public:
                             if (!success) {
                                 if (mismatch_lhs_reverse_path_ != nullptr) {
                                     String field_name_str = field_name.cast<String>();
-                                    mismatch_lhs_reverse_path_->emplace_back(AccessStep::ObjectField(field_name_str));
-                                    mismatch_rhs_reverse_path_->emplace_back(AccessStep::ObjectField(field_name_str));
+                                    mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::ObjectField(field_name_str));
+                                    mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::ObjectField(field_name_str));
                                 }
                             }
                             return success;
@@ -226,16 +224,16 @@ public:
             auto it = rhs.find(rhs_key);
             if (it == rhs.end()) {
                 if (mismatch_lhs_reverse_path_ != nullptr) {
-                    mismatch_lhs_reverse_path_->emplace_back(AccessStep::MapKey(kv.first));
-                    mismatch_rhs_reverse_path_->emplace_back(AccessStep::MapKeyMissing(rhs_key));
+                    mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::MapKey(kv.first));
+                    mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::MapKeyMissing(rhs_key));
                 }
                 return false;
             }
             // now recursively compare value
             if (!CompareAny(kv.second, (*it).second)) {
                 if (mismatch_lhs_reverse_path_ != nullptr) {
-                    mismatch_lhs_reverse_path_->emplace_back(AccessStep::MapKey(kv.first));
-                    mismatch_rhs_reverse_path_->emplace_back(AccessStep::MapKey(rhs_key));
+                    mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::MapKey(kv.first));
+                    mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::MapKey(rhs_key));
                 }
                 return false;
             }
@@ -249,8 +247,8 @@ public:
             auto it = lhs.find(lhs_key);
             if (it == lhs.end()) {
                 if (mismatch_lhs_reverse_path_ != nullptr) {
-                    mismatch_lhs_reverse_path_->emplace_back(AccessStep::MapKeyMissing(lhs_key));
-                    mismatch_rhs_reverse_path_->emplace_back(AccessStep::MapKey(kv.first));
+                    mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::MapKeyMissing(lhs_key));
+                    mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::MapKey(kv.first));
                 }
                 return false;
             }
@@ -270,8 +268,8 @@ public:
         for (size_t i = 0; i < std::min(lhs.size(), rhs.size()); ++i) {
             if (!CompareAny(lhs[i], rhs[i])) {
                 if (mismatch_lhs_reverse_path_ != nullptr) {
-                    mismatch_lhs_reverse_path_->emplace_back(AccessStep::ArrayIndex(i));
-                    mismatch_rhs_reverse_path_->emplace_back(AccessStep::ArrayIndex(i));
+                    mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::ArrayIndex(i));
+                    mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::ArrayIndex(i));
                 }
                 return false;
             }
@@ -283,11 +281,11 @@ public:
 
         if (mismatch_lhs_reverse_path_ != nullptr) {
             if (lhs.size() > rhs.size()) {
-                mismatch_lhs_reverse_path_->emplace_back(AccessStep::ArrayIndex(rhs.size()));
-                mismatch_rhs_reverse_path_->emplace_back(AccessStep::ArrayIndexMissing(rhs.size()));
+                mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::ArrayIndex(rhs.size()));
+                mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::ArrayIndexMissing(rhs.size()));
             } else {
-                mismatch_lhs_reverse_path_->emplace_back(AccessStep::ArrayIndexMissing(lhs.size()));
-                mismatch_rhs_reverse_path_->emplace_back(AccessStep::ArrayIndex(lhs.size()));
+                mismatch_lhs_reverse_path_->emplace_back(reflection::AccessStep::ArrayIndexMissing(lhs.size()));
+                mismatch_rhs_reverse_path_->emplace_back(reflection::AccessStep::ArrayIndex(lhs.size()));
             }
         }
         return false;
@@ -366,8 +364,8 @@ public:
     // whether we compare ndarray data
     bool skip_ndarray_content_{false};
     // the root lhs for result printing
-    std::vector<AccessStep>* mismatch_lhs_reverse_path_ = nullptr;
-    std::vector<AccessStep>* mismatch_rhs_reverse_path_ = nullptr;
+    std::vector<reflection::AccessStep>* mismatch_lhs_reverse_path_ = nullptr;
+    std::vector<reflection::AccessStep>* mismatch_rhs_reverse_path_ = nullptr;
     // lazily initialize custom equal function
     Function s_equal_callback_ = nullptr;
     // map from lhs to rhs
@@ -383,29 +381,29 @@ bool StructuralEqual::Equal(const Any& lhs, const Any& rhs, bool map_free_vars, 
     return handler.CompareAny(lhs, rhs);
 }
 
-Optional<AccessPathPair> StructuralEqual::GetFirstMismatch(const Any& lhs, const Any& rhs, bool map_free_vars, bool skip_ndarray_content) {
+Optional<reflection::AccessPathPair> StructuralEqual::GetFirstMismatch(const Any& lhs, const Any& rhs, bool map_free_vars, bool skip_ndarray_content) {
     StructEqualHandler handler;
     handler.map_free_vars_ = map_free_vars;
     handler.skip_ndarray_content_ = skip_ndarray_content;
-    std::vector<AccessStep> lhs_reverse_path;
-    std::vector<AccessStep> rhs_reverse_path;
+    std::vector<reflection::AccessStep> lhs_reverse_path;
+    std::vector<reflection::AccessStep> rhs_reverse_path;
     handler.mismatch_lhs_reverse_path_ = &lhs_reverse_path;
     handler.mismatch_rhs_reverse_path_ = &rhs_reverse_path;
     if (handler.CompareAny(lhs, rhs)) {
         return std::nullopt;
     }
-    AccessPath lhs_path(lhs_reverse_path.rbegin(), lhs_reverse_path.rend());
-    AccessPath rhs_path(rhs_reverse_path.rbegin(), rhs_reverse_path.rend());
-    return AccessPathPair(lhs_path, rhs_path);
+    reflection::AccessPath lhs_path(lhs_reverse_path.rbegin(), lhs_reverse_path.rend());
+    reflection::AccessPath rhs_path(rhs_reverse_path.rbegin(), rhs_reverse_path.rend());
+    return reflection::AccessPathPair(lhs_path, rhs_path);
 }
 
 TVM_FFI_STATIC_INIT_BLOCK({
     namespace refl = litetvm::ffi::reflection;
-    refl::GlobalDef().def("ffi.reflection.GetFirstStructuralMismatch", StructuralEqual::GetFirstMismatch);
+    refl::GlobalDef().def("ffi.GetFirstStructuralMismatch", StructuralEqual::GetFirstMismatch);
     // ensure the type attribute column is presented in the system even if it is empty.
     refl::EnsureTypeAttrColumn("__s_equal__");
 });
 
-}// namespace reflection
 }// namespace ffi
+
 }// namespace litetvm

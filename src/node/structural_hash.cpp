@@ -2,7 +2,7 @@
 // Created by richard on 8/2/25.
 //
 
-#include "ffi/reflection/structural_hash.h"
+#include "ffi/extra/structural_hash.h"
 #include "ffi/function.h"
 #include "ffi/reflection/registry.h"
 #include "node/functor.h"

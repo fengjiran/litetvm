@@ -341,4 +341,11 @@ TEST(Map, EmptyIter) {
     EXPECT_EQ(m0.begin(), m0.end());
 }
 
+TEST(Map, DuplicatedKeysInit) {
+    std::vector<std::pair<String, int>> data = {{"a", 1}, {"a", 2}, {"a", 3}};
+    Map<String, int> map(data.begin(), data.end());
+    EXPECT_EQ(map.size(), 1);
+    EXPECT_EQ(map["a"], 3);
+}
+
 }// namespace
