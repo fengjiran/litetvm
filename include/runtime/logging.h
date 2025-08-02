@@ -108,7 +108,7 @@ public:
      * \param lineno The line number where the error occurred.
      * \param message The error message to display.
      */
-    InternalError(std::string file, int lineno, std::string message)
+    InternalError(const std::string& file, int lineno, const std::string& message)
         : Error(DetectKind(message), DetectMessage(message), TVMFFITraceback(file.c_str(), lineno, "")) {}
 
 private:
