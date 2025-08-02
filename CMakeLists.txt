@@ -19,6 +19,7 @@ endif(USE_KALLOC_ALIGNMENT)
 set(DMLC_PATH "3rdparty/dmlc-core/include")
 set(BACKTRACE_PATH "3rdparty/libbacktrace")
 set(DLPACK_PATH "3rdparty/dlpack/include")
+set(COMPILER-RT_PATH "3rdparty/compiler-rt")
 
 file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp
         ${PROJECT_SOURCE_DIR}/src/*.cc
@@ -32,6 +33,7 @@ include_directories(
         ${DMLC_PATH}
         ${BACKTRACE_PATH}
         ${DLPACK_PATH}
+        ${COMPILER-RT_PATH}
 )
 
 target_link_libraries(${PROJECT_NAME}

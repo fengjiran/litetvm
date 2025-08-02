@@ -13,7 +13,7 @@
 #endif// __hexagon__
 #endif// _WIN32
 
-#include "runtime/string.h"
+#include "ffi/string.h"
 
 #include <algorithm>
 #include <array>
@@ -25,9 +25,6 @@
 
 namespace litetvm {
 namespace support {
-
-using runtime::String;
-
 /*!
  * \brief TVMPOpen wrapper of popen between windows / unix.
  * \param command executed command
@@ -91,22 +88,19 @@ inline int TVMWexitstatus(int status) {
 
 /*!
  * \brief IsNumber check whether string is a number.
- * \param s input string
+ * \param str input string
  * \return result of operation.
  */
-inline bool IsNumber(const std::string& s) {
-    auto pred = [](char c) {
-        return !std::isdigit(c);
-    };
-
-    return !s.empty() && std::find_if(s.begin(), s.end(), pred) == s.end();
+inline bool IsNumber(const std::string& str) {
+    return !str.empty() &&
+           std::find_if(str.begin(), str.end(), [](char c) { return !std::isdigit(c); }) == str.end();
 }
 
 /*!
- * \brief Split the string based on delimiter
+ * \brief split Split the string based on delimiter
  * \param str Input string
  * \param delim The delimiter.
- * \return vector of strings which are split.
+ * \return vector of strings which are splitted.
  */
 inline std::vector<std::string> Split(const std::string& str, char delim) {
     std::string item;
@@ -124,7 +118,7 @@ inline std::vector<std::string> Split(const std::string& str, char delim) {
  * \param prefix The given prefix.
  * \return Whether the prefix matched.
  */
-inline bool StartsWith(const String& str, const char* prefix) {
+inline bool StartsWith(const ffi::String& str, const char* prefix) {
     size_t n = str.length();
     for (size_t i = 0; i < n; i++) {
         if (prefix[i] == '\0') return true;
@@ -179,8 +173,8 @@ inline int Execute(std::string cmd, std::string* err_msg) {
  * \param value The right operand.
  * \return the combined result.
  */
-template<typename T, std::enable_if_t<std::is_convertible_v<T, uint64_t>, bool> = true>
-uint64_t HashCombine(uint64_t key, const T& value) {
+template<typename T, std::enable_if_t<std::is_convertible<T, uint64_t>::value, bool> = true>
+inline uint64_t HashCombine(uint64_t key, const T& value) {
     // XXX: do not use std::hash in this function. This hash must be stable
     // across different platforms and std::hash is implementation dependent.
     return key ^ (uint64_t(value) + 0x9e3779b9 + (key << 6) + (key >> 2));
