@@ -25,7 +25,7 @@ namespace ffi {
  *
  * - CopyToAnyView: Convert a value T to AnyView
  * - MoveToAny: Move a value to Any
- * - CheckAnyStrict: Check if a Any stores a result of MoveToAny of current T.
+ * - CheckAnyStrict: Check if an Any stores a result of MoveToAny of current T.
  * - CopyFromAnyViewAfterCheck: Copy a value T from Any storage after we pass CheckAnyStrict.
  * - MoveFromAnyAfterCheck: Move a value T from Any storage after we pass CheckAnyStrict.
  * - TryCastFromAnyView: Convert a AnyView to a T, we may apply type conversion.
@@ -66,8 +66,9 @@ inline constexpr bool use_default_type_traits_v = true;
 struct TypeTraitsBase {
     static constexpr bool convert_enabled = true;
     static constexpr bool storage_enabled = true;
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIAny;
-    // get mismatched type when result mismatches the trait.
+    static constexpr int32_t field_static_type_index = kTVMFFIAny;
+
+    // get mismatched type when the result mismatches the trait.
     // this function is called after TryCastFromAnyView fails
     // to get more detailed type information in runtime
     // especially when the error involves nested container type
@@ -92,7 +93,8 @@ constexpr int32_t TypeToFieldStaticTypeIndex_v = TypeToFieldStaticTypeIndex<T>::
 template<typename T, typename = void>
 struct TypeToRuntimeTypeIndex {
     static int32_t v() {
-        return TypeToFieldStaticTypeIndex<T>::value;
+        // return TypeToFieldStaticTypeIndex<T>::value;
+        return TypeToFieldStaticTypeIndex_v<T>;
     }
 };
 

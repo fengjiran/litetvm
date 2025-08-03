@@ -68,8 +68,9 @@ public:
     AnyView(const AnyView&) = default;
     AnyView& operator=(const AnyView&) = default;
     AnyView(AnyView&& other) noexcept : data_(other.data_) {
-        other.data_.type_index = kTVMFFINone;
-        other.data_.v_int64 = 0;
+        // other.data_.type_index = kTVMFFINone;
+        // other.data_.v_int64 = 0;
+        other.reset();
     }
 
     // constructor from general types
