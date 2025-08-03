@@ -267,7 +267,7 @@ private:
         info.doc = TVMFFIByteArray{nullptr, 0};
         info.type_schema = TVMFFIByteArray{nullptr, 0};
         info.flags = 0;
-        // get the method function
+        // obtain the method function
         info.method = AnyView(func).CopyToTVMFFIAny();
         // apply method info traits
         (ApplyMethodInfoTrait(&info, std::forward<Extra>(extra)), ...);

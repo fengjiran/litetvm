@@ -75,6 +75,8 @@ public:
 
     void Update(const TVMFFIMethodInfo* method_info, bool can_override) {
         String name(method_info->name.data, method_info->name.size);
+        String n1("test2");
+        auto names = ListNames();
         if (table_.count(name)) {
             if (!can_override) {
                 TVM_FFI_LOG_AND_THROW(RuntimeError)
@@ -84,6 +86,7 @@ public:
             }
         }
         table_.Set(name, ObjectRef(make_object<Entry>(method_info)));
+        names = ListNames();
     }
 
     bool Remove(const String& name) {
