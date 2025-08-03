@@ -77,6 +77,16 @@ struct TypeTraitsBase {
     }
 };
 
+// template<typename T>
+// struct TypeToFieldStaticTypeIndex {
+//     static constexpr int32_t value = kTVMFFIAny;
+// };
+//
+// template<typename T, std::enable_if_t<TypeTraits<T>::convert_enabled>* = nullptr>
+// struct TypeToFieldStaticTypeIndex<T> {
+//     static constexpr int32_t value = TypeTraits<T>::field_static_type_index;
+// };
+
 template<typename T, typename = void>
 struct TypeToFieldStaticTypeIndex {
     static constexpr int32_t value = kTVMFFIAny;
