@@ -77,16 +77,6 @@ struct TypeTraitsBase {
     }
 };
 
-// template<typename T>
-// struct TypeToFieldStaticTypeIndex {
-//     static constexpr int32_t value = kTVMFFIAny;
-// };
-//
-// template<typename T, std::enable_if_t<TypeTraits<T>::convert_enabled>* = nullptr>
-// struct TypeToFieldStaticTypeIndex<T> {
-//     static constexpr int32_t value = TypeTraits<T>::field_static_type_index;
-// };
-
 template<typename T, typename = void>
 struct TypeToFieldStaticTypeIndex {
     static constexpr int32_t value = kTVMFFIAny;
@@ -118,7 +108,6 @@ struct TypeToRuntimeTypeIndex<T, std::enable_if_t<std::is_base_of_v<ObjectRef, T
 template<typename T>
 constexpr int32_t TypeToRuntimeTypeIndex_v = TypeToRuntimeTypeIndex<T>::v();
 
-// None
 template<>
 struct TypeTraits<std::nullptr_t> : TypeTraitsBase {
     static constexpr int32_t field_static_type_index = kTVMFFINone;
@@ -169,7 +158,7 @@ struct TypeTraits<std::nullptr_t> : TypeTraitsBase {
 class StrictBool {
 public:
     StrictBool(bool value) : value_(value) {}// NOLINT(*)
-    operator bool() const {
+    operator bool() const {                  // NOLINT(*)
         return value_;
     }
 
@@ -284,7 +273,7 @@ struct TypeTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> : TypeTraitsBa
 
     TVM_FFI_INLINE static std::optional<Int> TryCastFromAnyView(const TVMFFIAny* src) {
         if (src->type_index == kTVMFFIInt || src->type_index == kTVMFFIBool) {
-            return Int(src->v_int64);
+            return static_cast<Int>(src->v_int64);
         }
         return std::nullopt;
     }
@@ -297,12 +286,11 @@ struct TypeTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> : TypeTraitsBa
 // Enum Integer POD values
 template<typename IntEnum>
 struct TypeTraits<IntEnum, std::enable_if_t<std::is_enum_v<IntEnum> &&
-                                            std::is_integral_v<std::underlying_type_t<IntEnum>>>>
-    : TypeTraitsBase {
-    static constexpr int32_t field_static_type_index = TypeIndex::kTVMFFIInt;
+                                            std::is_integral_v<std::underlying_type_t<IntEnum>>>> : TypeTraitsBase {
+    static constexpr int32_t field_static_type_index = kTVMFFIInt;
 
     TVM_FFI_INLINE static void CopyToAnyView(const IntEnum& src, TVMFFIAny* result) {
-        result->type_index = TypeIndex::kTVMFFIInt;
+        result->type_index = kTVMFFIInt;
         result->v_int64 = static_cast<int64_t>(src);
     }
 
@@ -312,7 +300,7 @@ struct TypeTraits<IntEnum, std::enable_if_t<std::is_enum_v<IntEnum> &&
 
     TVM_FFI_INLINE static bool CheckAnyStrict(const TVMFFIAny* src) {
         // NOTE: CheckAnyStrict is always strict and should be consistent with MoveToAny
-        return src->type_index == TypeIndex::kTVMFFIInt;
+        return src->type_index == kTVMFFIInt;
     }
 
     TVM_FFI_INLINE static IntEnum CopyFromAnyViewAfterCheck(const TVMFFIAny* src) {
@@ -325,13 +313,15 @@ struct TypeTraits<IntEnum, std::enable_if_t<std::is_enum_v<IntEnum> &&
     }
 
     TVM_FFI_INLINE static std::optional<IntEnum> TryCastFromAnyView(const TVMFFIAny* src) {
-        if (src->type_index == TypeIndex::kTVMFFIInt || src->type_index == TypeIndex::kTVMFFIBool) {
+        if (src->type_index == kTVMFFIInt || src->type_index == kTVMFFIBool) {
             return static_cast<IntEnum>(src->v_int64);
         }
         return std::nullopt;
     }
 
-    TVM_FFI_INLINE static std::string TypeStr() { return StaticTypeKey::kTVMFFIInt; }
+    TVM_FFI_INLINE static std::string TypeStr() {
+        return StaticTypeKey::kTVMFFIInt;
+    }
 };
 
 // Float POD values
@@ -364,11 +354,11 @@ struct TypeTraits<Float, std::enable_if_t<std::is_floating_point_v<Float>>> : Ty
 
     TVM_FFI_INLINE static std::optional<Float> TryCastFromAnyView(const TVMFFIAny* src) {
         if (src->type_index == kTVMFFIFloat) {
-            return Float(src->v_float64);
+            return static_cast<Float>(src->v_float64);
         }
 
         if (src->type_index == kTVMFFIInt || src->type_index == kTVMFFIBool) {
-            return Float(src->v_int64);
+            return static_cast<Float>(src->v_int64);
         }
         return std::nullopt;
     }
