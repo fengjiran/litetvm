@@ -599,7 +599,7 @@ struct AnyEqual {
             lhs.data_.type_index == kTVMFFIBytes) {
             const auto* lhs_str = details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
             const auto* rhs_str = details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(rhs);
-            return Bytes::memequal(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size) == 0;
+            return Bytes::memequal(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size);
         }
         return false;
     }

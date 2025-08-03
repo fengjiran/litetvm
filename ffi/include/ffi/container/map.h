@@ -241,7 +241,9 @@ public:
    * \param key The indexing key
    * \return The result, 0 or 1
    */
-    size_t count(const key_type& key) const { return find(key).index < size_; }
+    size_t count(const key_type& key) const {
+        return find(key).index < size_;
+    }
     /*!
    * \brief Index value associated with a key, throw exception if the key does not exist
    * \param key The indexing key
