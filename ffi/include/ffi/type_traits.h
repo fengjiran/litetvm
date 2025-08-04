@@ -481,6 +481,7 @@ struct TypeTraits<DLTensor*> : TypeTraitsBase {
         if (src->type_index == kTVMFFIDLTensorPtr) {
             return static_cast<DLTensor*>(src->v_ptr);
         }
+
         if (src->type_index == kTVMFFINDArray) {
             // Conversion from NDArray pointer to DLTensor
             // based on the assumption that NDArray always follows the TVMFFIObject header
