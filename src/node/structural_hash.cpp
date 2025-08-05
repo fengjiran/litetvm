@@ -25,12 +25,12 @@ TVM_FFI_STATIC_INIT_BLOCK({
     namespace refl = litetvm::ffi::reflection;
     refl::GlobalDef().def("node.StructuralHash",
                           [](const Any& object, bool map_free_vars) -> int64_t {
-                              return ffi::reflection::StructuralHash::Hash(object, map_free_vars);
+                              return ffi::StructuralHash::Hash(object, map_free_vars);
                           });
 });
 
 uint64_t StructuralHash::operator()(const ffi::Any& object) const {
-    return ffi::reflection::StructuralHash::Hash(object, false);
+    return ffi::StructuralHash::Hash(object, false);
 }
 
 struct RefToObjectPtr : public ObjectRef {
@@ -39,22 +39,10 @@ struct RefToObjectPtr : public ObjectRef {
     }
 };
 
-TVM_REGISTER_REFLECTION_VTABLE(ffi::StringObj)
-        .set_creator([](const std::string& bytes) { return RefToObjectPtr::Get(String(bytes)); })
-        .set_repr_bytes([](const Object* n) -> std::string {
-            return GetRef<String>(static_cast<const ffi::StringObj*>(n)).operator std::string();
-        });
-
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
         .set_dispatch<ffi::StringObj>([](const ObjectRef& node, ReprPrinter* p) {
             auto* op = static_cast<const ffi::StringObj*>(node.get());
             p->stream << '"' << support::StrEscape(op->data, op->size) << '"';
-        });
-
-TVM_REGISTER_REFLECTION_VTABLE(ffi::BytesObj)
-        .set_creator([](const std::string& bytes) { return RefToObjectPtr::Get(String(bytes)); })
-        .set_repr_bytes([](const Object* n) -> std::string {
-            return GetRef<ffi::Bytes>(static_cast<const ffi::BytesObj*>(n)).operator std::string();
         });
 
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)

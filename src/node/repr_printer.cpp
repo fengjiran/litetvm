@@ -6,6 +6,7 @@
 #include "ffi/function.h"
 #include "ffi/reflection/registry.h"
 #include "runtime/device_api.h"
+#include "support/str_escape.h"
 
 namespace litetvm {
 

@@ -128,7 +128,7 @@ void Profiler::Start() {
 }
 
 void Profiler::StartCall(String name, Device dev,
-                         std::unordered_map<std::string, ObjectRef> extra_metrics) {
+                         std::unordered_map<std::string, Any> extra_metrics) {
     std::vector<std::pair<MetricCollector, ObjectRef>> objs;
     for (auto& collector: collectors_) {
         ObjectRef obj = collector->Start(dev);
@@ -139,7 +139,7 @@ void Profiler::StartCall(String name, Device dev,
     in_flight_.push(CallFrame{dev, name, Timer::Start(dev), extra_metrics, objs});
 }
 
-void Profiler::StopCall(std::unordered_map<std::string, ObjectRef> extra_metrics) {
+void Profiler::StopCall(std::unordered_map<std::string, Any> extra_metrics) {
     CallFrame cf = in_flight_.top();
     cf.timer->Stop();
     for (auto& p: extra_metrics) {
@@ -149,7 +149,7 @@ void Profiler::StopCall(std::unordered_map<std::string, ObjectRef> extra_metrics
     for (const auto& obj: cf.extra_collectors) {
         auto collector_metrics = obj.first->Stop(obj.second);
         for (auto& p: collector_metrics) {
-            cf.extra_metrics[p.first] = p.second.cast<ObjectRef>();
+            cf.extra_metrics[p.first] = p.second;
         }
     }
     in_flight_.pop();
@@ -283,10 +283,10 @@ String ReportNode::AsCSV() const {
 
 
 namespace {
-void metric_as_json(std::ostream& os, ObjectRef o) {
-    if (o.as<ffi::StringObj>()) {
+void metric_as_json(std::ostream& os, Any o) {
+    if (auto opt_str = o.as<String>()) {
         os << "{\"string\":"
-           << "\"" << Downcast<String>(o) << "\""
+           << "\"" << *opt_str << "\""
            << "}";
     } else if (const CountNode* n = o.as<CountNode>()) {
         os << "{\"count\":" << n->value << "}";
@@ -300,7 +300,7 @@ void metric_as_json(std::ostream& os, ObjectRef o) {
         os << "{\"ratio\":" << std::setprecision(std::numeric_limits<double>::max_digits10)
            << std::fixed << n->ratio << "}";
     } else {
-        LOG(FATAL) << "Unprintable type " << o->GetTypeKey();
+        LOG(FATAL) << "Unprintable type " << o.GetTypeKey();
     }
 }
 }// namespace
@@ -321,7 +321,7 @@ String ReportNode::AsJSON() const {
         s << "{";
         for (const auto& kv: calls[i]) {
             s << "\"" << kv.first << "\":";
-            metric_as_json(s, kv.second.cast<ObjectRef>());
+            metric_as_json(s, kv.second);
             if (j < calls[i].size() - 1) {
                 s << ",";
             }
@@ -341,7 +341,7 @@ String ReportNode::AsJSON() const {
         s << "\"" << dev_kv.first << "\":{";
         for (const auto& metric_kv: dev_kv.second) {
             s << "\"" << metric_kv.first << "\":";
-            metric_as_json(s, metric_kv.second.cast<ObjectRef>());
+            metric_as_json(s, metric_kv.second);
             if (j < dev_kv.second.size() - 1) {
                 s << ",";
             }
@@ -359,7 +359,7 @@ String ReportNode::AsJSON() const {
     size_t k = 0;
     for (const auto& kv: configuration) {
         s << "\"" << kv.first << "\":";
-        metric_as_json(s, kv.second.cast<ObjectRef>());
+        metric_as_json(s, kv.second);
         if (k < configuration.size() - 1) {
             s << ",";
         }
@@ -373,7 +373,7 @@ String ReportNode::AsJSON() const {
 // Aggregate a set of values for a metric. Computes sum for Duration, Count,
 // and Percent; average for Ratio; and assumes all Strings are the same. All
 // ObjectRefs in metrics must have the same type.
-ObjectRef AggregateMetric(const std::vector<ObjectRef>& metrics) {
+ObjectRef AggregateMetric(const std::vector<Any>& metrics) {
     ICHECK_GT(metrics.size(), 0) << "Must pass a non-zero number of metrics";
     if (metrics[0].as<DurationNode>()) {
         double sum = 0;
@@ -402,7 +402,7 @@ ObjectRef AggregateMetric(const std::vector<ObjectRef>& metrics) {
     } else if (metrics[0].as<ffi::StringObj>()) {
         for (auto& m: metrics) {
             if (Downcast<String>(metrics[0]) != Downcast<String>(m)) {
-                return ObjectRef(String(""));
+                return String("");
             }
         }
         // Assume all strings in metrics are the same.
@@ -410,8 +410,8 @@ ObjectRef AggregateMetric(const std::vector<ObjectRef>& metrics) {
     } else {
         LOG(FATAL) << "Can only aggregate metrics with types DurationNode, CountNode, "
                       "PercentNode, RatioNode, and StringObj, but got "
-                   << metrics[0]->GetTypeKey();
-        return ObjectRef();// To silence warnings
+                   << metrics[0].GetTypeKey();
+        return Any();// To silence warnings
     }
 }
 
@@ -427,7 +427,7 @@ static void set_locale_for_separators(std::stringstream& s) {
     }
 }
 
-static String print_metric(ObjectRef metric) {
+static String print_metric(Any metric) {
     std::string val;
     if (metric.as<CountNode>()) {
         std::stringstream s;
@@ -451,7 +451,7 @@ static String print_metric(ObjectRef metric) {
     } else if (metric.as<ffi::StringObj>()) {
         val = Downcast<String>(metric);
     } else {
-        LOG(FATAL) << "Cannot print metric of type " << metric->GetTypeKey();
+        LOG(FATAL) << "Cannot print metric of type " << metric.GetTypeKey();
     }
     return val;
 }
@@ -490,7 +490,7 @@ String ReportNode::AsTable(bool sort, bool aggregate, bool compute_col_sums) con
                 }
             }
             for (const std::string& metric: metrics) {
-                std::vector<ObjectRef> per_call;
+                std::vector<Any> per_call;
                 for (auto i: p.second) {
                     auto& call = calls[i];
                     auto it = std::find_if(call.begin(), call.end(),
@@ -498,7 +498,7 @@ String ReportNode::AsTable(bool sort, bool aggregate, bool compute_col_sums) con
                                                return std::string(call_metric.first) == metric;
                                            });
                     if (it != call.end()) {
-                        per_call.push_back((*it).second.cast<ObjectRef>());
+                        per_call.push_back((*it).second);
                     }
                 }
                 if (per_call.size() > 0) {
@@ -704,7 +704,7 @@ Map<String, Any> parse_metrics(dmlc::JSONReader* reader) {
     std::string metric_name, metric_value_name;
     Map<String, Any> metrics;
     while (reader->NextObjectItem(&metric_name)) {
-        ObjectRef o;
+        Any o;
         reader->BeginObject();
         reader->NextObjectItem(&metric_value_name);
         if (metric_value_name == "microseconds") {

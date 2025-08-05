@@ -2,7 +2,7 @@
 // Created by richard on 8/2/25.
 //
 
-#include "../../ffi/include/ffi/extra/structural_equal.h"
+#include "ffi/extra/structural_equal.h"
 #include "ffi/function.h"
 #include "ffi/reflection/access_path.h"
 #include "ffi/reflection/registry.h"
@@ -47,19 +47,19 @@ Optional<ObjectPathPair> ObjectPathPairFromAccessPathPair(
                     result = result->Attr(step->key.cast<String>());
                     break;
                 }
-                case ffi::reflection::AccessKind::kArrayIndex: {
+                case ffi::reflection::AccessKind::kArrayItem: {
                     result = result->ArrayIndex(step->key.cast<int64_t>());
                     break;
                 }
-                case ffi::reflection::AccessKind::kMapKey: {
+                case ffi::reflection::AccessKind::kMapItem: {
                     result = result->MapValue(step->key);
                     break;
                 }
-                case ffi::reflection::AccessKind::kArrayIndexMissing: {
+                case ffi::reflection::AccessKind::kArrayItemMissing: {
                     result = result->MissingArrayElement(step->key.cast<int64_t>());
                     break;
                 }
-                case ffi::reflection::AccessKind::kMapKeyMissing: {
+                case ffi::reflection::AccessKind::kMapItemMissing: {
                     result = result->MissingMapEntry();
                     break;
                 }
@@ -79,7 +79,7 @@ bool NodeStructuralEqualAdapter(const Any& lhs, const Any& rhs, bool assert_mode
                                 bool map_free_vars) {
     if (assert_mode) {
         auto first_mismatch = ObjectPathPairFromAccessPathPair(
-                ffi::reflection::StructuralEqual::GetFirstMismatch(lhs, rhs, map_free_vars));
+                ffi::StructuralEqual::GetFirstMismatch(lhs, rhs, map_free_vars));
         if (first_mismatch.has_value()) {
             std::ostringstream oss;
             oss << "StructuralEqual check failed, caused by lhs";
@@ -115,7 +115,7 @@ bool NodeStructuralEqualAdapter(const Any& lhs, const Any& rhs, bool assert_mode
         }
         return true;
     } else {
-        return ffi::reflection::StructuralEqual::Equal(lhs, rhs, map_free_vars);
+        return ffi::StructuralEqual::Equal(lhs, rhs, map_free_vars);
     }
 }
 
@@ -133,12 +133,12 @@ TVM_FFI_STATIC_INIT_BLOCK({
               return first_mismatch;
              */
                      return ObjectPathPairFromAccessPathPair(
-                             ffi::reflection::StructuralEqual::GetFirstMismatch(lhs, rhs, map_free_vars));
+                             ffi::StructuralEqual::GetFirstMismatch(lhs, rhs, map_free_vars));
                  });
 });
 
 bool StructuralEqual::operator()(const ffi::Any& lhs, const ffi::Any& rhs,
                                  bool map_free_params) const {
-    return ffi::reflection::StructuralEqual::Equal(lhs, rhs, map_free_params);
+    return ffi::StructuralEqual::Equal(lhs, rhs, map_free_params);
 }
 }// namespace litetvm

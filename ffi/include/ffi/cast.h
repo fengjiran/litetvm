@@ -9,6 +9,7 @@
 #include "ffi/dtype.h"
 #include "ffi/error.h"
 #include "ffi/object.h"
+#include "ffi/optional.h"
 
 #include <utility>
 

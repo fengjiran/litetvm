@@ -77,7 +77,7 @@ public:
         } else if (auto opt_map = node.as<const ffi::MapObj*>()) {
             const ffi::MapObj* n = opt_map.value();
             bool is_str_map = std::all_of(n->begin(), n->end(), [](const auto& v) {
-                return v.first.template as<const ffi::StringObj*>();
+                return v.first.template as<String>();
             });
             if (is_str_map) {
                 for (const auto& kv: *n) {
@@ -89,6 +89,9 @@ public:
                     MakeIndex(kv.second);
                 }
             }
+        } else if (node.type_index() == ffi::TypeIndex::kTVMFFIStr ||
+                   node.type_index() == ffi::TypeIndex::kTVMFFIBytes) {
+            // skip content index for string and bytes
         } else if (auto opt_object = node.as<const Object*>()) {
             Object* n = const_cast<Object*>(opt_object.value());
             // if the node already have repr bytes, no need to visit Attrs.
@@ -240,7 +243,7 @@ public:
         } else if (auto opt_map = node.as<const ffi::MapObj*>()) {
             const ffi::MapObj* n = opt_map.value();
             bool is_str_map = std::all_of(n->begin(), n->end(), [](const auto& v) {
-                return v.first.template as<const ffi::StringObj*>();
+                return v.first.template as<String>();
             });
             if (is_str_map) {
                 for (const auto& kv: *n) {
@@ -253,6 +256,10 @@ public:
                     node_->data.push_back(node_index_->at(kv.second));
                 }
             }
+        } else if (auto opt_str = node.as<String>()) {
+            node_->repr_bytes = *opt_str;
+        } else if (auto opt_bytes = node.as<Bytes>()) {
+            node_->repr_bytes = *opt_bytes;
         } else if (auto opt_object = node.as<const Object*>()) {
             Object* n = const_cast<Object*>(opt_object.value());
             // do not need to print additional things once we have repr bytes.
@@ -378,6 +385,11 @@ public:
             return;
         }
         if (node.type_index() < ffi::TypeIndex::kTVMFFIStaticObjectBegin) {
+            return;
+        }
+        if (node.type_index() == ffi::TypeIndex::kTVMFFIStr ||
+            node.type_index() == ffi::TypeIndex::kTVMFFIBytes) {
+            // skip indexing content of string and bytes
             return;
         }
         // Skip the objects that have their own string repr
@@ -533,6 +545,10 @@ public:
             setter.ParseValue("v_device_type", &device_type);
             setter.ParseValue("v_device_id", &device_id);
             return Any(DLDevice{static_cast<DLDeviceType>(device_type), device_id});
+        } else if (jnode->type_key == ffi::StaticTypeKey::kTVMFFIStr) {
+            return Any(String(jnode->repr_bytes));
+        } else if (jnode->type_key == ffi::StaticTypeKey::kTVMFFIBytes) {
+            return Any(Bytes(jnode->repr_bytes));
         } else {
             return ObjectRef(reflection->CreateInitObject(jnode->type_key, jnode->repr_bytes));
         }
@@ -562,6 +578,9 @@ public:
                 }
             }
             *node = result;
+        } else if (jnode->type_key == ffi::StaticTypeKey::kTVMFFIStr ||
+           jnode->type_key == ffi::StaticTypeKey::kTVMFFIBytes) {
+            // skip set attrs for string and bytes
         } else if (auto opt_object = node->as<const Object*>()) {
             Object* n = const_cast<Object*>(opt_object.value());
             if (n == nullptr) return;
