@@ -15,7 +15,13 @@ using namespace litetvm::ffi::testing;
 TEST(Cast, GetRef) {
     auto a = make_object<TIntObj>(10);
     auto ref_a = GetRef<TInt>(a.get());
+
+    TVMFFIAny res;
+    TypeTraits<TInt>::CopyToAnyView(ref_a, &res);
     EXPECT_EQ(ref_a.use_count(), 2);
+    EXPECT_EQ(res.v_obj->ref_counter, 2);
+    auto* ptr = static_cast<TIntObj*>(reinterpret_cast<Object*>(res.v_obj));
+    EXPECT_EQ(ptr->GetValue(), 10);
 }
 
 TEST(Cast, GetObjectPtr) {
