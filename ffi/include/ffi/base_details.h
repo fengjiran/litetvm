@@ -17,7 +17,7 @@
  * under the License.
  */
 /*!
- * \file tvm/ffi/base_details.h
+ * \file ffi/base_details.h
  * \brief Internal detail utils that can be used by files in tvm/ffi.
  * \note details header are for internal use only
  *       and not to be directly used by user.
@@ -25,6 +25,7 @@
 #ifndef LITETVM_FFI_BASE_DETAILS_H_
 #define LITETVM_FFI_BASE_DETAILS_H_
 
+#include "ffi/c_api.h"
 #include "ffi/endian.h"
 #include "ffi/macros.h"
 
@@ -83,7 +84,7 @@ TVM_FFI_INLINE uint64_t StableHashCombine(uint64_t key, const T& value) {
 
 /*!
  * \brief Hash the binary bytes
- * \param data The data pointer
+ * \param data_ptr The data pointer
  * \param size The size of the bytes.
  * \return the hash value.
  */

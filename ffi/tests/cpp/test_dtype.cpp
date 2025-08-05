@@ -3,6 +3,7 @@
 //
 #include "ffi/any.h"
 #include "ffi/dtype.h"
+#include "ffi/optional.h"
 
 #include <gtest/gtest.h>
 
