@@ -518,7 +518,7 @@ struct AnyUnsafe : public ObjectUnsafe {
     // FFI related operations
     TVM_FFI_INLINE static TVMFFIAny MoveAnyToTVMFFIAny(Any&& any) {
         TVMFFIAny result = any.data_;
-        any.data_.type_index = TypeIndex::kTVMFFINone;
+        any.data_.type_index = kTVMFFINone;
         any.data_.zero_padding = 0;
         any.data_.v_int64 = 0;
         return result;
@@ -527,7 +527,7 @@ struct AnyUnsafe : public ObjectUnsafe {
     TVM_FFI_INLINE static Any MoveTVMFFIAnyToAny(TVMFFIAny&& data) {
         Any any;
         any.data_ = data;
-        data.type_index = TypeIndex::kTVMFFINone;
+        data.type_index = kTVMFFINone;
         data.zero_padding = 0;
         data.v_int64 = 0;
         return any;
@@ -561,7 +561,7 @@ struct AnyUnsafe : public ObjectUnsafe {
     }
 
     TVM_FFI_INLINE static const TVMFFIAny* TVMFFIAnyPtrFromAny(const Any& ref) {
-        return &(ref.data_);
+        return &ref.data_;
     }
 
     template<typename T>
@@ -579,24 +579,24 @@ struct AnyHash {
    * \return Hash code of a, string hash for strings and pointer address otherwise.
    */
     uint64_t operator()(const Any& src) const {
-        if (src.data_.type_index == TypeIndex::kTVMFFISmallStr) {
+        if (src.data_.type_index == kTVMFFISmallStr) {
             // for small string, we use the same type key hash as normal string
             // so heap allocated string and on stack string will have the same hash
-            return details::StableHashCombine(TypeIndex::kTVMFFIStr,
+            return details::StableHashCombine(kTVMFFIStr,
                                               details::StableHashSmallStrBytes(&src.data_));
-        } else if (src.data_.type_index == TypeIndex::kTVMFFISmallBytes) {
+        }
+        if (src.data_.type_index == kTVMFFISmallBytes) {
             // use byte the same type key as bytes
-            return details::StableHashCombine(TypeIndex::kTVMFFIBytes,
+            return details::StableHashCombine(kTVMFFIBytes,
                                               details::StableHashSmallStrBytes(&src.data_));
-        } else if (src.data_.type_index == TypeIndex::kTVMFFIStr ||
-                   src.data_.type_index == TypeIndex::kTVMFFIBytes) {
+        }
+        if (src.data_.type_index == kTVMFFIStr || src.data_.type_index == kTVMFFIBytes) {
             const details::BytesObjBase* src_str =
                     details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(src);
             return details::StableHashCombine(src.data_.type_index,
                                               details::StableHashBytes(src_str->data, src_str->size));
-        } else {
-            return details::StableHashCombine(src.data_.type_index, src.data_.v_uint64);
         }
+        return details::StableHashCombine(src.data_.type_index, src.data_.v_uint64);
     }
 };
 
