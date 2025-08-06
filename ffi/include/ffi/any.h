@@ -310,7 +310,7 @@ public:
     Any(T other) {// NOLINT(*)
         TypeTraits<T>::MoveToAny(std::move(other), &data_);
     }
-    
+
     template<typename T, typename = std::enable_if_t<TypeTraits<T>::convert_enabled>>
     TVM_FFI_INLINE Any& operator=(T other) {// NOLINT(*)
         // copy-and-swap idiom
@@ -333,9 +333,8 @@ public:
         } else {
             if (TypeTraits<T>::CheckAnyStrict(&data_)) {
                 return TypeTraits<T>::MoveFromAnyAfterCheck(&data_);
-            } else {
-                return std::optional<T>(std::nullopt);
             }
+            return std::optional<T>(std::nullopt);
         }
     }
 
@@ -354,9 +353,8 @@ public:
         } else {
             if (TypeTraits<T>::CheckAnyStrict(&data_)) {
                 return TypeTraits<T>::CopyFromAnyViewAfterCheck(&data_);
-            } else {
-                return std::optional<T>(std::nullopt);
             }
+            return std::optional<T>(std::nullopt);
         }
     }
 
@@ -430,7 +428,8 @@ public:
    */
     TVM_FFI_INLINE bool same_as(const Any& other) const noexcept {
         return data_.type_index == other.data_.type_index &&
-               data_.zero_padding == other.data_.zero_padding && data_.v_int64 == other.data_.v_int64;
+               data_.zero_padding == other.data_.zero_padding &&
+               data_.v_int64 == other.data_.v_int64;
     }
 
     /*
@@ -440,25 +439,26 @@ public:
    */
     TVM_FFI_INLINE bool same_as(const ObjectRef& other) const noexcept {
         if (other.get() != nullptr) {
-            return (data_.type_index == other->type_index() &&
-                    reinterpret_cast<Object*>(data_.v_obj) == other.get());
-        } else {
-            return data_.type_index == TypeIndex::kTVMFFINone;
+            return data_.type_index == other->type_index() && reinterpret_cast<Object*>(data_.v_obj) == other.get();
         }
+        return data_.type_index == kTVMFFINone;
     }
 
     TVM_FFI_INLINE bool operator==(std::nullptr_t) const noexcept {
-        return data_.type_index == TypeIndex::kTVMFFINone;
+        return data_.type_index == kTVMFFINone;
     }
+
     TVM_FFI_INLINE bool operator!=(std::nullptr_t) const noexcept {
-        return data_.type_index != TypeIndex::kTVMFFINone;
+        return data_.type_index != kTVMFFINone;
     }
 
     /*!
    * \brief Get the type key of the Any
    * \return The type key of the Any
    */
-    TVM_FFI_INLINE std::string GetTypeKey() const { return TypeIndexToTypeKey(data_.type_index); }
+    TVM_FFI_INLINE std::string GetTypeKey() const {
+        return TypeIndexToTypeKey(data_.type_index);
+    }
 
     friend struct details::AnyUnsafe;
     friend struct AnyHash;
@@ -473,32 +473,44 @@ namespace details {
 
 template<typename Type>
 struct Type2Str {
-    static std::string v() { return TypeTraitsNoCR<Type>::TypeStr(); }
+    static std::string v() {
+        return TypeTraitsNoCR<Type>::TypeStr();
+    }
 };
 
 template<>
 struct Type2Str<Any> {
-    static std::string v() { return "Any"; }
+    static std::string v() {
+        return "Any";
+    }
 };
 
 template<>
 struct Type2Str<const Any&> {
-    static std::string v() { return "Any"; }
+    static std::string v() {
+        return "Any";
+    }
 };
 
 template<>
 struct Type2Str<AnyView> {
-    static std::string v() { return "AnyView"; }
+    static std::string v() {
+        return "AnyView";
+    }
 };
 
 template<>
 struct Type2Str<const AnyView&> {
-    static std::string v() { return "AnyView"; }
+    static std::string v() {
+        return "AnyView";
+    }
 };
 
 template<>
 struct Type2Str<void> {
-    static std::string v() { return "void"; }
+    static std::string v() {
+        return "void";
+    }
 };
 
 // Extra unsafe method to help any manipulation
