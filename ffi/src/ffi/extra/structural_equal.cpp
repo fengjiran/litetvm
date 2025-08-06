@@ -46,7 +46,7 @@ public:
             }
             if (lhs_data->type_index == kTVMFFIBytes && rhs_data->type_index == kTVMFFISmallBytes) {
                 const details::BytesObjBase* lhs_bytes =
-                        details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
+                        AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
                 return Bytes::memequal(lhs_bytes->data, rhs_data->v_bytes, lhs_bytes->size,
                                        rhs_data->small_str_len);
             }

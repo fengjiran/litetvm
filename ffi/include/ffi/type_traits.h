@@ -536,6 +536,7 @@ struct ObjectRefTypeTraitsBase : TypeTraitsBase {
         }
         TVMFFIObject* obj_ptr = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(src));
         result->type_index = obj_ptr->type_index;
+        result->zero_padding = 0;
         TVM_FFI_CLEAR_PTR_PADDING_IN_FFI_ANY(result);
         result->v_obj = obj_ptr;
     }
