@@ -621,8 +621,7 @@ struct AnyEqual {
         // equality
         if (lhs.data_.type_index == rhs.data_.type_index) {
             // specialy handle string hash
-            if (lhs.data_.type_index == TypeIndex::kTVMFFIStr ||
-                lhs.data_.type_index == TypeIndex::kTVMFFIBytes) {
+            if (lhs.data_.type_index == kTVMFFIStr || lhs.data_.type_index == kTVMFFIBytes) {
                 const details::BytesObjBase* lhs_str =
                         details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
                 const details::BytesObjBase* rhs_str =
@@ -630,39 +629,35 @@ struct AnyEqual {
                 return Bytes::memequal(lhs_str->data, rhs_str->data, lhs_str->size, rhs_str->size);
             }
             return false;
-        } else {
-            // type_index mismatch, if index is not string, return false
-            if (lhs.data_.type_index != kTVMFFIStr && lhs.data_.type_index != kTVMFFISmallStr &&
-                lhs.data_.type_index != kTVMFFISmallBytes && lhs.data_.type_index != kTVMFFIBytes) {
-                return false;
-            }
-            // small string and normal string comparison
-            if (lhs.data_.type_index == kTVMFFIStr && rhs.data_.type_index == kTVMFFISmallStr) {
-                const details::BytesObjBase* lhs_str =
-                        details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
-                return Bytes::memequal(lhs_str->data, rhs.data_.v_bytes, lhs_str->size,
-                                       rhs.data_.small_str_len);
-            }
-            if (lhs.data_.type_index == kTVMFFISmallStr && rhs.data_.type_index == kTVMFFIStr) {
-                const details::BytesObjBase* rhs_str =
-                        details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(rhs);
-                return Bytes::memequal(lhs.data_.v_bytes, rhs_str->data, lhs.data_.small_str_len,
-                                       rhs_str->size);
-            }
-            if (lhs.data_.type_index == kTVMFFIBytes && rhs.data_.type_index == kTVMFFISmallBytes) {
-                const details::BytesObjBase* lhs_bytes =
-                        details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
-                return Bytes::memequal(lhs_bytes->data, rhs.data_.v_bytes, lhs_bytes->size,
-                                       rhs.data_.small_str_len);
-            }
-            if (lhs.data_.type_index == kTVMFFISmallBytes && rhs.data_.type_index == kTVMFFIBytes) {
-                const details::BytesObjBase* rhs_bytes =
-                        details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(rhs);
-                return Bytes::memequal(lhs.data_.v_bytes, rhs_bytes->data, lhs.data_.small_str_len,
-                                       rhs_bytes->size);
-            }
+        }
+
+        // type_index mismatch, if index is not string, return false
+        if (lhs.data_.type_index != kTVMFFIStr && lhs.data_.type_index != kTVMFFISmallStr &&
+            lhs.data_.type_index != kTVMFFISmallBytes && lhs.data_.type_index != kTVMFFIBytes) {
             return false;
         }
+        // small string and normal string comparison
+        if (lhs.data_.type_index == kTVMFFIStr && rhs.data_.type_index == kTVMFFISmallStr) {
+            const details::BytesObjBase* lhs_str =
+                    details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
+            return Bytes::memequal(lhs_str->data, rhs.data_.v_bytes, lhs_str->size, rhs.data_.small_str_len);
+        }
+        if (lhs.data_.type_index == kTVMFFISmallStr && rhs.data_.type_index == kTVMFFIStr) {
+            const details::BytesObjBase* rhs_str =
+                    details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(rhs);
+            return Bytes::memequal(lhs.data_.v_bytes, rhs_str->data, lhs.data_.small_str_len, rhs_str->size);
+        }
+        if (lhs.data_.type_index == kTVMFFIBytes && rhs.data_.type_index == kTVMFFISmallBytes) {
+            const details::BytesObjBase* lhs_bytes =
+                    details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(lhs);
+            return Bytes::memequal(lhs_bytes->data, rhs.data_.v_bytes, lhs_bytes->size, rhs.data_.small_str_len);
+        }
+        if (lhs.data_.type_index == kTVMFFISmallBytes && rhs.data_.type_index == kTVMFFIBytes) {
+            const details::BytesObjBase* rhs_bytes =
+                    details::AnyUnsafe::CopyFromAnyViewAfterCheck<const details::BytesObjBase*>(rhs);
+            return Bytes::memequal(lhs.data_.v_bytes, rhs_bytes->data, lhs.data_.small_str_len, rhs_bytes->size);
+        }
+        return false;
     }
 };
 
