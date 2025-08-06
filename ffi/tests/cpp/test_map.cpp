@@ -13,7 +13,7 @@ using namespace litetvm::ffi;
 using namespace litetvm::ffi::testing;
 
 TEST(Map, Basic) {
-    GTEST_SKIP();
+    // GTEST_SKIP();
     Map<TInt, int> map0;
     TInt k0(0);
     map0.Set(k0, 1);

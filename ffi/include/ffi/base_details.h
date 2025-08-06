@@ -177,7 +177,7 @@ TVM_FFI_INLINE uint64_t StableHashBytes(const void* data_ptr, size_t size) {
 TVM_FFI_INLINE uint64_t StableHashSmallStrBytes(const TVMFFIAny* data) {
     if constexpr (TVM_FFI_IO_NO_ENDIAN_SWAP) {
         // fast path, no endian swap, simply hash as uint64_t
-        const constexpr uint64_t kMod = 2147483647ULL;
+        constexpr uint64_t kMod = 2147483647ULL;
         return data->v_uint64 % kMod;
     }
     return StableHashBytes(reinterpret_cast<const void*>(data), sizeof(data->v_uint64));

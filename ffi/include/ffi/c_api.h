@@ -167,7 +167,7 @@ struct TVMFFIAny {
    */
     int32_t type_index;
     union {// 4 bytes
-        /*! \brief padding, must set to zero for values other than small string. */
+        /*! \brief must set to zero for values other than small string. */
         uint32_t zero_padding;
         /*!
      * \brief Length of small string, with a max value of 7.
@@ -177,6 +177,7 @@ struct TVMFFIAny {
      */
         uint32_t small_str_len;
     };
+
     union {                  // 8 bytes
         int64_t v_int64;     // integers
         double v_float64;    // floating-point numbers
