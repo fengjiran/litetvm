@@ -268,8 +268,6 @@ struct TVMFFIErrorCell {
  * \sa TVMFFIErrorSetRaised
  * \sa TVMFFIErrorSetRaisedFromCStr
  */
-// typedef int (*TVMFFISafeCallType)(void* self, const TVMFFIAny* args, int32_t num_args,
-//                                   TVMFFIAny* result);
 using TVMFFISafeCallType = int (*)(void* handle, const TVMFFIAny* args, int32_t num_args, TVMFFIAny* result);
 
 /*!
@@ -286,7 +284,6 @@ struct TVMFFIFunctionCell {
  * \param result Stores the result.
  * \return 0 when success, nonzero when failure happens
  */
-// typedef int (*TVMFFIFieldGetter)(void* field, TVMFFIAny* result);
 using TVMFFIFieldGetter = int (*)(void* field, TVMFFIAny* result);
 
 /*!

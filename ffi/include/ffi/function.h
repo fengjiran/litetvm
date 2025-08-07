@@ -66,7 +66,6 @@ namespace ffi {
  */
 class FunctionObj : public Object, public TVMFFIFunctionCell {
 public:
-    // typedef void (*FCall)(const FunctionObj*, const AnyView*, int32_t, Any*);
     using FCall = void (*)(const FunctionObj*, const AnyView*, int32_t, Any*);
     using TVMFFIFunctionCell::safe_call;
 
