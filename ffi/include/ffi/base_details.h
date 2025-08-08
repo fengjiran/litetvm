@@ -48,23 +48,23 @@ namespace ffi {
 namespace details {
 
 // for each iterator
-struct for_each_dispatcher {
-    template<typename F, typename... Args, size_t... I>
-    static void run(std::index_sequence<I...>, const F& f, Args&&... args) {// NOLINT(*)
-        (f(I, std::forward<Args>(args)), ...);
-    }
-};
-
-template<typename F, typename... Args>
-void for_each(const F& f, Args&&... args) {// NOLINT(*)
-    for_each_dispatcher::run(std::index_sequence_for<Args...>{}, f, std::forward<Args>(args)...);
-}
+// struct for_each_dispatcher {
+//     template<typename F, typename... Args, size_t... I>
+//     static void run(std::index_sequence<I...>, const F& f, Args&&... args) {// NOLINT(*)
+//         (f(I, std::forward<Args>(args)), ...);
+//     }
+// };
 
 // template<typename F, typename... Args>
-// void for_each(const F& f, Args&&... args) {
-//     int i = 0;
-//     (f(i++, std::forward<Args>(args)), ...);
+// void for_each(const F& f, Args&&... args) {// NOLINT(*)
+//     for_each_dispatcher::run(std::index_sequence_for<Args...>{}, f, std::forward<Args>(args)...);
 // }
+
+template<typename F, typename... Args>
+void for_each(const F& f, Args&&... args) {
+    int i = 0;
+    (f(i++, std::forward<Args>(args)), ...);
+}
 
 /*!
  * \brief hash an object and combines uint64_t key with previous keys

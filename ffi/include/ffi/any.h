@@ -262,7 +262,7 @@ public:
     }
 
     ~Any() {
-        this->reset();
+        reset();
     }
 
     // constructors from Any

@@ -46,13 +46,13 @@ public:
             doc_data = String(method_info->doc.data, method_info->doc.size);
             type_schema_data = String(method_info->type_schema.data, method_info->type_schema.size);
             func_data = AnyView::CopyFromTVMFFIAny(method_info->method).cast<Function>();
-            this->SyncMethodInfo(method_info->flags);
+            SyncMethodInfo(method_info->flags);
             // no need to update method pointer as it would remain the same as func and we retained
         }
 
         explicit Entry(String name, Function func)
             : name_data(std::move(name)), func_data(std::move(func)) {
-            this->SyncMethodInfo(kTVMFFIFieldFlagBitMaskIsStaticMethod);
+            SyncMethodInfo(kTVMFFIFieldFlagBitMaskIsStaticMethod);
         }
 
     private:

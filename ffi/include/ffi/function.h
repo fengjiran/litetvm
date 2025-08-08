@@ -418,7 +418,7 @@ public:
    * \param func The function
    * \param override Whether to override when there is duplication.
    */
-    static void SetGlobal(std::string_view name, Function func, bool override = false) {
+    static void SetGlobal(std::string_view name, const Function& func, bool override = false) {
         TVMFFIByteArray name_arr{name.data(), name.size()};
         TVM_FFI_CHECK_SAFE_CALL(TVMFFIFunctionSetGlobal(&name_arr, details::ObjectUnsafe::GetHeader(func.get()), override));
     }
@@ -532,7 +532,7 @@ public:
 
     TVM_FFI_DEFINE_OBJECT_REF_METHODS(Function, ObjectRef, FunctionObj);
 
-    class Registry;
+    // class Registry;
 
 private:
     /*!
