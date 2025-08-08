@@ -14,6 +14,11 @@ namespace {
 using namespace litetvm::ffi;
 using namespace litetvm::ffi::testing;
 
+TEST(Func, list_funtion_names) {
+    auto fnames = Function::ListGlobalNames();
+    std::cout << "global function num: " << fnames.size() << std::endl;
+}
+
 TEST(Func, for_each) {
     int n = 5;
     std::vector<AnyView> anys(n);

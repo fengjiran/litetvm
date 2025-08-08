@@ -398,7 +398,7 @@ public:
         if (!res.has_value()) {
             TVM_FFI_THROW(ValueError) << "Function " << name << " not found";
         }
-        return *res;
+        return res.value();
     }
 
     static Function GetGlobalRequired(const std::string& name) {
@@ -430,20 +430,21 @@ public:
    */
     static std::vector<String> ListGlobalNames() {
         auto fname_functor = GetGlobalRequired("ffi.FunctionListGlobalNamesFunctor")().cast<Function>();
-        std::vector<String> names;
         int len = fname_functor(-1).cast<int>();
+         std::vector<String> names(len);
         for (int i = 0; i < len; ++i) {
-            names.push_back(fname_functor(i).cast<String>());
+            names[i] = fname_functor(i).cast<String>();
         }
         return names;
     }
+
     /**
    * \brief Remove a global function by name
    * \param name The name of the function
    */
     static void RemoveGlobal(const String& name) {
         static Function fremove = GetGlobalRequired("ffi.FunctionRemoveGlobal");
-        fremove(name);
+        UNUSED(fremove(name));
     }
 
     /*!
