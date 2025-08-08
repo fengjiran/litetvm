@@ -20,87 +20,86 @@ using namespace litetvm::ffi::testing;
 namespace refl = reflection;
 
 TEST(StructuralEqualHash, Array) {
-    auto structural_cmp = StructuralEqual();
-    auto structural_hash = StructuralHash();
     Array<int> a = {1, 2, 3};
     Array<int> b = {1, 2, 3};
+    EXPECT_TRUE(StructuralEqual()(a, b));
+    EXPECT_EQ(StructuralHash()(a), StructuralHash()(b));
+
     Array<int> c = {1, 3};
-
-    EXPECT_TRUE(structural_cmp(a, b));
-    EXPECT_EQ(structural_hash(a), structural_hash(b));
-    EXPECT_FALSE(structural_cmp(a, c));
-    EXPECT_NE(structural_hash(a), structural_hash(c));
-
+    EXPECT_FALSE(StructuralEqual()(a, c));
+    EXPECT_NE(StructuralHash()(a), StructuralHash()(c));
     auto diff_a_c = StructuralEqual::GetFirstMismatch(a, c);
+
     // first directly interepret diff,
     EXPECT_TRUE(diff_a_c.has_value());
-    EXPECT_EQ((*diff_a_c).get<0>()[0]->kind, refl::AccessKind::kArrayItem);
-    EXPECT_EQ((*diff_a_c).get<1>()[0]->kind, refl::AccessKind::kArrayItem);
-    EXPECT_EQ((*diff_a_c).get<0>()[0]->key.cast<int64_t>(), 1);
-    EXPECT_EQ((*diff_a_c).get<1>()[0]->key.cast<int64_t>(), 1);
-    EXPECT_EQ((*diff_a_c).get<0>().size(), 1);
-    EXPECT_EQ((*diff_a_c).get<1>().size(), 1);
+    auto lhs_steps = (*diff_a_c).get<0>()->ToSteps();
+    auto rhs_steps = (*diff_a_c).get<1>()->ToSteps();
+    EXPECT_EQ(lhs_steps[0]->kind, refl::AccessKind::kArrayItem);
+    EXPECT_EQ(rhs_steps[0]->kind, refl::AccessKind::kArrayItem);
+    EXPECT_EQ(lhs_steps[0]->key.cast<int64_t>(), 1);
+    EXPECT_EQ(rhs_steps[0]->key.cast<int64_t>(), 1);
+    EXPECT_EQ(lhs_steps.size(), 1);
+    EXPECT_EQ(rhs_steps.size(), 1);
 
     // use structural equal for checking in future parts
     // given we have done some basic checks above by directly interepret diff,
     Array<int> d = {1, 2};
     auto diff_a_d = StructuralEqual::GetFirstMismatch(a, d);
-    auto expected_diff_a_d = refl::AccessPathPair(refl::AccessPath({refl::AccessStep::ArrayIndex(2)}),
-                                                  refl::AccessPath({refl::AccessStep::ArrayIndexMissing(2)}));
+    auto expected_diff_a_d = refl::AccessPathPair(refl::AccessPath::FromSteps({
+                                                      refl::AccessStep::ArrayItem(2),
+                                                  }),
+                                                  refl::AccessPath::FromSteps({
+                                                      refl::AccessStep::ArrayItemMissing(2),
+                                                  }));
     // then use structural equal to check it
-    EXPECT_TRUE(structural_cmp(diff_a_d, expected_diff_a_d));
+    EXPECT_TRUE(StructuralEqual()(diff_a_d, expected_diff_a_d));
 }
 
 TEST(StructuralEqualHash, Map) {
-    auto structural_cmp = StructuralEqual();
-    auto structural_hash = StructuralHash();
     // same map but different insertion order
     Map<String, int> a = {{"a", 1}, {"b", 2}, {"c", 3}};
     Map<String, int> b = {{"b", 2}, {"c", 3}, {"a", 1}};
-    EXPECT_TRUE(structural_cmp(a, b));
-    EXPECT_EQ(structural_hash(a), structural_hash(b));
+    EXPECT_TRUE(StructuralEqual()(a, b));
+    EXPECT_EQ(StructuralHash()(a), StructuralHash()(b));
 
     Map<String, int> c = {{"a", 1}, {"b", 2}, {"c", 4}};
-    EXPECT_FALSE(structural_cmp(a, c));
-    EXPECT_NE(structural_hash(a), structural_hash(c));
+    EXPECT_FALSE(StructuralEqual()(a, c));
+    EXPECT_NE(StructuralHash()(a), StructuralHash()(c));
 
     auto diff_a_c = StructuralEqual::GetFirstMismatch(a, c);
-    auto expected_diff_a_c = refl::AccessPathPair(refl::AccessPath({refl::AccessStep::MapKey("c")}),
-                                                  refl::AccessPath({refl::AccessStep::MapKey("c")}));
+    auto expected_diff_a_c = refl::AccessPathPair(refl::AccessPath::Root()->MapItem("c"),
+                                                  refl::AccessPath::Root()->MapItem("c"));
     EXPECT_TRUE(diff_a_c.has_value());
-    EXPECT_TRUE(structural_cmp(diff_a_c, expected_diff_a_c));
+    EXPECT_TRUE(StructuralEqual()(diff_a_c, expected_diff_a_c));
 }
 
 TEST(StructuralEqualHash, NestedMapArray) {
-    auto structural_cmp = StructuralEqual();
-    auto structural_hash = StructuralHash();
     Map<String, Array<Any>> a = {{"a", {1, 2, 3}}, {"b", {4, "hello", 6}}};
     Map<String, Array<Any>> b = {{"a", {1, 2, 3}}, {"b", {4, "hello", 6}}};
-    EXPECT_TRUE(structural_cmp(a, b));
-    EXPECT_EQ(structural_hash(a), structural_hash(b));
+    EXPECT_TRUE(StructuralEqual()(a, b));
+    EXPECT_EQ(StructuralHash()(a), StructuralHash()(b));
 
     Map<String, Array<Any>> c = {{"a", {1, 2, 3}}, {"b", {4, "world", 6}}};
-    EXPECT_FALSE(structural_cmp(a, c));
-    EXPECT_NE(structural_hash(a), structural_hash(c));
+    EXPECT_FALSE(StructuralEqual()(a, c));
+    EXPECT_NE(StructuralHash()(a), StructuralHash()(c));
 
     auto diff_a_c = StructuralEqual::GetFirstMismatch(a, c);
-    auto expected_diff_a_c = refl::AccessPathPair(refl::AccessPath({refl::AccessStep::MapKey("b"),
-                                                                    refl::AccessStep::ArrayIndex(1)}),
-                                                  refl::AccessPath({refl::AccessStep::MapKey("b"),
-                                                                    refl::AccessStep::ArrayIndex(1)}));
+    auto expected_diff_a_c =
+        refl::AccessPathPair(refl::AccessPath::Root()->MapItem("b")->ArrayItem(1),
+                             refl::AccessPath::Root()->MapItem("b")->ArrayItem(1));
     EXPECT_TRUE(diff_a_c.has_value());
-    EXPECT_TRUE(structural_cmp(diff_a_c, expected_diff_a_c));
+    EXPECT_TRUE(StructuralEqual()(diff_a_c, expected_diff_a_c));
 
     Map<String, Array<Any>> d = {{"a", {1, 2, 3}}};
     auto diff_a_d = StructuralEqual::GetFirstMismatch(a, d);
-    auto expected_diff_a_d = refl::AccessPathPair(refl::AccessPath({refl::AccessStep::MapKey("b")}),
-                                                  refl::AccessPath({refl::AccessStep::MapKeyMissing("b")}));
+    auto expected_diff_a_d = refl::AccessPathPair(refl::AccessPath::Root()->MapItem("b"),
+                                                  refl::AccessPath::Root()->MapItemMissing("b"));
     EXPECT_TRUE(diff_a_d.has_value());
-    EXPECT_TRUE(structural_cmp(diff_a_d, expected_diff_a_d));
+    EXPECT_TRUE(StructuralEqual()(diff_a_d, expected_diff_a_d));
 
     auto diff_d_a = StructuralEqual::GetFirstMismatch(d, a);
-    auto expected_diff_d_a = refl::AccessPathPair(refl::AccessPath({refl::AccessStep::MapKeyMissing("b")}),
-                                                  refl::AccessPath({refl::AccessStep::MapKey("b")}));
+    auto expected_diff_d_a = refl::AccessPathPair(refl::AccessPath::Root()->MapItemMissing("b"),
+                                                  refl::AccessPath::Root()->MapItem("b"));
 }
 
 TEST(StructuralEqualHash, FreeVar) {
@@ -122,18 +121,19 @@ TEST(StructuralEqualHash, FuncDefAndIgnoreField) {
     TFunc fb = TFunc({y}, {TInt(1), y}, String("comment b"));
 
     TFunc fc = TFunc({x}, {TInt(1), TInt(2)}, String("comment c"));
+
     EXPECT_TRUE(StructuralEqual()(fa, fb));
     EXPECT_EQ(StructuralHash()(fa), StructuralHash()(fb));
 
     EXPECT_FALSE(StructuralEqual()(fa, fc));
     auto diff_fa_fc = StructuralEqual::GetFirstMismatch(fa, fc);
-    auto expected_diff_fa_fc = refl::AccessPathPair(refl::AccessPath({
-                                                            refl::AccessStep::ObjectField("body"),
-                                                            refl::AccessStep::ArrayIndex(1),
+    auto expected_diff_fa_fc = refl::AccessPathPair(refl::AccessPath::FromSteps({
+                                                        refl::AccessStep::Attr("body"),
+                                                        refl::AccessStep::ArrayItem(1),
                                                     }),
-                                                    refl::AccessPath({
-                                                            refl::AccessStep::ObjectField("body"),
-                                                            refl::AccessStep::ArrayIndex(1),
+                                                    refl::AccessPath::FromSteps({
+                                                        refl::AccessStep::Attr("body"),
+                                                        refl::AccessStep::ArrayItem(1),
                                                     }));
     EXPECT_TRUE(diff_fa_fc.has_value());
     EXPECT_TRUE(StructuralEqual()(diff_fa_fc, expected_diff_fa_fc));
@@ -153,14 +153,9 @@ TEST(StructuralEqualHash, CustomTreeNode) {
 
     EXPECT_FALSE(StructuralEqual()(fa, fc));
     auto diff_fa_fc = StructuralEqual::GetFirstMismatch(fa, fc);
-    auto expected_diff_fa_fc = refl::AccessPathPair(refl::AccessPath({
-                                                            refl::AccessStep::ObjectField("body"),
-                                                            refl::AccessStep::ArrayIndex(1),
-                                                    }),
-                                                    refl::AccessPath({
-                                                            refl::AccessStep::ObjectField("body"),
-                                                            refl::AccessStep::ArrayIndex(1),
-                                                    }));
+    auto expected_diff_fa_fc =
+        refl::AccessPathPair(refl::AccessPath::Root()->Attr("body")->ArrayItem(1),
+                             refl::AccessPath::Root()->Attr("body")->ArrayItem(1));
     EXPECT_TRUE(diff_fa_fc.has_value());
     EXPECT_TRUE(StructuralEqual()(diff_fa_fc, expected_diff_fa_fc));
 }

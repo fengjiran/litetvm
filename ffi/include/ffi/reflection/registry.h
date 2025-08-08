@@ -181,7 +181,7 @@ protected:
         }
     }
 
-    template<typename Class, typename Func>
+    template<typename Func>
     TVM_FFI_INLINE static Function GetMethod(std::string name, Func&& func) {
         return Function::FromTyped(std::forward<Func>(func), name);
     }
@@ -240,26 +240,11 @@ public:
    */
     template<typename Func, typename... Extra>
     GlobalDef& def_method(const char* name, Func&& func, Extra&&... extra) {
-        RegisterFunc(name, GetMethod_(std::string(name), std::forward<Func>(func)), std::forward<Extra>(extra)...);
+        RegisterFunc(name, GetMethod(std::string(name), std::forward<Func>(func)), std::forward<Extra>(extra)...);
         return *this;
     }
 
 private:
-    template<typename Func>
-    TVM_FFI_INLINE static Function GetMethod_(std::string name, Func&& func) {
-        return Function::FromTyped(std::forward<Func>(func), name);
-    }
-
-    template<typename Class, typename R, typename... Args>
-    TVM_FFI_INLINE static Function GetMethod_(std::string name, R (Class::*func)(Args...)) {
-        return GetMethod<Class>(std::string(name), func);
-    }
-
-    template<typename Class, typename R, typename... Args>
-    TVM_FFI_INLINE static Function GetMethod_(std::string name, R (Class::*func)(Args...) const) {
-        return GetMethod<Class>(std::string(name), func);
-    }
-
     template<typename... Extra>
     void RegisterFunc(const char* name, Function func, Extra&&... extra) {
         TVMFFIMethodInfo info;
@@ -412,7 +397,7 @@ private:
             info.flags |= kTVMFFIFieldFlagBitMaskIsStaticMethod;
         }
         // obtain the method function
-        Function method = GetMethod<Class>(std::string(type_key_) + "." + name, std::forward<Func>(func));
+        Function method = GetMethod(std::string(type_key_) + "." + name, std::forward<Func>(func));
         info.method = AnyView(method).CopyToTVMFFIAny();
         // apply method info traits
         (ApplyMethodInfoTrait(&info, std::forward<Extra>(extra)), ...);
@@ -443,7 +428,7 @@ public:
     template<typename Func>
     TypeAttrDef& def(const char* name, Func&& func) {
         TVMFFIByteArray name_array = {name, std::char_traits<char>::length(name)};
-        Function ffi_func = GetMethod<Class>(std::string(type_key_) + "." + name, std::forward<Func>(func));
+        Function ffi_func = GetMethod(std::string(type_key_) + "." + name, std::forward<Func>(func));
         TVMFFIAny value_any = AnyView(ffi_func).CopyToTVMFFIAny();
         TVM_FFI_CHECK_SAFE_CALL(TVMFFITypeRegisterAttr(type_index_, &name_array, &value_any));
         return *this;

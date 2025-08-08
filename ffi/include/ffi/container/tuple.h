@@ -248,11 +248,6 @@ inline constexpr bool type_contains_v<Tuple<T...>, Tuple<U...>> = (type_contains
 }// namespace details
 
 }// namespace ffi
-
-// Expose to the tvm namespace
-// Rationale: convinience and no ambiguity
-using ffi::Tuple;
-
 }// namespace litetvm
 
 #endif//LITETVM_FFI_CONTAINER_TUPLE_H
