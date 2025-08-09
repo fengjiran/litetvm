@@ -5,6 +5,8 @@
 #ifndef LITETVM_FFI_TRACEBACK_H
 #define LITETVM_FFI_TRACEBACK_H
 
+#include "macros.h"
+
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -129,13 +131,16 @@ struct TracebackStorage {
         lines.push_back(trackeback_stream.str());
     }
 
-    bool ExceedTracebackLimit() const { return lines.size() >= max_frame_size; }
+    NODISCARD bool ExceedTracebackLimit() const {
+        return lines.size() >= max_frame_size;
+    }
 
     // get traceback in the order of most recent call last
-    std::string GetTraceback() const {
+    NODISCARD std::string GetTraceback() const {
         std::string traceback;
         for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
-            traceback.insert(traceback.end(), it->begin(), it->end());
+            // traceback.insert(traceback.end(), it->begin(), it->end());
+            traceback += *it;
         }
         return traceback;
     }
