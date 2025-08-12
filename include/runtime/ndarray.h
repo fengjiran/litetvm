@@ -14,7 +14,6 @@
 #include "runtime/device_api.h"
 #include "runtime/serializer.h"
 
-
 #include <functional>
 #include <utility>
 #include <vector>

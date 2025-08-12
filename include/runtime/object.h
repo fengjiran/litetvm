@@ -20,7 +20,6 @@ using ffi::ObjectPtrEqual;
 using ffi::ObjectPtrHash;
 using ffi::ObjectRef;
 
-using ffi::Downcast;
 using ffi::GetObjectPtr;
 using ffi::GetRef;
 

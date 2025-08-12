@@ -5,14 +5,11 @@
 #ifndef LITETVM_RUNTIME_META_DATA_H
 #define LITETVM_RUNTIME_META_DATA_H
 
-#include "ffi/function.h"
-#include "runtime/module.h"
 #include "runtime/ndarray.h"
 
 #include <dmlc/io.h>
 #include <dmlc/json.h>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 

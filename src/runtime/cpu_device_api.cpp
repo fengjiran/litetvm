@@ -2,9 +2,11 @@
 // Created by richard on 2/5/25.
 //
 
+#include "ffi/reflection/registry.h"
 #include "runtime/device_api.h"
-#include "runtime/registry.h"
+#include "runtime/logging.h"
 #include "workspace_pool.h"
+
 #include <dmlc/thread_local.h>
 
 #include <iostream>
@@ -26,30 +28,20 @@
 #include <sys/sysctl.h>
 #endif
 
-
-namespace litetvm::runtime {
-
+namespace litetvm {
+namespace runtime {
 class CPUDeviceAPI final : public DeviceAPI {
 public:
-    static CPUDeviceAPI* Global() {
-        // NOTE: explicitly use new to avoid exit-time destruction of global state,
-        // Global state will be recycled by OS as the process exits.
-        // static auto* inst = new CPUDeviceAPI();
-        static CPUDeviceAPI inst;
-        return &inst;
-    }
-
-    void SetDevice(Device dev) override {}
-
-    void GetAttr(Device dev, DeviceAttrKind kind, TVMRetValue* rv) override {
-        if (kind == DeviceAttrKind::kExist) {
+    void SetDevice(Device dev) final {}
+    void GetAttr(Device dev, DeviceAttrKind kind, ffi::Any* rv) final {
+        if (kind == kExist) {
             *rv = 1;
         }
 
         switch (kind) {
-            case DeviceAttrKind::kExist:
+            case kExist:
                 break;
-            case DeviceAttrKind::kTotalGlobalMemory: {
+            case kTotalGlobalMemory: {
 #if defined(__linux__) || defined(__ANDROID__)
                 struct sysinfo info;
                 if (sysinfo(&info) == 0) {
@@ -81,8 +73,7 @@ public:
                 break;
         }
     }
-
-    void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment, DLDataType type_hint) override {
+    void* AllocDataSpace(Device dev, size_t nbytes, size_t alignment, DLDataType type_hint) final {
         void* ptr;
 #if _MSC_VER
         ptr = _aligned_malloc(nbytes, alignment);
@@ -95,42 +86,41 @@ public:
         int ret = posix_memalign(&ptr, alignment, nbytes);
         if (ret != 0) throw std::bad_alloc();
 #endif
-        // std::cout << "allocate " << nbytes << " bytes memory, alignment = " << alignment << std::endl;
         return ptr;
     }
 
-    void FreeDataSpace(Device dev, void* ptr) override {
+    void FreeDataSpace(Device dev, void* ptr) final {
 #if _MSC_VER
         _aligned_free(ptr);
 #else
         free(ptr);
 #endif
-        // std::cout << "free memory.\n";
     }
 
-    void StreamSync(Device dev, TVMStreamHandle stream) override {}
+    void StreamSync(Device dev, TVMStreamHandle stream) final {}
 
-    void* AllocWorkspace(Device dev, size_t size, DLDataType type_hint) override;
+    void* AllocWorkspace(Device dev, size_t size, DLDataType type_hint) final;
+    void FreeWorkspace(Device dev, void* data) final;
 
-    void FreeWorkspace(Device dev, void* data) override;
+    bool SupportsDevicePointerArithmeticsOnHost() final { return true; }
 
-    bool SupportsDevicePointerArithmeticsOnHost() override { return true; }
+    static CPUDeviceAPI* Global() {
+        // NOTE: explicitly use new to avoid exit-time destruction of global state
+        // Global state will be recycled by OS as the process exits.
+        static auto* inst = new CPUDeviceAPI();
+        return inst;
+    }
 
-    CPUDeviceAPI(const CPUDeviceAPI&) = delete;
-    CPUDeviceAPI& operator=(const CPUDeviceAPI&) = delete;
-
-private:
+protected:
     void CopyDataFromTo(const void* from, size_t from_offset, void* to, size_t to_offset, size_t size,
                         Device dev_from, Device dev_to, DLDataType type_hint,
-                        TVMStreamHandle stream) override {
+                        TVMStreamHandle stream) final {
         memcpy(static_cast<char*>(to) + to_offset, static_cast<const char*>(from) + from_offset, size);
     }
-
-    CPUDeviceAPI() = default;
 };
 
-struct CPUWorkspacePool : WorkspacePool {
-    CPUWorkspacePool() : WorkspacePool(DLDeviceType::kDLCPU, CPUDeviceAPI::Global()) {}
+struct CPUWorkspacePool : public WorkspacePool {
+    CPUWorkspacePool() : WorkspacePool(kDLCPU, CPUDeviceAPI::Global()) {}
 };
 
 void* CPUDeviceAPI::AllocWorkspace(Device dev, size_t size, DLDataType type_hint) {
@@ -141,9 +131,12 @@ void CPUDeviceAPI::FreeWorkspace(Device dev, void* data) {
     dmlc::ThreadLocalStore<CPUWorkspacePool>::Get()->FreeWorkspace(dev, data);
 }
 
-TVM_REGISTER_GLOBAL("device_api.cpu").set_body([](TVMArgs args, TVMRetValue* rv) {
-    DeviceAPI* ptr = CPUDeviceAPI::Global();
-    *rv = ptr;
+TVM_FFI_STATIC_INIT_BLOCK({
+    namespace refl = litetvm::ffi::reflection;
+    refl::GlobalDef().def_packed("device_api.cpu", [](ffi::PackedArgs args, ffi::Any* rv) {
+        DeviceAPI* ptr = CPUDeviceAPI::Global();
+        *rv = static_cast<void*>(ptr);
+    });
 });
-
-}// namespace litetvm::runtime
+}// namespace runtime
+}// namespace litetvm

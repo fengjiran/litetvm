@@ -6,9 +6,11 @@
 #include "ffi/reflection/registry.h"
 #include "file_utils.h"
 
+#include <cstring>
 #include <unordered_set>
 
-namespace litetvm::runtime {
+namespace litetvm {
+namespace runtime {
 
 void ModuleNode::Import(Module other) {
     // specially handle rpc
@@ -34,7 +36,6 @@ void ModuleNode::Import(Module other) {
     this->imports_.emplace_back(std::move(other));
 }
 
-
 ffi::Function ModuleNode::GetFunction(const String& name, bool query_imports) {
     ModuleNode* self = this;
     ffi::Function pf = self->GetFunction(name, GetObjectPtr<Object>(this));
@@ -52,13 +53,13 @@ ffi::Function ModuleNode::GetFunction(const String& name, bool query_imports) {
 
 Module Module::LoadFromFile(const String& file_name, const String& format) {
     std::string fmt = GetFileFormat(file_name, format);
-    ICHECK(!fmt.empty()) << "Cannot deduce format of file " << file_name;
+    ICHECK(fmt.length() != 0) << "Cannot deduce format of file " << file_name;
     if (fmt == "dll" || fmt == "dylib" || fmt == "dso") {
         fmt = "so";
     }
     std::string load_f_name = "runtime.module.loadfile_" + fmt;
     VLOG(1) << "Loading module from '" << file_name << "' of format '" << fmt << "'";
-    const auto f = ffi::Function::GetGlobal(load_f_name);
+    const auto f = litetvm::ffi::Function::GetGlobal(load_f_name);
     ICHECK(f.has_value()) << "Loader for `." << format << "` files is not registered,"
                           << " resolved to (" << load_f_name << ") in the global registry."
                           << "Ensure that you have loaded the correct runtime code, and"
@@ -89,7 +90,7 @@ const ffi::Function* ModuleNode::GetFuncFromEnv(const String& name) {
         if (pf != nullptr) break;
     }
     if (pf == nullptr) {
-        const auto f = ffi::Function::GetGlobal(name);
+        const auto f = litetvm::ffi::Function::GetGlobal(name);
         ICHECK(f.has_value()) << "Cannot find function " << name
                               << " in the imported modules or global registry."
                               << " If this involves ops from a contrib library like"
@@ -101,7 +102,6 @@ const ffi::Function* ModuleNode::GetFuncFromEnv(const String& name) {
     import_cache_.insert(std::make_pair(name, std::make_shared<ffi::Function>(pf)));
     return import_cache_.at(name).get();
 }
-
 
 String ModuleNode::GetFormat() {
     LOG(FATAL) << "Module[" << type_key() << "] does not support GetFormat";
@@ -116,9 +116,7 @@ bool RuntimeEnabled(const String& target_str) {
     std::string f_name;
     if (target == "cpu") {
         return true;
-    }
-
-    if (target == "cuda" || target == "gpu") {
+    } else if (target == "cuda" || target == "gpu") {
         f_name = "device_api.cuda";
     } else if (target == "cl" || target == "opencl") {
         f_name = "device_api.opencl";
@@ -137,7 +135,7 @@ bool RuntimeEnabled(const String& target_str) {
     } else if (target.length() >= 4 && target.substr(0, 4) == "rocm") {
         f_name = "device_api.rocm";
     } else if (target.length() >= 4 && target.substr(0, 4) == "llvm") {
-        const auto pf = ffi::Function::GetGlobal("codegen.llvm_target_enabled");
+        const auto pf = litetvm::ffi::Function::GetGlobal("codegen.llvm_target_enabled");
         if (!pf.has_value()) return false;
         return (*pf)(target).cast<bool>();
     } else {
@@ -174,4 +172,5 @@ TVM_FFI_STATIC_INIT_BLOCK({
             .def("runtime.ModuleImport", [](Module mod, Module other) { mod->Import(other); });
 });
 
-}// namespace litetvm::runtime
+}// namespace runtime
+}// namespace litetvm
