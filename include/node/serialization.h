@@ -17,7 +17,7 @@ namespace litetvm {
  *
  * \return the string representation of the node.
  */
-TVM_DLL std::string SaveJSON(ffi::Any node);
+TVM_DLL std::string SaveJSON(Any node);
 
 /*!
  * \brief Internal implementation of LoadJSON
@@ -26,7 +26,7 @@ TVM_DLL std::string SaveJSON(ffi::Any node);
  *
  * \return The shared_ptr of the Node.
  */
-TVM_DLL ffi::Any LoadJSON(std::string json_str);
+TVM_DLL Any LoadJSON(std::string json_str);
 
 }// namespace litetvm
 

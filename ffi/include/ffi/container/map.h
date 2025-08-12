@@ -48,9 +48,9 @@ public:
     static_assert(std::is_standard_layout<KVType>::value, "KVType is not standard layout");
     static_assert(sizeof(KVType) == 32, "sizeof(KVType) incorrect");
 
-    static constexpr const int32_t _type_index = TypeIndex::kTVMFFIMap;
+    static constexpr int32_t _type_index = TypeIndex::kTVMFFIMap;
     static constexpr const char* _type_key = StaticTypeKey::kTVMFFIMap;
-    static const constexpr bool _type_final = true;
+    static constexpr bool _type_final = true;
     TVM_FFI_DECLARE_STATIC_OBJECT_INFO(MapObj, Object);
 
     /*!
@@ -179,7 +179,7 @@ protected:
    * \return ObjectPtr to the map created
    */
     template<typename IterType>
-    static inline ObjectPtr<Object> CreateFromRange(IterType first, IterType last);
+    static ObjectPtr<Object> CreateFromRange(IterType first, IterType last);
     /*!
    * \brief InsertMaybeReHash an entry into the given hash map
    * \param kv The entry to be inserted
@@ -314,7 +314,7 @@ private:
    * \brief Set the number of slots and attach tags bit.
    * \param n The number of slots
    */
-    void SetSlotsAndSmallLayoutTag(uint64_t n) { slots_ = (n & ~kSmallTagMask) | kSmallTagMask; }
+    void SetSlotsAndSmallLayoutTag(uint64_t n) { slots_ = n & ~kSmallTagMask | kSmallTagMask; }
 
     /*!
    * \brief Remove a position in SmallMapObj
@@ -346,7 +346,7 @@ private:
    * \return The object created
    */
     static ObjectPtr<SmallMapObj> Empty(uint64_t n = kInitSize) {
-        using ::litetvm::ffi::make_inplace_array_object;
+        using ffi::make_inplace_array_object;
         ObjectPtr<SmallMapObj> p = make_inplace_array_object<SmallMapObj, KVType>(n);
         p->data_ = p->AddressOf(0);
         p->size_ = 0;
@@ -429,7 +429,7 @@ private:
 protected:
     friend class MapObj;
     friend class DenseMapObj;
-    friend class details::InplaceArrayBase<SmallMapObj, MapObj::KVType>;
+    friend class InplaceArrayBase<SmallMapObj, MapObj::KVType>;
 };
 
 /*! \brief A specialization of hash map that implements the idea of array-based hash map.
@@ -1274,9 +1274,8 @@ inline ObjectPtr<MapObj> MapObj::Empty() { return SmallMapObj::Empty(); }
 inline ObjectPtr<MapObj> MapObj::CopyFrom(MapObj* from) {
     if (from->IsSmallMap()) {
         return SmallMapObj::CopyFrom(static_cast<SmallMapObj*>(from));
-    } else {
-        return DenseMapObj::CopyFrom(static_cast<DenseMapObj*>(from));
     }
+    return DenseMapObj::CopyFrom(static_cast<DenseMapObj*>(from));
 }
 
 template<typename IterType>
@@ -1297,17 +1296,16 @@ inline ObjectPtr<Object> MapObj::CreateFromRange(IterType first, IterType last) 
             SmallMapObj::InsertMaybeReHash(std::move(kv), &obj);
         }
         return obj;
-    } else {
-        uint32_t fib_shift;
-        uint64_t n_slots;
-        DenseMapObj::CalcTableSize(cap, &fib_shift, &n_slots);
-        ObjectPtr<Object> obj = DenseMapObj::Empty(fib_shift, n_slots);
-        for (; first != last; ++first) {
-            KVType kv(*first);
-            DenseMapObj::InsertMaybeReHash(std::move(kv), &obj);
-        }
-        return obj;
     }
+    uint32_t fib_shift;
+    uint64_t n_slots;
+    DenseMapObj::CalcTableSize(cap, &fib_shift, &n_slots);
+    ObjectPtr<Object> obj = DenseMapObj::Empty(fib_shift, n_slots);
+    for (; first != last; ++first) {
+        KVType kv(*first);
+        DenseMapObj::InsertMaybeReHash(std::move(kv), &obj);
+    }
+    return obj;
 }
 
 inline void MapObj::InsertMaybeReHash(KVType&& kv, ObjectPtr<Object>* map) {
@@ -1334,7 +1332,7 @@ inline void MapObj::InsertMaybeReHash(KVType&& kv, ObjectPtr<Object>* map) {
 }
 
 template<>
-inline ObjectPtr<MapObj> make_object<>() = delete;
+ObjectPtr<MapObj> make_object<>() = delete;
 
 /*!
  * \brief Map container of NodeRef->NodeRef in DSL graph.
@@ -1346,8 +1344,7 @@ inline ObjectPtr<MapObj> make_object<>() = delete;
  * \tparam V The value NodeRef type.
  */
 template<typename K, typename V,
-         typename = typename std::enable_if_t<details::storage_enabled_v<K> &&
-                                              details::storage_enabled_v<V>>>
+         typename = std::enable_if_t<details::storage_enabled_v<K> && details::storage_enabled_v<V>>>
 class Map : public ObjectRef {
 public:
     using key_type = K;
@@ -1580,9 +1577,8 @@ private:
  * @return The merged Array. Original Maps are kept unchanged.
  */
 template<typename K, typename V,
-         typename = typename std::enable_if_t<details::storage_enabled_v<K> &&
-                                              details::storage_enabled_v<V>>>
-inline Map<K, V> Merge(Map<K, V> lhs, const Map<K, V>& rhs) {
+         typename = std::enable_if_t<details::storage_enabled_v<K> && details::storage_enabled_v<V>>>
+Map<K, V> Merge(Map<K, V> lhs, const Map<K, V>& rhs) {
     for (const auto& p: rhs) {
         lhs.Set(p.first, p.second);
     }
@@ -1684,7 +1680,6 @@ template<typename K, typename V, typename KU, typename VU>
 inline constexpr bool type_contains_v<Map<K, V>, Map<KU, VU>> =
         type_contains_v<K, KU> && type_contains_v<V, VU>;
 }// namespace details
-
 }// namespace ffi
 
 // Expose to the tvm namespace

@@ -17,7 +17,6 @@ namespace litetvm {
 
 using runtime::ObjectRef;
 
-
 /*!
  * \brief A dynamically dispatched functor on the type of the first argument.
  *
@@ -181,7 +180,6 @@ public:
  */
 #define TVM_STATIC_IR_FUNCTOR(ClsName, FField) \
     TVM_STR_CONCAT(TVM_REG_FUNC_VAR_DEF(ClsName), __COUNTER__) = ClsName::FField()
-
 }// namespace litetvm
 
 #endif//LITETVM_NODE_FUNCTOR_H

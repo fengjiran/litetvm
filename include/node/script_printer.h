@@ -9,16 +9,16 @@
 #include "ffi/container/array.h"
 #include "ffi/container/map.h"
 #include "ffi/reflection/registry.h"
+#include "ffi/reflection/access_path.h"
 #include "ffi/string.h"
 #include "node/functor.h"
-#include "node/object_path.h"
 #include "runtime/data_type.h"
 
 #include <string>
 
 namespace litetvm {
 
-class PrinterConfigNode : public Object {
+class PrinterConfigNode : public ffi::Object {
 public:
     /*! \brief A stack that tracks the names of the binding hierarchy */
     Array<String> binding_names = {};
@@ -94,9 +94,9 @@ public:
     bool show_all_struct_info = true;
 
     /* \brief Object path to be underlined */
-    Array<ObjectPath> path_to_underline = Array<ObjectPath>();
+    Array<ffi::reflection::AccessPath> path_to_underline;
     /*! \brief Object path to be annotated. */
-    Map<ObjectPath, String> path_to_annotate = Map<ObjectPath, String>();
+    Map<ffi::reflection::AccessPath, String> path_to_annotate;
     /*! \brief Object to be underlined. */
     Array<ObjectRef> obj_to_underline = Array<ObjectRef>();
     /*! \brief Object to be annotated. */
@@ -155,7 +155,6 @@ public:
     std::string Script(const Optional<PrinterConfig>& config = std::nullopt) const {                \
         return TVMScriptPrinter::Script(GetRef<ObjectRef>(this), config.value_or(PrinterConfig())); \
     }
-
 
 }// namespace litetvm
 

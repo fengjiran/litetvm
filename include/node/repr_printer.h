@@ -5,11 +5,11 @@
 #ifndef LITETVM_NODE_REPR_PRINTER_H
 #define LITETVM_NODE_REPR_PRINTER_H
 
+#include "ffi/reflection/access_path.h"
 #include "node/functor.h"
 #include "node/script_printer.h"
 
 namespace litetvm {
-
 /*! \brief A printer class to print the AST/IR nodes. */
 class ReprPrinter {
 public:
@@ -43,6 +43,7 @@ TVM_DLL void Dump(const runtime::ObjectRef& node);
  * \param node The input node
  */
 TVM_DLL void Dump(const runtime::Object* node);
+
 }// namespace litetvm
 
 namespace litetvm {
@@ -61,11 +62,56 @@ inline std::ostream& operator<<(std::ostream& os, const Any& n) {// NOLINT(*)
 }
 
 template<typename... V>
-inline std::ostream& operator<<(std::ostream& os, const Variant<V...>& n) {// NOLINT(*)
+std::ostream& operator<<(std::ostream& os, const Variant<V...>& n) {// NOLINT(*)
     ReprPrinter(os).Print(Any(n));
     return os;
 }
 
+namespace reflection {
+
+inline std::ostream& operator<<(std::ostream& os, const AccessStep& step) {
+    namespace refl = reflection;
+    switch (step->kind) {
+        case AccessKind::kAttr: {
+            os << '.' << step->key.cast<String>();
+            return os;
+        }
+        case AccessKind::kArrayItem: {
+            os << "[" << step->key.cast<int64_t>() << "]";
+            return os;
+        }
+        case AccessKind::kMapItem: {
+            os << "[" << step->key << "]";
+            return os;
+        }
+        case AccessKind::kAttrMissing: {
+            os << ".<missing attr " << step->key.cast<String>() << "`>";
+            return os;
+        }
+        case AccessKind::kArrayItemMissing: {
+            os << "[<missing item at " << step->key.cast<int64_t>() << ">]";
+            return os;
+        }
+        case AccessKind::kMapItemMissing: {
+            os << "[<missing item at " << step->key << ">]";
+            return os;
+        }
+        default: {
+            LOG(FATAL) << "Unknown access step kind: " << static_cast<int>(step->kind);
+        }
+    }
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const AccessPath& path) {
+    Array<AccessStep> steps = path->ToSteps();
+    os << "<root>";
+    for (const auto& step: steps) {
+        os << step;
+    }
+    return os;
+}
+}// namespace reflection
 }// namespace ffi
 }// namespace litetvm
 

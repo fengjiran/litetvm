@@ -6,6 +6,7 @@
 #define LITETVM_NODE_NODE_H
 
 #include "ffi/memory.h"
+#include "node/cast.h"
 #include "node/reflection.h"
 #include "node/repr_printer.h"
 #include "runtime/base.h"
@@ -27,8 +28,6 @@ using ffi::ObjectPtrHash;
 using ffi::ObjectRef;
 using ffi::PackedArgs;
 using ffi::TypeIndex;
-using runtime::Downcast;
-using runtime::GetRef;
 
 }// namespace litetvm
 

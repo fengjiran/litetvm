@@ -28,16 +28,15 @@ public:
         if (key.defined()) {
             const uint32_t idx = key->AttrRegistryIndex();
             return idx < data_.size() ? (data_[idx].second != 0) : 0;
-        } else {
-            return 0;
         }
+        return 0;
     }
     /*!
    * \brief get the corresponding value element at key.
    * \param key The key to the map
    * \return the const reference to the content value.
    */
-    const ffi::Any& operator[](const KeyType& key) const {
+    const Any& operator[](const KeyType& key) const {
         ICHECK(key.defined());
         const uint32_t idx = key->AttrRegistryIndex();
         ICHECK(idx < data_.size() && data_[idx].second != 0)
@@ -61,9 +60,8 @@ public:
             } else {
                 return data_[idx].first.template cast<ValueType>();
             }
-        } else {
-            return def_value;
         }
+        return def_value;
     }
 
 private:

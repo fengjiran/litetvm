@@ -6,10 +6,7 @@
 #define LITETVM_NODE_STRUCTURAL_HASH_H
 
 #include "runtime/data_type.h"
-#include "runtime/ndarray.h"
 
-#include <cmath>
-#include <functional>
 #include <limits>
 #include <string>
 

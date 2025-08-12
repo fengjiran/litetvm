@@ -3,6 +3,7 @@
 //
 
 #include "ffi/function.h"
+#include "node/cast.h"
 #include "node/functor.h"
 #include "node/repr_printer.h"
 
@@ -43,6 +44,6 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
 
 TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
         .set_dispatch<ffi::ShapeObj>([](const ObjectRef& node, ReprPrinter* p) {
-            p->stream << ffi::Downcast<ffi::Shape>(node);
+            p->stream << Downcast<ffi::Shape>(node);
         });
 }// namespace litetvm

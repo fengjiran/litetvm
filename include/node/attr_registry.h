@@ -150,5 +150,4 @@ private:
 
 }// namespace litetvm
 
-
 #endif//LITETVM_NODE_ATTR_REGISTRY_H

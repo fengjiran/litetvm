@@ -5,11 +5,8 @@
 #ifndef LITETVM_NODE_STRUCTURAL_EQUAL_H
 #define LITETVM_NODE_STRUCTURAL_EQUAL_H
 
-#include "node/functor.h"
-#include "node/object_path.h"
 #include "runtime/data_type.h"
 
-#include <cmath>
 #include <string>
 
 namespace litetvm {
@@ -56,27 +53,6 @@ public:
 };
 
 /*!
- * \brief Pair of `ObjectPath`s, one for each object being tested for structural equality.
- */
-class ObjectPathPairNode : public Object {
-public:
-    ObjectPath lhs_path;
-    ObjectPath rhs_path;
-
-    ObjectPathPairNode(ObjectPath lhs_path, ObjectPath rhs_path);
-
-    static constexpr const char* _type_key = "node.ObjectPathPair";
-    TVM_DECLARE_FINAL_OBJECT_INFO(ObjectPathPairNode, Object);
-};
-
-class ObjectPathPair : public ObjectRef {
-public:
-    ObjectPathPair(ObjectPath lhs_path, ObjectPath rhs_path);
-
-    TVM_DEFINE_NOTNULLABLE_OBJECT_REF_METHODS(ObjectPathPair, ObjectRef, ObjectPathPairNode);
-};
-
-/*!
  * \brief Content-aware structural equality comparator for objects.
  *
  *  The structural equality is recursively defined in the DAG of IR nodes via SEqual.
@@ -110,6 +86,7 @@ public:
     TVM_DLL bool operator()(const ffi::Any& lhs, const ffi::Any& rhs,
                             const bool map_free_params = false) const;
 };
+
 }// namespace litetvm
 
 #endif//LITETVM_NODE_STRUCTURAL_EQUAL_H
