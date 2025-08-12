@@ -2,7 +2,6 @@
 // Created by 赵丹 on 25-6-6.
 //
 #include "ffi/any.h"
-#include "ffi/cast.h"
 #include "ffi/string.h"
 
 #include <gtest/gtest.h>
@@ -251,7 +250,7 @@ TEST(String, Cast) {
     string source = "this is a string";
     String s{source};
     Any r = s;
-    String s2 = Downcast<String>(r);
+    String s2 = r.cast<String>();
 }
 
 TEST(String, Concat) {
