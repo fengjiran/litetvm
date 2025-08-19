@@ -34,6 +34,8 @@ struct StaticTypeKey {
     static constexpr const char* kTVMFFIRawStr = "const char*";
     static constexpr const char* kTVMFFIByteArrayPtr = "TVMFFIByteArray*";
     static constexpr const char* kTVMFFIObjectRValueRef = "ObjectRValueRef";
+    static constexpr const char* kTVMFFISmallStr = "ffi.SmallStr";
+    static constexpr const char* kTVMFFISmallBytes = "ffi.SmallBytes";
     static constexpr const char* kTVMFFIBytes = "ffi.Bytes";
     static constexpr const char* kTVMFFIStr = "ffi.String";
     static constexpr const char* kTVMFFIShape = "ffi.Shape";
@@ -42,8 +44,7 @@ struct StaticTypeKey {
     static constexpr const char* kTVMFFIFunction = "ffi.Function";
     static constexpr const char* kTVMFFIArray = "ffi.Array";
     static constexpr const char* kTVMFFIMap = "ffi.Map";
-    static constexpr const char* kTVMFFISmallStr = "ffi.SmallStr";
-    static constexpr const char* kTVMFFISmallBytes = "ffi.SmallBytes";
+    static constexpr const char* kTVMFFIModule = "ffi.Module";
 };
 
 /*!
@@ -732,10 +733,10 @@ struct ObjectPtrEqual {
  */
 #define TVM_FFI_DEFINE_MUTABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)                              \
     TypeName() = default;                                                                                        \
-    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                                       \
+    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                                        \
     explicit TypeName(::litetvm::runtime::ObjectPtr<::litetvm::runtime::Object> n) : ParentType(std::move(n)) {} \
     ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }                             \
-    using ContainerType = ObjectName;
+    using ContainerType = ObjectName
 
 /*
  * \brief Define object reference methods that is both not nullable and mutable.
@@ -746,11 +747,11 @@ struct ObjectPtrEqual {
  */
 #define TVM_FFI_DEFINE_MUTABLE_NOTNULLABLE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName)          \
     explicit TypeName(::litetvm::ffi::ObjectPtr<::litetvm::ffi::Object> n) : ParentType(std::move(n)) {} \
-    TVM_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName);                                                   \
+    TVM_FFI_DEFINE_DEFAULT_COPY_MOVE_AND_ASSIGN(TypeName)                                                    \
     ObjectName* operator->() const { return static_cast<ObjectName*>(data_.get()); }                     \
     ObjectName* get() const { return operator->(); }                                                     \
     static constexpr bool _type_is_nullable = false;                                                     \
-    using ContainerType = ObjectName;
+    using ContainerType = ObjectName
 
 namespace details {
 template<typename TargetType>

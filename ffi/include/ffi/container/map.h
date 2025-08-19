@@ -314,7 +314,7 @@ private:
    * \brief Set the number of slots and attach tags bit.
    * \param n The number of slots
    */
-    void SetSlotsAndSmallLayoutTag(uint64_t n) { slots_ = n & ~kSmallTagMask | kSmallTagMask; }
+    void SetSlotsAndSmallLayoutTag(uint64_t n) { slots_ = (n & ~kSmallTagMask) | kSmallTagMask; }
 
     /*!
    * \brief Remove a position in SmallMapObj
