@@ -5,6 +5,7 @@
 #include "ffi/container/map.h"
 #include "ffi/function.h"
 #include "ffi/reflection/registry.h"
+#include "ffi/extra/c_env_api.h"
 
 #include <chrono>
 #include <iostream>
