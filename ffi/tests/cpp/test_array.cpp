@@ -70,6 +70,8 @@ TEST(Array, Iterator) {
     Array<int> array{1, 2, 3};
     std::vector<int> vector(array.begin(), array.end());
     EXPECT_EQ(vector[1], 2);
+    EXPECT_EQ(*array.begin(), 1);
+    EXPECT_EQ(array.front(), 1);
 }
 
 TEST(Array, PushPop) {
