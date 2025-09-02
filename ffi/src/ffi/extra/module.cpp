@@ -114,7 +114,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 }// namespace ffi
 }// namespace litetvm
 
-int TVMFFIEnvLookupFromImports(TVMFFIObjectHandle library_ctx, const char* func_name,
+int TVMFFIEnvModLookupFromImports(TVMFFIObjectHandle library_ctx, const char* func_name,
                                TVMFFIObjectHandle* out) {
     TVM_FFI_SAFE_CALL_BEGIN();
     *out = litetvm::ffi::ModuleObj::InternalUnsafe::GetFunctionFromImports(

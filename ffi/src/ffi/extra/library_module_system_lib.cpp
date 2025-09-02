@@ -103,7 +103,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 }// namespace ffi
 }// namespace litetvm
 
-int TVMFFIEnvRegisterSystemLibSymbol(const char* name, void* ptr) {
+int TVMFFIEnvModRegisterSystemLibSymbol(const char* name, void* ptr) {
     litetvm::ffi::SystemLibSymbolRegistry::Global()->RegisterSymbol(name, ptr);
     return 0;
 }
