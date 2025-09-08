@@ -221,7 +221,7 @@ TVM_FFI_INLINE void InplaceConvertAnyViewToAny(TVMFFIAny* data, MAYBE_UNUSED siz
 /*!
  * \brief Managed Any that takes strong reference to a value.
  *
- * \note Develooper invariance: the TVMFFIAny data_
+ * \note Developer invariance: the TVMFFIAny data_
  *       in the Any can be safely used in AnyView.
  */
 class Any {
