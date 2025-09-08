@@ -87,7 +87,7 @@ NDArray NDArray::Empty(ffi::Shape shape, DLDataType dtype, Device dev, Optional<
             DeviceAPI::Get(tensor->device)->FreeDataSpace(tensor->device, tensor->data);
         }
     };
-    return ffi::NDArray::FromNDAlloc(DeviceAPIAlloc(), shape, dtype, dev, mem_scope);
+    return ffi::Tensor::FromNDAlloc(DeviceAPIAlloc(), shape, dtype, dev, mem_scope);
 }
 
 NDArray NDArray::CreateView(ffi::Shape shape, DLDataType dtype,

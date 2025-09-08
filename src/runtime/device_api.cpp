@@ -3,7 +3,7 @@
 //
 
 #include "runtime/device_api.h"
-#include "ffi/container/ndarray.h"
+#include "ffi/container/tensor.h"
 #include "ffi/function.h"
 #include "ffi/optional.h"
 #include "ffi/reflection/registry.h"

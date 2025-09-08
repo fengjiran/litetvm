@@ -2,8 +2,8 @@
 // Created by richard on 5/15/25.
 //
 
-#include "ffi/container/ndarray.h"
 #include "ffi/c_api.h"
+#include "ffi/container/tensor.h"
 #include "ffi/function.h"
 #include "ffi/reflection/registry.h"
 
@@ -33,7 +33,7 @@ int TVMFFINDArrayFromDLPack(DLManagedTensor* from, int32_t min_alignment,
                             int32_t require_contiguous, TVMFFIObjectHandle* out) {
     using namespace litetvm::ffi;
     TVM_FFI_SAFE_CALL_BEGIN();
-    NDArray nd = NDArray::FromDLPack(from, static_cast<size_t>(min_alignment), require_contiguous);
+    Tensor nd = Tensor::FromDLPack(from, static_cast<size_t>(min_alignment), require_contiguous);
     *out = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(nd));
     TVM_FFI_SAFE_CALL_END();
 }
@@ -42,7 +42,7 @@ int TVMFFINDArrayFromDLPackVersioned(DLManagedTensorVersioned* from, int32_t min
                                      int32_t require_contiguous, TVMFFIObjectHandle* out) {
     using namespace litetvm::ffi;
     TVM_FFI_SAFE_CALL_BEGIN();
-    NDArray nd = NDArray::FromDLPackVersioned(from, static_cast<size_t>(min_alignment), require_contiguous);
+    Tensor nd = Tensor::FromDLPackVersioned(from, static_cast<size_t>(min_alignment), require_contiguous);
     *out = details::ObjectUnsafe::MoveObjectRefToTVMFFIObjectPtr(std::move(nd));
     TVM_FFI_SAFE_CALL_END();
 }
@@ -50,7 +50,7 @@ int TVMFFINDArrayFromDLPackVersioned(DLManagedTensorVersioned* from, int32_t min
 int TVMFFINDArrayToDLPack(TVMFFIObjectHandle from, DLManagedTensor** out) {
     using namespace litetvm::ffi;
     TVM_FFI_SAFE_CALL_BEGIN();
-    *out = details::ObjectUnsafe::RawObjectPtrFromUnowned<NDArrayObj>(static_cast<TVMFFIObject*>(from))
+    *out = details::ObjectUnsafe::RawObjectPtrFromUnowned<TensorObj>(static_cast<TVMFFIObject*>(from))
                    ->ToDLPack();
     TVM_FFI_SAFE_CALL_END();
 }
@@ -58,7 +58,7 @@ int TVMFFINDArrayToDLPack(TVMFFIObjectHandle from, DLManagedTensor** out) {
 int TVMFFINDArrayToDLPackVersioned(TVMFFIObjectHandle from, DLManagedTensorVersioned** out) {
     using namespace litetvm::ffi;
     TVM_FFI_SAFE_CALL_BEGIN();
-    *out = details::ObjectUnsafe::RawObjectPtrFromUnowned<NDArrayObj>(static_cast<TVMFFIObject*>(from))
+    *out = details::ObjectUnsafe::RawObjectPtrFromUnowned<TensorObj>(static_cast<TVMFFIObject*>(from))
                    ->ToDLPackVersioned();
     TVM_FFI_SAFE_CALL_END();
 }

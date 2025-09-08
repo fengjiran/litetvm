@@ -4,8 +4,8 @@
 #include "ffi/extra/structural_hash.h"
 #include "ffi/container/array.h"
 #include "ffi/container/map.h"
-#include "ffi/container/ndarray.h"
 #include "ffi/container/shape.h"
+#include "ffi/container/tensor.h"
 #include "ffi/reflection/accessor.h"
 #include "ffi/reflection/registry.h"
 #include "ffi/string.h"
@@ -64,7 +64,7 @@ public:
                 return HashShape(AnyUnsafe::MoveFromAnyAfterCheck<Shape>(std::move(src)));
             }
             case kTVMFFINDArray: {
-                return HashNDArray(AnyUnsafe::MoveFromAnyAfterCheck<NDArray>(std::move(src)));
+                return HashNDArray(AnyUnsafe::MoveFromAnyAfterCheck<Tensor>(std::move(src)));
             }
             default: {
                 return HashObject(AnyUnsafe::MoveFromAnyAfterCheck<ObjectRef>(std::move(src)));
@@ -245,7 +245,7 @@ public:
         return hash_value;
     }
 
-    uint64_t HashNDArray(NDArray ndarray) {
+    uint64_t HashNDArray(Tensor ndarray) {
         uint64_t hash_value = details::StableHashCombine(ndarray->GetTypeKeyHash(), ndarray->ndim);
         for (int i = 0; i < ndarray->ndim; ++i) {
             hash_value = details::StableHashCombine(hash_value, ndarray->shape[i]);

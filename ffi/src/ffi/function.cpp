@@ -145,18 +145,18 @@ int TVMFFIAnyViewToOwnedAny(const TVMFFIAny* any_view, TVMFFIAny* out) {
     TVM_FFI_SAFE_CALL_END();
 }
 
-int TVMFFIFunctionSetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle f, int override) {
+int TVMFFIFunctionSetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle f, int allow_override) {
     using namespace litetvm::ffi;
     TVM_FFI_SAFE_CALL_BEGIN();
     String name_str(name->data, name->size);
-    GlobalFunctionTable::Global()->Update(name_str, GetRef<Function>(static_cast<FunctionObj*>(f)), override != 0);
+    GlobalFunctionTable::Global()->Update(name_str, GetRef<Function>(static_cast<FunctionObj*>(f)), allow_override != 0);
     TVM_FFI_SAFE_CALL_END();
 }
 
-int TVMFFIFunctionSetGlobalFromMethodInfo(const TVMFFIMethodInfo* method_info, int override) {
+int TVMFFIFunctionSetGlobalFromMethodInfo(const TVMFFIMethodInfo* method_info, int allow_override) {
     using namespace litetvm::ffi;
     TVM_FFI_SAFE_CALL_BEGIN();
-    GlobalFunctionTable::Global()->Update(method_info, override != 0);
+    GlobalFunctionTable::Global()->Update(method_info, allow_override != 0);
     TVM_FFI_SAFE_CALL_END();
 }
 

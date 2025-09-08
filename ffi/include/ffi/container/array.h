@@ -325,6 +325,11 @@ struct is_valid_iterator<Optional<T>, Iter> : is_valid_iterator<T, Iter> {};
 template<typename Iter>
 struct is_valid_iterator<Any, Iter> : std::true_type {};
 
+/*!
+ * \brief Check whether IterType is valid iterator for T.
+ * \tparam T The type.
+ * \tparam Iter The type of iterator.
+ */
 template<typename T, typename Iter>
 inline constexpr bool is_valid_iterator_v = is_valid_iterator<T, Iter>::value;
 
@@ -1106,8 +1111,6 @@ inline constexpr bool type_contains_v<Array<T>, Array<U>> = type_contains_v<T, U
 
 }// namespace ffi
 
-// Expose to the tvm namespace
-// Rationale: convinience and no ambiguity
 using ffi::Array;
 }// namespace litetvm
 

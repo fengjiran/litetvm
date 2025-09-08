@@ -5,8 +5,8 @@
 #ifndef LITETVM_RUNTIME_NDARRAY_H
 #define LITETVM_RUNTIME_NDARRAY_H
 
-#include "ffi/container/ndarray.h"
 #include "ffi/container/shape.h"
+#include "ffi/container/tensor.h"
 #include "ffi/optional.h"
 #include "ffi/string.h"
 #include "runtime/base.h"
@@ -32,17 +32,17 @@ using ffi::ObjectRef;
  * \brief Managed NDArray.
  *  The array is backed by reference counted blocks.
  */
-class NDArray : public ffi::NDArray {
+class NDArray : public ffi::Tensor {
 public:
-    using Container = ffi::NDArrayObj;
+    using Container = ffi::TensorObj;
     NDArray() = default;
     /*!
    * \brief constructor.
    * \param data ObjectPtr to the data container.
    */
-    explicit NDArray(ObjectPtr<Object> data) : ffi::NDArray(data) {}
-    NDArray(ffi::NDArray&& other) : ffi::NDArray(std::move(other)) {}// NOLINT(*)
-    NDArray(const ffi::NDArray& other) : ffi::NDArray(other) {}      // NOLINT(*)
+    explicit NDArray(ObjectPtr<Object> data) : ffi::Tensor(data) {}
+    NDArray(ffi::Tensor&& other) : ffi::Tensor(std::move(other)) {}// NOLINT(*)
+    NDArray(const ffi::Tensor& other) : ffi::Tensor(other) {}      // NOLINT(*)
 
     ffi::Shape Shape() const {
         return this->shape();
@@ -54,11 +54,11 @@ public:
 
     // DLPack handling
     static NDArray FromDLPack(DLManagedTensor* tensor) {
-        return ffi::NDArray::FromDLPack(tensor, kAllocAlignment, true);
+        return ffi::Tensor::FromDLPack(tensor, kAllocAlignment, true);
     }
 
     static NDArray FromDLPackVersioned(DLManagedTensorVersioned* tensor) {
-        return ffi::NDArray::FromDLPackVersioned(tensor, kAllocAlignment, true);
+        return ffi::Tensor::FromDLPackVersioned(tensor, kAllocAlignment, true);
     }
     /*!
    * \brief Copy data content from another array.

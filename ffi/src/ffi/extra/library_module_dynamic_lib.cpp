@@ -29,7 +29,7 @@ public:
         if (lib_handle_) Unload();
     }
 
-    void* GetSymbol(const char* name) final { return GetSymbol_(name); }
+    void* GetSymbol(const String& name) final { return GetSymbol_(name.c_str()); }
 
 private:
     // private system dependent implementation

@@ -103,20 +103,36 @@ typedef enum {
     kTVMFFIError = 67,
     /*! \brief Function object. */
     kTVMFFIFunction = 68,
-    /*! \brief Array object. */
-    kTVMFFIArray = 69,
-    /*! \brief Map object. */
-    kTVMFFIMap = 70,
     /*!
    * \brief Shape object, layout = { TVMFFIObject, { const int64_t*, size_t }, ... }
    */
-    kTVMFFIShape = 71,
+    kTVMFFIShape = 69,
     /*!
    * \brief NDArray object, layout = { TVMFFIObject, DLTensor, ... }
    */
-    kTVMFFINDArray = 72,
+    kTVMFFINDArray = 70,
+    /*! \brief Array object. */
+    kTVMFFIArray = 71,
+    //----------------------------------------------------------------
+    // more complex objects
+    //----------------------------------------------------------------
+
+    /*! \brief Map object. */
+    kTVMFFIMap = 72,
     /*! \brief Runtime module object. */
     kTVMFFIModule = 73,
+    /*!
+   * \brief Opaque python object.
+   *
+   * This is a special type index to indicate we are storing an opaque PyObject.
+   * Such object may interact with callback functions that are registered to support
+   * python-related operations.
+   *
+   * We only translate the objects that we do not recognize into this type index.
+   *
+   * \sa TVMFFIObjectCreateOpaque
+   */
+    kTVMFFIOpaquePyObject = 74,
     kTVMFFIStaticObjectEnd,
     // [Section] Dynamic Boxed: [kTVMFFIDynObjectBegin, +oo)
     /*! \brief Start of type indices that are allocated at runtime. */
@@ -132,6 +148,37 @@ typedef enum {
 using TVMFFIObjectHandle = void*;
 
 /*!
+ * \brief bitmask of the object deleter flag.
+ */
+#ifdef __cplusplus
+enum TVMFFIObjectDeleterFlagBitMask : int32_t {
+#else
+typedef enum {
+#endif
+    /*!
+         * \brief deleter action when strong reference count becomes zero.
+         * Need to call destructor of the object but not free the memory block.
+         */
+    kTVMFFIObjectDeleterFlagBitMaskStrong = 1 << 0,
+    /*!
+         * \brief deleter action when weak reference count becomes zero.
+         * Need to free the memory block.
+         */
+    kTVMFFIObjectDeleterFlagBitMaskWeak = 1 << 1,
+    /*!
+         * \brief deleter action when both strong and weak reference counts become zero.
+         * \note This is the most common case.
+         */
+    kTVMFFIObjectDeleterFlagBitMaskBoth =
+            (kTVMFFIObjectDeleterFlagBitMaskStrong | kTVMFFIObjectDeleterFlagBitMaskWeak),
+#ifdef __cplusplus
+};
+#else
+} TVMFFIObjectDeleterFlagBitMask;
+#endif
+
+
+/*!
  * \brief C-based type of all FFI object header that allocates on heap.
  * \note TVMFFIObject and TVMFFIAny share the common type_index header
  */
@@ -141,15 +188,26 @@ struct TVMFFIObject {
    * \note The type index of Object and Any are shared in FFI.
    */
     int32_t type_index;
-    /*! \brief Reference counter of the object. */
-    int32_t ref_counter;
+    /*!
+   * \brief Weak reference counter of the object, for compatiblity with weak_ptr design.
+   * \note Use u32 to ensure that overall object stays within 24-byte boundary, usually
+   *       manipulation of weak counter is less common than strong counter.
+   */
+    uint32_t weak_ref_count;
+    /*! \brief Strong reference counter of the object. */
+    uint64_t strong_ref_count;
     union {
-        /*! \brief Deleter to be invoked when reference counter goes to zero. */
-        void (*deleter)(TVMFFIObject* self);
         /*!
-     * \brief auxilary field to TVMFFIObject is always 8 bytes aligned.
-     * \note This helps us to ensure cross platform compatibility.
-     */
+         * \brief Deleter to be invoked when strong reference counter goes to zero.
+         * \param self The self object handle.
+         * \param flags The flags to indicate deletion behavior.
+         * \sa TVMFFIObjectDeleterFlagBitMask
+         */
+        void (*deleter)(void* self, int flags);
+        /*!
+         * \brief auxilary field to TVMFFIObject is always 8 bytes aligned.
+         * \note This helps us to ensure cross platform compatibility.
+         */
         int64_t __ensure_align;
     };
 };
@@ -278,17 +336,59 @@ struct TVMFFIFunctionCell {
     TVMFFISafeCallType safe_call;
 };
 
+/*!
+ * \brief Object cell for opaque object following header.
+ */
+typedef struct {
+    /*! \brief The handle of the opaque object, for python it is PyObject* */
+    void* handle;
+} TVMFFIOpaqueObjectCell;
+
 //------------------------------------------------------------
 // Section: Basic object API
 //------------------------------------------------------------
 /*!
- * \brief Free an object handle by decreasing reference
- * \param obj The object handle.
- * \note Internally we decrease the reference counter of the object.
- *       The object will be freed when every reference to the object are removed.
+     * \brief Increas the strong reference count of an object handle
+     * \param obj The object handle.
+     * \note Internally we increase the reference counter of the object.
+     * \return 0 when success, nonzero when failure happens
+     */
+TVM_FFI_DLL int TVMFFIObjectIncRef(TVMFFIObjectHandle obj);
+
+/*!
+     * \brief Free an object handle by decreasing strong reference
+     * \param obj The object handle.
+     * \return 0 when success, nonzero when failure happens
+     */
+TVM_FFI_DLL int TVMFFIObjectDecRef(TVMFFIObjectHandle obj);
+
+/*!
+ * \brief Create an Opaque object by passing in handle, type_index and deleter.
+ *
+ * The opaque object's lifetime is managed as an Object, so it can be retained
+ * and released like other objects.
+ * When the opaque object is kTVMFFIOpaquePyObject, it can be converted back to
+ * the python type when returned or passed as arguments to a python function.
+ *
+ * We can support ffi::Function that interacts with these objects,
+ * most likely callback registered from python.
+ *
+ * For language bindings, we only convert types that we do not recognize into this type.
+ * On the C++ side, the most common way to represent such OpaqueObject is to simply
+ * use ffi::ObjectRef or ffi::Any.
+ *
+ * \param handle The resource handle of the opaque object.
+ * \param type_index The type index of the object.
+ * \param deleter deleter to recycle
+ * \param out The output of the opaque object.
  * \return 0 when success, nonzero when failure happens
+ *
+ * \note The caller must ensure the type_index is a valid opaque object type index.
+ * \sa kTVMFFIOpaquePyObject
  */
-TVM_FFI_DLL int TVMFFIObjectFree(TVMFFIObjectHandle obj);
+TVM_FFI_DLL int TVMFFIObjectCreateOpaque(void* handle, int32_t type_index,
+                                         void (*deleter)(void* handle), TVMFFIObjectHandle* out);
+
 
 /*!
  * \brief Convert type key to type index.
@@ -302,83 +402,74 @@ TVM_FFI_DLL int TVMFFITypeKeyToIndex(const TVMFFIByteArray* type_key, int32_t* o
 // Section: Basic function calling API for function implementation
 //-----------------------------------------------------------------------
 /*!
- * \brief Create a FFIFunc by passing in callbacks from C callback.
- *
- * The registered function then can be pulled by the backend by the name.
- *
- * \param self The resource handle of the C callback.
- * \param safe_call The C callback implementation
- * \param deleter deleter to recycle
- * \param out The output of the function.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Create a FFIFunc by passing in callbacks from a C callback.
+     * The registered function can then be retrieved by the backend using its name.
+     * \param self The resource handle of the C callback.
+     * \param safe_call The C callback implementation.
+     * \param deleter The deleter to recycle.
+     * \param out The output of the function.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFIFunctionCreate(void* self, TVMFFISafeCallType safe_call,
                                      void (*deleter)(void* self), TVMFFIObjectHandle* out);
 
 /*!
- * \brief Get a global function registered in system.
- *
- * \param name The name of the function.
- * \param out the result function pointer, NULL if it does not exist.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Get a global function registered in the system.
+     * \param name The name of the function.
+     * \param out The result function pointer, NULL if it does not exist.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFIFunctionGetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle* out);
 
 /*!
- * \brief Convert a AnyView to an owned Any.
- * \param any The AnyView to convert.
- * \param out The output Any, must be an empty object
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Convert an AnyView to an owned Any.
+     * \param any The AnyView to convert.
+     * \param out The output Any, must be an empty object.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFIAnyViewToOwnedAny(const TVMFFIAny* any_view, TVMFFIAny* out);
 
 /*!
- * \brief Call a FFIFunc by passing in arguments.
- *
- * \param func The resource handle of the C callback.
- * \param args The input arguments to the call.
- * \param num_args The number of input arguments.
- * \param result The output result, caller must ensure result->type_index is set to kTVMFFINone.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Call a FFIFunc by passing in arguments.
+     * \param func The resource handle of the C callback.
+     * \param args The input arguments to the call.
+     * \param num_args The number of input arguments.
+     * \param result The output result, caller must ensure result->type_index is set to kTVMFFINone.
+     * \return 0 on success, nonzero on failure.
+*/
 TVM_FFI_DLL int TVMFFIFunctionCall(TVMFFIObjectHandle func, TVMFFIAny* args, int32_t num_args,
                                    TVMFFIAny* result);
 
 /*!
- * \brief Move the last error from the environment to result.
- *
- * \param result The result error.
- *
- * \note This function clears the error stored in the TLS.
- */
+     * \brief Move the last error from the environment to the result.
+     * \param result The result error.
+     * \note This function clears the error stored in the TLS.
+     */
 TVM_FFI_DLL void TVMFFIErrorMoveFromRaised(TVMFFIObjectHandle* result);
 
 /*!
- * \brief Set raised error in TLS, which can be fetched by TVMFFIErrorMoveFromRaised.
- *
- * \param error The error object handle
- */
+     * \brief Set a raised error in TLS, which can be fetched by TVMFFIErrorMoveFromRaised.
+     * \param error The error object handle
+     */
 TVM_FFI_DLL void TVMFFIErrorSetRaised(TVMFFIObjectHandle error);
 
 /*!
- * \brief Set raised error in TLS, which can be fetched by TVMFFIMoveFromRaised.
- *
- * \param kind The kind of the error.
- * \param message The error message.
- * \note This is a convenient method for C API side to set error directly from string.
- */
+     * \brief Set a raised error in TLS, which can be fetched by TVMFFIMoveFromRaised.
+     * \param kind The kind of the error.
+     * \param message The error message.
+     * \note This is a convenient method for the C API side to set an error directly from a string.
+     */
 TVM_FFI_DLL void TVMFFIErrorSetRaisedFromCStr(const char* kind, const char* message);
 
 /*!
- * \brief Create an initial error object.
- *
- * \param kind The kind of the error.
- * \param message The error message.
- * \param traceback The traceback of the error.
- * \return The created error object handle.
- * \note This function is different from other functions as it is used in error handling loop.
- *       So we do not follow normal error handling patterns via returning error code.
- */
+     * \brief Create an initial error object.
+     * \param kind The kind of the error.
+     * \param message The error message.
+     * \param traceback The traceback of the error.
+     * \return The created error object handle.
+     * \note This function is different from other functions as it is used in the error handling loop.
+     * So we do not follow normal error handling patterns via returning an error code.
+     */
 TVM_FFI_DLL TVMFFIObjectHandle TVMFFIErrorCreate(const TVMFFIByteArray* kind,
                                                  const TVMFFIByteArray* message,
                                                  const TVMFFIByteArray* traceback);
@@ -387,43 +478,43 @@ TVM_FFI_DLL TVMFFIObjectHandle TVMFFIErrorCreate(const TVMFFIByteArray* kind,
 // Section: DLPack support APIs
 //------------------------------------------------------------
 /*!
- * \brief Produce a managed NDArray from a DLPack tensor.
- * \param from The source DLPack tensor.
- * \param require_alignment The minimum alignment requored of the data + byte_offset.
- * \param require_contiguous Boolean flag indicating if we need to check for contiguity.
- * \param out The output NDArray handle.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Produce a managed NDArray from a DLPack tensor.
+     * \param from The source DLPack tensor.
+     * \param require_alignment The minimum alignment required of the data + byte_offset.
+     * \param require_contiguous Boolean flag indicating if we need to check for contiguity.
+     * \param out The output NDArray handle.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFINDArrayFromDLPack(DLManagedTensor* from, int32_t require_alignment,
                                         int32_t require_contiguous, TVMFFIObjectHandle* out);
 
 /*!
- * \brief Produce a DLMangedTensor from the array that shares data memory with the array.
- * \param from The source array.
- * \param out The DLManagedTensor handle.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Produce a DLManagedTensor from the array that shares data memory with the array.
+     * \param from The source array.
+     * \param out The DLManagedTensor handle.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFINDArrayToDLPack(TVMFFIObjectHandle from, DLManagedTensor** out);
 
 /*!
- * \brief Produce a managed NDArray from a DLPack tensor.
- * \param from The source DLPack tensor.
- * \param require_alignment The minimum alignment requored of the data + byte_offset.
- * \param require_contiguous Boolean flag indicating if we need to check for contiguity.
- * \param out The output NDArray handle.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Produce a managed NDArray from a DLPack tensor.
+     * \param from The source DLPack tensor.
+     * \param require_alignment The minimum alignment required of the data + byte_offset.
+     * \param require_contiguous Boolean flag indicating if we need to check for contiguity.
+     * \param out The output NDArray handle.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFINDArrayFromDLPackVersioned(DLManagedTensorVersioned* from,
                                                  int32_t require_alignment,
                                                  int32_t require_contiguous,
                                                  TVMFFIObjectHandle* out);
 
 /*!
- * \brief Produce a DLMangedTensor from the array that shares data memory with the array.
- * \param from The source array.
- * \param out The DLManagedTensor handle.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Produce a DLManagedTensor from the array that shares data memory with the array.
+     * \param from The source array.
+     * \param out The DLManagedTensor handle.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFINDArrayToDLPackVersioned(TVMFFIObjectHandle from,
                                                DLManagedTensorVersioned** out);
 
@@ -433,11 +524,11 @@ TVM_FFI_DLL int TVMFFINDArrayToDLPackVersioned(TVMFFIObjectHandle from,
 //---------------------------------------------------------------
 
 /*!
- * \brief Convert a string to a DLDataType.
- * \param str The string to convert.
- * \param out The output DLDataType.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Convert a string to a DLDataType.
+     * \param str The string to convert.
+     * \param out The output DLDataType.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFIDataTypeFromString(const TVMFFIByteArray* str, DLDataType* out);
 
 /*!
@@ -445,7 +536,7 @@ TVM_FFI_DLL int TVMFFIDataTypeFromString(const TVMFFIByteArray* str, DLDataType*
 * \param dtype The DLDataType to convert.
 * \param out The output string.
 * \return 0 when success, nonzero when failure happens
-* \note out is a String object that needs to be freed by the caller via TVMFFIObjectFree.
+* \note out is a String object that needs to be freed by the caller via TVMFFIObjectDecRef.
 The content of string can be accessed via TVMFFIObjectGetByteArrayPtr.
 
 * \note The input dtype is a pointer to the DLDataType to avoid ABI compatibility issues.
@@ -724,7 +815,11 @@ struct TVMFFITypeAttrColumn {
 /*!
  * \brief Runtime type information for object type checking.
  */
+#ifdef __cplusplus
 struct TVMFFITypeInfo {
+#else
+typedef struct TVMFFITypeInfo {
+#endif
     /*!
    *\brief The runtime type index,
    * It can be allocated during runtime if the type is dynamic.
@@ -754,74 +849,65 @@ struct TVMFFITypeInfo {
     const TVMFFIMethodInfo* methods;
     /*! \brief The extra information of the type. */
     const TVMFFITypeMetadata* metadata;
+#ifdef __cplusplus
 };
+#else
+} TVMFFITypeInfo;
+#endif
 
 /*!
- * \brief Register the function to runtime's global table.
- *
- * The registered function then can be pulled by the backend by the name.
- *
- * \param name The name of the function.
- * \param f The function to be registered.
- * \param override Whether allow override already registered function.
- * \return 0 when success, nonzero when failure happens
- */
-TVM_FFI_DLL int TVMFFIFunctionSetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle f, int override);
+     * \brief Register the function to runtime's global table.
+     * The registered function can then be retrieved by the backend using its name.
+     * \param name The name of the function.
+     * \param f The function to be registered.
+     * \param allow_override Whether to allow overriding an already registered function.
+     * \return 0 on success, nonzero on failure.
+     */
+TVM_FFI_DLL int TVMFFIFunctionSetGlobal(const TVMFFIByteArray* name, TVMFFIObjectHandle f, int allow_override);
 
 /*!
- * \brief Register the function to runtime's global table with method info.
- *
- * This is same as TVMFFIFunctionSetGlobal but with method info that can provide extra
- * metadata used in the runtime.
- *
- * \param method_info The method info to be registered.
- * \param override Whether allow override already registered function.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Register the function to runtime's global table with method info.
+     * This is the same as TVMFFIFunctionSetGlobal but with method info that can provide extra
+     * metadata used in the runtime.
+     * \param method_info The method info to be registered.
+     * \param override Whether to allow overriding an already registered function.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFIFunctionSetGlobalFromMethodInfo(const TVMFFIMethodInfo* method_info,
-                                                      int override);
+                                                      int allow_override);
 
 //------------------------------------------------------------
 // Section: Type reflection support APIs
 //------------------------------------------------------------
 /*!
- * \brief Register type field information for rutnime reflection.
- * \param type_index The type index
- * \param info The field info to be registered.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Register type field information for runtime reflection.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFITypeRegisterField(int32_t type_index, const TVMFFIFieldInfo* info);
 
 /*!
- * \brief Register type method information for runtime reflection.
- * \param type_index The type index
- * \param info The method info to be registered.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Register type method information for runtime reflection.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFITypeRegisterMethod(int32_t type_index, const TVMFFIMethodInfo* info);
 
 /*!
      * \brief Register type creator information for runtime reflection.
-     * \param type_index The type index
-     * \param metadata The extra information to be registered.
-     * \return 0 when success, nonzero when failure happens
+     * \return 0 on success, nonzero on failure.
      */
 TVM_FFI_DLL int TVMFFITypeRegisterMetadata(int32_t type_index, const TVMFFITypeMetadata* metadata);
 
 /*!
- * \brief Register extra type attributes that can be looked up during runtime.
- * \param type_index The type index
- * \param attr_value The attribute value to be registered.
- * \return 0 when success, nonzero when failure happens
- */
+     * \brief Register extra type attributes that can be looked up during runtime.
+     * \return 0 on success, nonzero on failure.
+     */
 TVM_FFI_DLL int TVMFFITypeRegisterAttr(int32_t type_index, const TVMFFIByteArray* attr_name,
                                        const TVMFFIAny* attr_value);
 
 /*!
      * \brief Get the type attribute column by name.
-     * \param attr_name The name of the attribute.
      * \return The pointer to the type attribute column.
-     * \return NULL if the attribute was not registered in the system
+     * \return NULL if the attribute was not registered in the system.
      */
 TVM_FFI_DLL const TVMFFITypeAttrColumn* TVMFFIGetTypeAttrColumn(const TVMFFIByteArray* attr_name);
 
@@ -834,36 +920,35 @@ TVM_FFI_DLL const TVMFFITypeAttrColumn* TVMFFIGetTypeAttrColumn(const TVMFFIByte
 // so exception handling do not apply
 //------------------------------------------------------------
 /*!
- * \brief Get stack traceback in a string.
- * \param filename The current file name.
- * \param lineno The current line number
- * \param func The current function
- * \return The traceback string
- *
- * \note filename func and lino are only used as a backup info, most cases they are not needed.
- *  The return value is set to const char* to be more compatible across dll boundaries.
- */
+     * \brief Get stack traceback in a string.
+     * \param filename The current file name.
+     * \param lineno The current line number
+     * \param func The current function
+     * \param cross_ffi_boundary Whether the traceback is crossing the ffi boundary
+     *                           or we should stop at the ffi boundary when detected
+     * \return The traceback string
+     *
+     * \note filename/func can be nullptr, then this info is skipped, they are useful
+     * for cases when debug symbols are not available.
+     */
 TVM_FFI_DLL const TVMFFIByteArray* TVMFFITraceback(const char* filename, int lineno, const char* func);
 
 /*!
- * \brief Initialize the type info during runtime.
- *
- *  When the function is first time called for a type,
- *  it will register the type to the type table in the runtime.
- *
- *  If the static_tindex is non-negative, the function will
- *  allocate a runtime type index.
- *  Otherwise, we will populate the type table and return the static index.
- *
- * \param type_key The type key.
- * \param static_type_index Static type index if any, can be -1, which means this is a dynamic index
- * \param num_child_slots Number of slots reserved for its children.
- * \param child_slots_can_overflow Whether to allow child to overflow the slots.
- * \param parent_type_index Parent type index, pass in -1 if it is root.
- * \param result The output type index
- *
- * \return 0 if success, -1 if error occured
- */
+     * \brief Initialize the type info during runtime.
+     * When the function is first called for a type,
+     * it will register the type to the type table in the runtime.
+     * If the static_tindex is non-negative, the function will
+     * allocate a runtime type index.
+     * Otherwise, we will populate the type table and return the static index.
+     * \param type_key The type key.
+     * \param static_type_index Static type index if any, can be -1, which means this is a dynamic index
+     * \param num_child_slots Number of slots reserved for its children.
+     * \param child_slots_can_overflow Whether to allow child to overflow the slots.
+     * \param parent_type_index Parent type index, pass in -1 if it is root.
+     * \param result The output type index
+     *
+     * \return 0 if success, -1 if error occured
+     */
 TVM_FFI_DLL int32_t TVMFFITypeGetOrAllocIndex(const TVMFFIByteArray* type_key,
                                               int32_t static_type_index, int32_t type_depth,
                                               int32_t num_child_slots,
@@ -871,11 +956,9 @@ TVM_FFI_DLL int32_t TVMFFITypeGetOrAllocIndex(const TVMFFIByteArray* type_key,
                                               int32_t parent_type_index);
 
 /*!
- * \brief Get dynamic type info by type index.
- *
- * \param type_index The type index
- * \return The type info
- */
+     * \brief Get dynamic type info by type index.
+     * \return The type info.
+     */
 TVM_FFI_DLL const TVMFFITypeInfo* TVMFFIGetTypeInfo(int32_t type_index);
 
 #ifdef __cplusplus
@@ -917,6 +1000,16 @@ inline TVMFFIByteArray TVMFFISmallBytesGetContentByteArray(const TVMFFIAny* valu
  */
 inline TVMFFIByteArray* TVMFFIBytesGetByteArrayPtr(TVMFFIObjectHandle obj) {
     return reinterpret_cast<TVMFFIByteArray*>(reinterpret_cast<char*>(obj) + sizeof(TVMFFIObject));
+}
+
+/*!
+ * \brief Get the data pointer of a opaque object cell from a opaque object.
+ * \param obj The object handle.
+ * \return The cell pointer.
+ */
+inline TVMFFIOpaqueObjectCell* TVMFFIOpaqueObjectGetCellPtr(TVMFFIObjectHandle obj) {
+    return reinterpret_cast<TVMFFIOpaqueObjectCell*>(reinterpret_cast<char*>(obj) +
+                                                     sizeof(TVMFFIObject));
 }
 
 /*!

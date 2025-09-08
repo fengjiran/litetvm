@@ -51,6 +51,14 @@ public:
    * \return True if the module implements the function, false otherwise.
    */
     virtual bool ImplementsFunction(const String& name) { return GetFunction(name).defined(); }
+
+    /*!
+   * \brief Get the metadata of the function, if available.
+   * \param name The name of the function.
+   * \return The metadata stored in json string format.
+   */
+    virtual Optional<String> GetFunctionMetadata(const String& name) { return std::nullopt; }
+
     /*!
    * \brief Write the current module to file with given format (for further compilation).
    *
@@ -104,6 +112,14 @@ public:
    * \return True if the module implements the function, false otherwise.
    */
     bool ImplementsFunction(const String& name, bool query_imports);
+
+    /*!
+   * \brief Get the function metadata of the function if available.
+   * \param name The name of the function.
+   * \return The function metadata of the function in json format.
+   */
+    Optional<String> GetFunctionMetadata(const String& name, bool query_imports);
+
     /*!
    * \brief Get the imports of the module.
    * \return The imports of the module.
@@ -194,13 +210,20 @@ public:
  * \brief Symbols for library module.
  */
 namespace symbol {
+/*!\ brief symbol prefix for tvm ffi related function symbols */
+constexpr const char* tvm_ffi_symbol_prefix = "__tvm_ffi_";
+// Special symbols have one extra _ prefix to avoid conflict with user symbols
+/*!
+ * \brief Default entry function of a library module is tvm_ffi_symbol_prefix + "main"
+ */
+constexpr const char* tvm_ffi_main = "__tvm_ffi_main";
 /*! \brief Global variable to store context pointer for a library module. */
-constexpr const char* tvm_ffi_library_ctx = "__tvm_ffi_library_ctx";
+constexpr const char* tvm_ffi_library_ctx = "__tvm_ffi__library_ctx";
 /*! \brief Global variable to store binary data alongside a library module. */
-constexpr const char* tvm_ffi_library_bin = "__tvm_ffi_library_bin";
-/*! \brief Default entry function of a library module. */
-constexpr const char* tvm_ffi_main = "__tvm_ffi_main__";
-}// namespace symbol
+constexpr const char* tvm_ffi_library_bin = "__tvm_ffi__library_bin";
+/*! \brief Optional metadata prefix of a symbol. */
+constexpr const char* tvm_ffi_metadata_prefix = "__tvm_ffi__metadata_";
+}  // namespace symbol
 }// namespace ffi
 }// namespace litetvm
 

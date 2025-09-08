@@ -97,11 +97,11 @@ inline size_t GetDataSize(const DLTensor& arr) {
 }
 
 /*! \brief An object representing an NDArray. */
-class NDArrayObj : public Object, public DLTensor {
+class TensorObj : public Object, public DLTensor {
 public:
     static constexpr uint32_t _type_index = kTVMFFINDArray;
     static constexpr const char* _type_key = StaticTypeKey::kTVMFFINDArray;
-    TVM_FFI_DECLARE_STATIC_OBJECT_INFO(NDArrayObj, Object);
+    TVM_FFI_DECLARE_STATIC_OBJECT_INFO(TensorObj, Object);
 
     /*!
    * \brief Move NDArray to a DLPack managed tensor.
@@ -109,7 +109,7 @@ public:
    */
     NODISCARD DLManagedTensor* ToDLPack() const {
         auto* ret = new DLManagedTensor();
-        auto* from = const_cast<NDArrayObj*>(this);
+        auto* from = const_cast<TensorObj*>(this);
         ret->dl_tensor = *static_cast<DLTensor*>(from);
         ret->manager_ctx = from;
         ret->deleter = DLManagedTensorDeleter;
@@ -123,7 +123,7 @@ public:
    */
     NODISCARD DLManagedTensorVersioned* ToDLPackVersioned() const {
         auto* ret = new DLManagedTensorVersioned();
-        auto* from = const_cast<NDArrayObj*>(this);
+        auto* from = const_cast<TensorObj*>(this);
         ret->version.major = DLPACK_MAJOR_VERSION;
         ret->version.minor = DLPACK_MINOR_VERSION;
         ret->dl_tensor = *static_cast<DLTensor*>(from);
@@ -137,20 +137,21 @@ public:
 protected:
     // backs up the shape of the NDArray
     Optional<Shape> shape_data_;
+    Optional<Shape> stride_data_;
 
     static void DLManagedTensorDeleter(DLManagedTensor* tensor) {
-        auto* obj = static_cast<NDArrayObj*>(tensor->manager_ctx);
+        auto* obj = static_cast<TensorObj*>(tensor->manager_ctx);
         details::ObjectUnsafe::DecRefObjectHandle(obj);
         delete tensor;
     }
 
     static void DLManagedTensorVersionedDeleter(DLManagedTensorVersioned* tensor) {
-        auto* obj = static_cast<NDArrayObj*>(tensor->manager_ctx);
+        auto* obj = static_cast<TensorObj*>(tensor->manager_ctx);
         details::ObjectUnsafe::DecRefObjectHandle(obj);
         delete tensor;
     }
 
-    friend class NDArray;
+    friend class Tensor;
 };
 
 namespace details {
@@ -160,7 +161,7 @@ namespace details {
  * The underlying allocator needs to be implemented by user.
  */
 template<typename TNDAlloc>
-class NDArrayObjFromNDAlloc : public NDArrayObj {
+class NDArrayObjFromNDAlloc : public TensorObj {
 public:
     template<typename... ExtraArgs>
     NDArrayObjFromNDAlloc(TNDAlloc alloc, Shape shape, DLDataType dtype, DLDevice device,
@@ -169,9 +170,11 @@ public:
         this->ndim = static_cast<int>(shape.size());
         this->dtype = dtype;
         this->shape = const_cast<int64_t*>(shape.data());
-        this->strides = nullptr;
+        Shape strides = Shape(details::MakeStridesFromShape(this->ndim, this->shape));
+        this->strides = const_cast<int64_t*>(strides.data());
         this->byte_offset = 0;
         this->shape_data_ = std::move(shape);
+        this->stride_data_ = std::move(strides);
         alloc_.AllocData(static_cast<DLTensor*>(this), std::forward<ExtraArgs>(extra_args)...);
     }
 
@@ -185,17 +188,18 @@ private:
 
 /*! \brief helper class to import from DLPack legacy DLManagedTensor */
 template<typename TDLPackManagedTensor>
-class NDArrayObjFromDLPack : public NDArrayObj {
+class TensorObjFromNDAlloc : public TensorObj {
 public:
-    explicit NDArrayObjFromDLPack(TDLPackManagedTensor* tensor) : tensor_(tensor) {
+    explicit TensorObjFromNDAlloc(TDLPackManagedTensor* tensor) : tensor_(tensor) {
         *static_cast<DLTensor*>(this) = tensor_->dl_tensor;
-        // set strides to nullptr if the tensor is contiguous.
-        if (IsContiguous(tensor->dl_tensor)) {
-            this->strides = nullptr;
+        if (tensor_->dl_tensor.strides == nullptr) {
+            Shape strides = Shape(details::MakeStridesFromShape(ndim, shape));
+            this->strides = const_cast<int64_t*>(strides.data());
+            this->stride_data_ = std::move(strides);
         }
     }
 
-    ~NDArrayObjFromDLPack() {
+    ~TensorObjFromNDAlloc() {
         // run DLPack deleter if needed.
         if (tensor_->deleter != nullptr) {
             (*tensor_->deleter)(tensor_);
@@ -214,14 +218,14 @@ private:
  * \note This class can be subclassed to implement downstream customized
  *       NDArray types that are backed by the same NDArrayObj storage type.
  */
-class NDArray : public ObjectRef {
+class Tensor : public ObjectRef {
 public:
     /*!
    * \brief Get the shape of the NDArray.
    * \return The shape of the NDArray.
    */
     NODISCARD Shape shape() const {
-        NDArrayObj* obj = get_mutable();
+        TensorObj* obj = get_mutable();
         if (!obj->shape_data_.has_value()) {
             obj->shape_data_ = Shape(obj->shape, obj->shape + obj->ndim);
         }
@@ -255,9 +259,9 @@ public:
    * \tparam ExtraArgs Extra arguments to be passed to Alloc.
    */
     template<typename TNDAlloc, typename... ExtraArgs>
-    static NDArray FromNDAlloc(TNDAlloc alloc, Shape shape, DLDataType dtype, DLDevice device,
+    static Tensor FromNDAlloc(TNDAlloc alloc, Shape shape, DLDataType dtype, DLDevice device,
                                ExtraArgs&&... extra_args) {
-        return NDArray(make_object<details::NDArrayObjFromNDAlloc<TNDAlloc>>(
+        return Tensor(make_object<details::NDArrayObjFromNDAlloc<TNDAlloc>>(
                 alloc, shape, dtype, device, std::forward<ExtraArgs>(extra_args)...));
     }
 
@@ -269,7 +273,7 @@ public:
    * \note This function will not run any checks on flags.
    * \return The created NDArray.
    */
-    static NDArray FromDLPack(DLManagedTensor* tensor, size_t require_alignment = 0,
+    static Tensor FromDLPack(DLManagedTensor* tensor, size_t require_alignment = 0,
                               bool require_contiguous = false) {
         if (require_alignment != 0 && !IsAligned(tensor->dl_tensor, require_alignment)) {
             TVM_FFI_THROW(RuntimeError) << "FromDLPack: Data is not aligned to " << require_alignment
@@ -278,7 +282,7 @@ public:
         if (require_contiguous && !ffi::IsContiguous(tensor->dl_tensor)) {
             TVM_FFI_THROW(RuntimeError) << "FromDLPack: Tensor is not contiguous.";
         }
-        return NDArray(make_object<details::NDArrayObjFromDLPack<DLManagedTensor>>(tensor));
+        return Tensor(make_object<details::TensorObjFromNDAlloc<DLManagedTensor>>(tensor));
     }
 
     /*!
@@ -288,7 +292,7 @@ public:
    * \param require_contiguous Boolean flag indicating if we need to check for contiguity.
    * \return The created NDArray.
    */
-    static NDArray FromDLPackVersioned(DLManagedTensorVersioned* tensor, size_t require_alignment = 0,
+    static Tensor FromDLPackVersioned(DLManagedTensorVersioned* tensor, size_t require_alignment = 0,
                                        bool require_contiguous = false) {
         if (require_alignment != 0 && !IsAligned(tensor->dl_tensor, require_alignment)) {
             TVM_FFI_THROW(RuntimeError) << "FromDLPack: Data is not aligned to " << require_alignment
@@ -300,7 +304,7 @@ public:
         if (tensor->flags & DLPACK_FLAG_BITMASK_IS_SUBBYTE_TYPE_PADDED) {
             TVM_FFI_THROW(RuntimeError) << "Subbyte type padded is not yet supported";
         }
-        return NDArray(make_object<details::NDArrayObjFromDLPack<DLManagedTensorVersioned>>(tensor));
+        return Tensor(make_object<details::TensorObjFromNDAlloc<DLManagedTensorVersioned>>(tensor));
     }
 
     /*!
@@ -319,15 +323,15 @@ public:
         return get_mutable()->ToDLPackVersioned();
     }
 
-    TVM_FFI_DEFINE_OBJECT_REF_METHODS(NDArray, ObjectRef, NDArrayObj);
+    TVM_FFI_DEFINE_OBJECT_REF_METHODS(Tensor, ObjectRef, TensorObj);
 
 protected:
     /*!
    * \brief Get mutable internal container pointer.
    * \return a mutable container pointer.
    */
-    NODISCARD NDArrayObj* get_mutable() const {
-        return const_cast<NDArrayObj*>(get());
+    NODISCARD TensorObj* get_mutable() const {
+        return const_cast<TensorObj*>(get());
     }
 };
 

@@ -431,7 +431,7 @@ public:
     static std::vector<String> ListGlobalNames() {
         auto fname_functor = GetGlobalRequired("ffi.FunctionListGlobalNamesFunctor")().cast<Function>();
         int len = fname_functor(-1).cast<int>();
-         std::vector<String> names(len);
+        std::vector<String> names(len);
         for (int i = 0; i < len; ++i) {
             names[i] = fname_functor(i).cast<String>();
         }
@@ -812,19 +812,19 @@ inline int32_t TypeKeyToIndex(std::string_view type_key) {
  *
  * \endcode
  */
-#define TVM_FFI_DLL_EXPORT_TYPED_FUNC(ExportName, Function)                          \
-    extern "C" {                                                                     \
-    TVM_FFI_DLL_EXPORT int ExportName(void* self, TVMFFIAny* args, int32_t num_args, \
-                                      TVMFFIAny* result) {                           \
-        TVM_FFI_SAFE_CALL_BEGIN();                                                   \
-        using FuncInfo = ::litetvm::ffi::details::FunctionInfo<decltype(Function)>;  \
-        static std::string name = #ExportName;                                       \
-        ::litetvm::ffi::details::unpack_call<typename FuncInfo::RetType>(            \
-                std::make_index_sequence<FuncInfo::num_args>{}, &name, Function,     \
-                reinterpret_cast<const ::litetvm::ffi::AnyView*>(args), num_args,    \
-                reinterpret_cast<::litetvm::ffi::Any*>(result));                     \
-        TVM_FFI_SAFE_CALL_END();                                                     \
-    }                                                                                \
+#define TVM_FFI_DLL_EXPORT_TYPED_FUNC(ExportName, Function)                                      \
+    extern "C" {                                                                                 \
+    TVM_FFI_DLL_EXPORT int __tvm_ffi_##ExportName(void* self, TVMFFIAny* args, int32_t num_args, \
+                                                  TVMFFIAny* result) {                           \
+        TVM_FFI_SAFE_CALL_BEGIN();                                                               \
+        using FuncInfo = ::litetvm::ffi::details::FunctionInfo<decltype(Function)>;              \
+        static std::string name = #ExportName;                                                   \
+        ::litetvm::ffi::details::unpack_call<typename FuncInfo::RetType>(                        \
+                std::make_index_sequence<FuncInfo::num_args>{}, &name, Function,                 \
+                reinterpret_cast<const ::litetvm::ffi::AnyView*>(args), num_args,                \
+                reinterpret_cast<::litetvm::ffi::Any*>(result));                                 \
+        TVM_FFI_SAFE_CALL_END();                                                                 \
+    }                                                                                            \
     }
 
 }// namespace ffi

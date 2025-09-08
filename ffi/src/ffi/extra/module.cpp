@@ -63,6 +63,21 @@ bool ModuleObj::ImplementsFunction(const String& name, bool query_imports) {
     return false;
 }
 
+
+Optional<String> ModuleObj::GetFunctionMetadata(const String& name, bool query_imports) {
+    if (auto opt_metadata = this->GetFunctionMetadata(name)) {
+        return opt_metadata;
+    }
+    if (query_imports) {
+        for (const Any& import: imports_) {
+            if (auto opt_metadata = import.cast<Module>()->GetFunctionMetadata(name, query_imports)) {
+                return *opt_metadata;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 Module Module::LoadFromFile(const String& file_name) {
     String format = [&file_name]() -> String {
         const char* data = file_name.data();
@@ -99,6 +114,10 @@ TVM_FFI_STATIC_INIT_BLOCK({
                         [](Module mod, String name, bool query_imports) {
                             return mod->ImplementsFunction(name, query_imports);
                         })
+            .def_method("ffi.ModuleGetFunctionMetadata",
+                        [](Module mod, String name, bool query_imports) {
+                            return mod->GetFunctionMetadata(name, query_imports);
+                        })
             .def_method("ffi.ModuleGetFunction",
                         [](Module mod, String name, bool query_imports) {
                             return mod->GetFunction(name, query_imports);
@@ -115,7 +134,7 @@ TVM_FFI_STATIC_INIT_BLOCK({
 }// namespace litetvm
 
 int TVMFFIEnvModLookupFromImports(TVMFFIObjectHandle library_ctx, const char* func_name,
-                               TVMFFIObjectHandle* out) {
+                                  TVMFFIObjectHandle* out) {
     TVM_FFI_SAFE_CALL_BEGIN();
     *out = litetvm::ffi::ModuleObj::InternalUnsafe::GetFunctionFromImports(
             reinterpret_cast<litetvm::ffi::ModuleObj*>(library_ctx), func_name);

@@ -5,6 +5,7 @@
 #include "ffi/container/map.h"
 #include "ffi/error.h"
 #include "ffi/function.h"
+#include "ffi/memory.h"
 #include "ffi/reflection/registry.h"
 
 #include <memory>
@@ -374,12 +375,58 @@ private:
     std::vector<std::unique_ptr<TypeAttrColumnData>> type_attr_columns_;
     Map<String, int64_t> type_attr_name_to_column_index_;
 };
+
+/**
+ * \brief Opaque implementation
+ */
+class OpaqueObjectImpl : public Object, public TVMFFIOpaqueObjectCell {
+public:
+    OpaqueObjectImpl(void* handle, void (*deleter)(void* handle)) : deleter_(deleter) {
+        this->handle = handle;
+    }
+
+    void SetTypeIndex(int32_t type_index) {
+        details::ObjectUnsafe::GetHeader(this)->type_index = type_index;
+    }
+
+    ~OpaqueObjectImpl() {
+        if (deleter_ != nullptr) {
+            deleter_(handle);
+        }
+    }
+
+private:
+    void (*deleter_)(void* handle);
+};
+
 }// namespace ffi
 }// namespace litetvm
 
-int TVMFFIObjectFree(TVMFFIObjectHandle handle) {
+int TVMFFIObjectDecRef(TVMFFIObjectHandle handle) {
     TVM_FFI_SAFE_CALL_BEGIN();
     litetvm::ffi::details::ObjectUnsafe::DecRefObjectHandle(handle);
+    TVM_FFI_SAFE_CALL_END();
+}
+
+int TVMFFIObjectIncRef(TVMFFIObjectHandle handle) {
+    TVM_FFI_SAFE_CALL_BEGIN();
+    litetvm::ffi::details::ObjectUnsafe::IncRefObjectHandle(handle);
+    TVM_FFI_SAFE_CALL_END();
+}
+
+int TVMFFIObjectCreateOpaque(void* handle, int32_t type_index, void (*deleter)(void* handle),
+                             TVMFFIObjectHandle* out) {
+    TVM_FFI_SAFE_CALL_BEGIN();
+    if (type_index != kTVMFFIOpaquePyObject) {
+        TVM_FFI_THROW(RuntimeError) << "Only kTVMFFIOpaquePyObject is supported for now";
+    }
+    // create initial opaque object
+    litetvm::ffi::ObjectPtr<litetvm::ffi::OpaqueObjectImpl> p =
+            litetvm::ffi::make_object<litetvm::ffi::OpaqueObjectImpl>(handle, deleter);
+    // need to set the type index after creation, because the set to RuntimeTypeIndex()
+    // happens after the constructor is called
+    p->SetTypeIndex(type_index);
+    *out = litetvm::ffi::details::ObjectUnsafe::MoveObjectPtrToTVMFFIObjectPtr(std::move(p));
     TVM_FFI_SAFE_CALL_END();
 }
 

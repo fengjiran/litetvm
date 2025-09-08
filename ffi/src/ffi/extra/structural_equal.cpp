@@ -4,8 +4,8 @@
 #include "ffi/extra/structural_equal.h"
 #include "ffi/container/array.h"
 #include "ffi/container/map.h"
-#include "ffi/container/ndarray.h"
 #include "ffi/container/shape.h"
+#include "ffi/container/tensor.h"
 #include "ffi/reflection/accessor.h"
 #include "ffi/string.h"
 
@@ -94,8 +94,8 @@ public:
             }
 
             case kTVMFFINDArray: {
-                return CompareNDArray(AnyUnsafe::MoveFromAnyAfterCheck<NDArray>(std::move(lhs)),
-                                      AnyUnsafe::MoveFromAnyAfterCheck<NDArray>(std::move(rhs)));
+                return CompareNDArray(AnyUnsafe::MoveFromAnyAfterCheck<Tensor>(std::move(lhs)),
+                                      AnyUnsafe::MoveFromAnyAfterCheck<Tensor>(std::move(rhs)));
             }
 
             default: {
@@ -334,7 +334,7 @@ public:
         return true;
     }
 
-    bool CompareNDArray(const NDArray& lhs, const NDArray& rhs) const {
+    bool CompareNDArray(const Tensor& lhs, const Tensor& rhs) const {
         if (lhs.same_as(rhs)) {
             return true;
         }

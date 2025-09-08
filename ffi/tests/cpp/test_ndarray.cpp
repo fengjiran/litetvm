@@ -2,7 +2,7 @@
 // Created by 赵丹 on 25-6-5.
 //
 
-#include "ffi/container/ndarray.h"
+#include "ffi/container/tensor.h"
 
 #include <gtest/gtest.h>
 
@@ -21,13 +21,13 @@ struct CPUNDAlloc {
     }
 };
 
-NDArray Empty(Shape shape, DLDataType dtype, DLDevice device) {
-    return NDArray::FromNDAlloc(CPUNDAlloc(), std::move(shape), dtype, device);
+Tensor Empty(Shape shape, DLDataType dtype, DLDevice device) {
+    return Tensor::FromNDAlloc(CPUNDAlloc(), std::move(shape), dtype, device);
 }
 
 
 TEST(NDArray, Basic) {
-    NDArray nd = Empty(Shape({1, 2, 3}), DLDataType({kDLFloat, 32, 1}), DLDevice({kDLCPU, 0}));
+    Tensor nd = Empty(Shape({1, 2, 3}), DLDataType({kDLFloat, 32, 1}), DLDevice({kDLCPU, 0}));
     Shape shape = nd.shape();
     EXPECT_EQ(shape.size(), 3);
     EXPECT_EQ(shape[0], 1);
@@ -39,7 +39,7 @@ TEST(NDArray, Basic) {
     }
 
     Any any0 = nd;
-    NDArray nd2 = any0.as<NDArray>().value();
+    Tensor nd2 = any0.as<Tensor>().value();
     EXPECT_EQ(nd2.shape(), shape);
     EXPECT_EQ(nd2.dtype(), DLDataType({kDLFloat, 32, 1}));
     for (int64_t i = 0; i < shape.Product(); ++i) {
@@ -51,7 +51,7 @@ TEST(NDArray, Basic) {
 }
 
 TEST(NDArray, DLPack) {
-    NDArray nd = Empty({1, 2, 3}, DLDataType({kDLInt, 16, 1}), DLDevice({kDLCPU, 0}));
+    Tensor nd = Empty({1, 2, 3}, DLDataType({kDLInt, 16, 1}), DLDevice({kDLCPU, 0}));
     DLManagedTensor* dlpack = nd.ToDLPack();
     EXPECT_EQ(dlpack->dl_tensor.ndim, 3);
     EXPECT_EQ(dlpack->dl_tensor.shape[0], 1);
@@ -63,10 +63,12 @@ TEST(NDArray, DLPack) {
     EXPECT_EQ(dlpack->dl_tensor.device.device_type, kDLCPU);
     EXPECT_EQ(dlpack->dl_tensor.device.device_id, 0);
     EXPECT_EQ(dlpack->dl_tensor.byte_offset, 0);
-    EXPECT_EQ(dlpack->dl_tensor.strides, nullptr);
+    EXPECT_EQ(dlpack->dl_tensor.strides[0], 6);
+    EXPECT_EQ(dlpack->dl_tensor.strides[1], 3);
+    EXPECT_EQ(dlpack->dl_tensor.strides[2], 1);
     EXPECT_EQ(nd.use_count(), 2);
     {
-        NDArray nd2 = NDArray::FromDLPack(dlpack);
+        Tensor nd2 = Tensor::FromDLPack(dlpack);
         EXPECT_EQ(nd2.use_count(), 1);
         EXPECT_EQ(nd2->data, nd->data);
         EXPECT_EQ(nd.use_count(), 2);
@@ -78,7 +80,7 @@ TEST(NDArray, DLPack) {
 TEST(NDArray, DLPackVersioned) {
     DLDataType dtype = DLDataType({kDLFloat4_e2m1fn, 4, 1});
     EXPECT_EQ(GetDataSize(2, dtype), 2 * 4 / 8);
-    NDArray nd = Empty({2}, dtype, DLDevice({kDLCPU, 0}));
+    Tensor nd = Empty({2}, dtype, DLDevice({kDLCPU, 0}));
     DLManagedTensorVersioned* dlpack = nd.ToDLPackVersioned();
     EXPECT_EQ(dlpack->version.major, DLPACK_MAJOR_VERSION);
     EXPECT_EQ(dlpack->version.minor, DLPACK_MINOR_VERSION);
@@ -90,11 +92,11 @@ TEST(NDArray, DLPackVersioned) {
     EXPECT_EQ(dlpack->dl_tensor.device.device_type, kDLCPU);
     EXPECT_EQ(dlpack->dl_tensor.device.device_id, 0);
     EXPECT_EQ(dlpack->dl_tensor.byte_offset, 0);
-    EXPECT_EQ(dlpack->dl_tensor.strides, nullptr);
+    EXPECT_EQ(dlpack->dl_tensor.strides[0], 1);
 
     EXPECT_EQ(nd.use_count(), 2);
     {
-        NDArray nd2 = NDArray::FromDLPackVersioned(dlpack);
+        Tensor nd2 = Tensor::FromDLPackVersioned(dlpack);
         EXPECT_EQ(nd2.use_count(), 1);
         EXPECT_EQ(nd2->data, nd->data);
         EXPECT_EQ(nd.use_count(), 2);
